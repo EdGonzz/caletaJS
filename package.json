@@ -4,7 +4,8 @@
   "description": "Single Page Application (SPA) de alto rendimiento para el seguimiento simulado de inversiones en criptomonedas.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "webpack server --mode development",
+    "build": "webpack --mode production"
   },
   "keywords": [
     "spa",
