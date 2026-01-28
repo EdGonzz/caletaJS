@@ -1,6 +1,5 @@
 import "./styles/main.css";
-import Home from "./pages/Home";
-const root = document.getElementById("root");
+import router from "./router/routes";
 
-root.innerHTML = Home();
-
+window.addEventListener("load", router);
+window.addEventListener("hashchange", router);
