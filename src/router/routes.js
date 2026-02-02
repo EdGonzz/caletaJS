@@ -24,7 +24,7 @@ const router = async () => {
   let render = (routes[path] ? routes[path] : routes["/404"]);
 
   header.innerHTML = Header();
-  root.innerHTML = render();
+  root.innerHTML = await render();
 }
 
 export default router;
