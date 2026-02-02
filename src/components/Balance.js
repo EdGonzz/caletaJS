@@ -14,9 +14,9 @@ const Balance = () => {
     </section>
 
       <section class="grid grid-cols-2 gap-4 mb-8">
-      ${Button("+", "Agregar", "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20")}
+      ${Button('add-btn', "+", "Agregar", "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20")}
     
-      ${Button("👁️", "Ocultar", "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700")}
+      ${Button('hide-btn', "👁️", "Ocultar", "bg-slate-800 hover:bg-slate-700 text-white border border-slate-700")}
     </section>
   `;
   return view;
