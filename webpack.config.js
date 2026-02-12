@@ -28,6 +28,10 @@ module.exports = {
           "css-loader",
           "postcss-loader"
         ]
+      },
+      {
+        test: /\.svg$/,
+        type: "asset/resource",
       }
     ]
   },

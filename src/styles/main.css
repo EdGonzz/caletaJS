@@ -1,1 +1,80 @@
 @import "tailwindcss";
+
+@theme {
+  /* Colores Personalizados */
+  --color-primary: #9079ff;
+  --color-primary-glow: #0bd570;
+  --color-accent-red: #ef4444;
+  --color-background-dark: #120f23;
+  --color-background-darker: #020617;
+  --color-card-dark: #1e293b;
+  --color-background-light: #f6f5f8;
+
+  /* Tipografías */
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono",
+    "Courier New", monospace;
+
+  /* Bordes */
+  --radius-default: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* Sombras Especiales */
+  --shadow-neon: 0 0 15px rgba(11, 213, 112, 0.4), 0 0 30px rgba(11, 213, 112, 0.1);
+  --shadow-neon-hover: 0 0 25px rgba(11, 213, 112, 0.6), 0 0 50px rgba(11, 213, 112, 0.2);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  background-color: #0f172a;
+  background-image: radial-gradient(at 0% 0%, rgba(11, 213, 112, 0.08) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(15, 23, 42, 1) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.glass-nav {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px rgba(11, 213, 112, 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+.path-anim {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: dash 3s linear forwards;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

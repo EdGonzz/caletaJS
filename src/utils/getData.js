@@ -21,7 +21,7 @@ const getData = async (id) => {
     return data
   } catch (error) {
     console.error('Error fetching data:', error)
-    return null; // Return null instead of undefined for better error handling in UI
+    return null;
   }
 }
 
