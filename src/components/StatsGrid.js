@@ -9,7 +9,7 @@ const StatsGrid = () => {
       description: "~ 1.45 BTC",
       icon: "account_balance_wallet",
       extra: `
-        <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100">
+        <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-value="75" aria-valuemin="0" aria-valuemax="100">
           <div class="bg-primary h-full w-[75%] shadow-[0_0_10px_#0bd570]"></div>
         </div>
       `,
@@ -35,8 +35,8 @@ const StatsGrid = () => {
       description: "All time earnings",
       icon: "monitoring",
       extra: `
-        <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
-          <div class="to-primary h-full w-[60%] bg-gradient-to-r from-blue-500"></div>
+        <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-value="60" aria-valuemin="0" aria-valuemax="100">
+          <div class="to-primary h-full w-[60%] bg-linear-to-r from-blue-500"></div>
         </div>
       `,
     },
