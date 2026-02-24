@@ -10,11 +10,15 @@
  * @param {string} [props.extra] - HTML adicional (ej. barras de progreso, gráficos).
  * @returns {string} HTML string del componente.
  */
+
+import sprite from "../assets/sprite.svg";
+
 const StatCard = ({
   title,
   value,
   badge = "",
   description = "",
+  iconLabel = "",
   icon = "",
   content = "",
   extra = "",
@@ -25,7 +29,9 @@ const StatCard = ({
       ${
         icon
           ? `<div class="absolute top-0 right-0 p-3 opacity-10 transition-opacity group-hover:opacity-20" aria-hidden="true">
-               <span class="material-symbols-outlined text-primary text-4xl">${icon}</span>
+               <svg class="size-8" role="img" aria-label="Icono de ${iconLabel}">
+                 <use href="${sprite}#${icon}"></use>
+               </svg>
              </div>`
           : ""
       }

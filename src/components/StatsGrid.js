@@ -7,7 +7,8 @@ const StatsGrid = () => {
       title: "Total Balance",
       value: "$42,069.00",
       description: "~ 1.45 BTC",
-      icon: "account_balance_wallet",
+      iconLabel: "Wallet",
+      icon: "wallet",
       extra: `
         <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-value="75" aria-valuemin="0" aria-valuemax="100">
           <div class="bg-primary h-full w-[75%] shadow-[0_0_10px_#0bd570]"></div>
@@ -19,7 +20,8 @@ const StatsGrid = () => {
       value: "+$2,154.32",
       badge: "+5.4%",
       description: "vs. previous day",
-      icon: "trending_up",
+      iconLabel: "Trending Up",
+      icon: "trending-up",
       extra: `
         <div class="mt-2 -mb-2 h-8 w-full" aria-hidden="true">
           <svg class="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 20">
@@ -33,7 +35,8 @@ const StatsGrid = () => {
       value: "$12,402.10",
       badge: "+41.2%",
       description: "All time earnings",
-      icon: "monitoring",
+      iconLabel: "Chart Area Line",
+      icon: "chart-area-line",
       extra: `
         <div class="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-value="60" aria-valuemin="0" aria-valuemax="100">
           <div class="to-primary h-full w-[60%] bg-linear-to-r from-blue-500"></div>
@@ -42,7 +45,8 @@ const StatsGrid = () => {
     },
     {
       title: "Top Mover (24h)",
-        icon: "rocket_launch",
+        iconLabel: "Rocket",
+        icon: "rocket",
         content: `
           <div class="flex items-center gap-3">
             <div class="size-10 rounded-lg border border-slate-700 bg-slate-800 p-1.5">
