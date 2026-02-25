@@ -3,6 +3,7 @@ import Home from "../pages/Home";
 import About from "../pages/About";
 import CoinDetails from "../pages/CoinDetails";
 import Error404 from "../pages/Error404";
+import { initHoldingsTable } from "../components/HoldingsTable";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -25,6 +26,11 @@ const router = async () => {
 
   header.innerHTML = Header();
   root.innerHTML = await render();
+
+  // Wire up interactive components after the DOM is populated
+  if (path === "/") {
+    initHoldingsTable();
+  }
 }
 
 export default router;

@@ -27,7 +27,7 @@ const HistoryChart = () => {
         </div>
       </div>
       <div class="relative h-full w-full flex-1">
-        <svg class="h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 300" aria-label="Portfolio history line chart">
+        <svg class="h-full w-full" preserveAspectRatio="none" viewBox="0 0 800 300" aria-label="Portfolio history line chart">
           <defs>
             <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stop-color="#0bd570" stop-opacity="0.2"></stop>
