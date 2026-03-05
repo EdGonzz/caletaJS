@@ -1,7 +1,7 @@
 const API_KEY = process.env.API_KEY;
 const API_URL = process.env.API_URL;
 
-const getData = async (id) => {
+const getCoin = async (id) => {
   const url = id ? `${API_URL}/coins/${id}` : `${API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1`
 
   const options = {
@@ -25,4 +25,4 @@ const getData = async (id) => {
   }
 }
 
-export default getData
+export default getCoin
