@@ -15,21 +15,7 @@
  * @property {boolean} isFlat     - True for stablecoins — renders a flat dashed line
  */
 
-/**
- * Formats a number as a USD currency string.
- * @param {number} n
- * @returns {string}
- */
-const formatUSD = (n) =>
-  n.toLocaleString("en-US", { style: "currency", currency: "USD" });
-
-/**
- * Formats a balance number — keeps trailing decimals meaningful.
- * @param {number} n
- * @returns {string}
- */
-const formatBalance = (n) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+import { formatUsd, formatBalance } from "../utils/formatters";
 
 /**
  * Returns the markup for the 24h change badge.
@@ -138,7 +124,7 @@ const AssetRow = (asset) => {
 
       <!-- Price -->
       <td class="px-6 py-4 text-right font-mono text-slate-300" id="price-${id}">
-        ${formatUSD(price)}
+        ${formatUsd(price)}
       </td>
 
       <!-- 24h % -->
@@ -154,7 +140,7 @@ const AssetRow = (asset) => {
 
       <!-- Value -->
       <td class="px-6 py-4 text-right">
-        <div class="font-mono font-bold text-white" id="value-${id}">${formatUSD(value)}</div>
+        <div class="font-mono font-bold text-white" id="value-${id}">${formatUsd(value)}</div>
       </td>
 
       <!-- Last 7d sparkline -->

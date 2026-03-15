@@ -77,3 +77,31 @@ body {
     stroke-dashoffset: 0;
   }
 }
+
+/* ── Skeleton Shimmer (SelectExchange loading) ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* ── Modal slide-up entrance ── */
+@keyframes modal-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-enter {
+  animation: modal-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

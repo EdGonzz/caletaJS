@@ -3,6 +3,7 @@ import StatsGrid from "../components/StatsGrid";
 import HistoryChart from "../components/HistoryChart";
 import AllocationDonut from "../components/AllocationDonut";
 import HoldingsTable from "../components/HoldingsTable";
+import AddAssetModal from "../components/AddAssetModal";
 
 const Home = () => {
   const view = `
@@ -17,9 +18,11 @@ const Home = () => {
         ${HoldingsTable()}
     </div>
   </main>
+  ${AddAssetModal()}
 `;
 
   return view;
 }
 
 export default Home;
+

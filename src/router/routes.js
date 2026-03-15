@@ -4,6 +4,7 @@ import About from "../pages/About";
 import CoinDetails from "../pages/CoinDetails";
 import Error404 from "../pages/Error404";
 import { initHoldingsTable } from "../components/HoldingsTable";
+import { initAddAssetModal } from "../components/AddAssetModal";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -30,6 +31,7 @@ const router = async () => {
   // Wire up interactive components after the DOM is populated
   if (path === "/") {
     initHoldingsTable();
+    initAddAssetModal();
   }
 }
 
