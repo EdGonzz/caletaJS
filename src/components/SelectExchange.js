@@ -65,7 +65,7 @@ const SkeletonRow = () => `
  * @param {number} [count=5]
  * @returns {string}
  */
-const SelectExchangeLoading = (count = 5) => `
+const SelectLoading = (count = 5) => `
   <div id="exchange-loading" class="space-y-2">
     ${Array.from({ length: count }, () => SkeletonRow()).join("")}
   </div>
@@ -155,5 +155,5 @@ const SelectExchange = (selectedId = "binance") => `
   </div>
 `;
 
-export { SelectExchange, SelectExchangeLoading };
+export { SelectExchange, SelectLoading };
 export default SelectExchange;

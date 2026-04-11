@@ -1,13 +1,15 @@
-import coins from "../utils/coinsData";
+import getCoin from "../utils/getCoin";
 import exchanges from "../utils/exchangesData";
-import { SelectExchange } from "./SelectExchange";
+import { SelectExchange, SelectLoading } from "./SelectExchange";
 import { now, formatUsd } from "../utils/formatters";
 import sprite from "../assets/sprite.svg";
+
+let coins = await getCoin();
 
 // ─── State ─────────────────────────────────────────────────────────
 /** @type {'buy'|'sell'|'transfer'} */
 let activeTab = "buy";
-/** @type {import('../utils/coinsData').Coin} */
+/** @type {import('../utils/getCoin').Coin} */
 let selectedCoin = coins[0];
 /** @type {import('../utils/exchangesData').Exchange} */
 let selectedExchange = exchanges[0];
@@ -23,20 +25,20 @@ const CoinOption = (coin, isSelected) => `
       ${isSelected ? "border-primary/60 bg-primary/5" : "border-slate-700 bg-slate-800/40 hover:border-slate-500"}"
   >
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm" style="background:${coin.color}">
-        <img src="${coin.logoUrl}" alt="${coin.name}" class="w-6 h-6 rounded-full object-contain" />
+      <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+        <img src="${coin.image || coin.thumb}" alt="${coin.name} image" class="w-6 h-6 rounded-full object-contain" />
       </div>
       <div class="text-left">
         <span class="font-bold text-white text-sm">${coin.name}</span>
-        <span class="text-xs text-slate-400 font-medium ml-2">${coin.symbol}</span>
+        <span class="text-xs text-slate-400 font-medium ml-2">${coin.symbol.toUpperCase()}</span>
       </div>
     </div>
     <div class="flex items-center">
       ${isSelected
-        ? `<svg class="w-6 h-6 text-primary"><use href="${sprite}#circle-check"></use></svg>`
-        : `<span class="text-xs font-medium text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity mr-1">Seleccionar</span>
+    ? `<svg class="w-6 h-6 text-primary"><use href="${sprite}#circle-check"></use></svg>`
+    : `<span class="text-xs font-medium text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity mr-1">Seleccionar</span>
            <svg class="w-6 h-6 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"><use href="${sprite}#chevron-right"></use></svg>`
-      }
+  }
     </div>
   </button>
 `;
@@ -82,8 +84,8 @@ const TabBtn = (value, label) => {
       data-tab="${value}"
       class="modal-tab flex-1 py-2 text-sm font-medium rounded-lg transition-all
         ${active
-          ? "bg-slate-700 text-white shadow-sm ring-1 ring-white/10"
-          : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/30"}"
+      ? "bg-slate-700 text-white shadow-sm ring-1 ring-white/10"
+      : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/30"}"
       aria-label="Tipo de transacción: ${label}"
     >
       ${label}
@@ -120,12 +122,12 @@ const FormView = () => `
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Select Coin</label>
         <button id="coin-selector-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar moneda">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-sm" style="background:${selectedCoin.color}">
-              <img src="${selectedCoin.logoUrl}" alt="${selectedCoin.name}" class="w-5 h-5 rounded-full" />
+            <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
+              <img src="${selectedCoin.image || selectedCoin.thumb}" alt="${selectedCoin.name}" class="w-5 h-5 rounded-full" />
             </div>
             <div class="flex flex-col items-start">
               <span class="font-bold text-white">${selectedCoin.name}</span>
-              <span class="text-xs text-slate-400 font-medium">${selectedCoin.symbol}</span>
+              <span class="text-xs text-slate-400 font-medium">${selectedCoin.symbol.toUpperCase()}</span>
             </div>
           </div>
           <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors">
@@ -141,7 +143,7 @@ const FormView = () => `
           <div class="relative">
             <input id="quantity-input" type="number" min="0" placeholder="0.00" step="any" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-              <span class="text-xs font-bold text-slate-400">${selectedCoin.symbol}</span>
+              <span class="text-xs font-bold text-slate-400">${selectedCoin.symbol.toUpperCase()}</span>
             </div>
           </div>
         </div>
@@ -174,9 +176,9 @@ const FormView = () => `
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Exchange</label>
           <button id="exchange-selector-btn" class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar exchange">
             ${selectedExchange.logoUrl
-              ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.logoUrl}" />`
-              : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-xs font-bold text-white" style="background:${selectedExchange.color}">${selectedExchange.initial}</div>`
-            }
+    ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.logoUrl}" />`
+    : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-xs font-bold text-white">${selectedExchange.symbol.toUpperCase()}</div>`
+  }
             <span class="text-sm font-medium text-slate-200">${selectedExchange.name}</span>
             <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors ml-auto">
               <use href="${sprite}#chevron-down"></use>
@@ -408,26 +410,39 @@ const wireCoinView = () => {
 
   document.getElementById("coin-close-btn")?.addEventListener("click", closeModal);
 
+  const coinList = document.getElementById("coin-list");
+  const searchInput = document.getElementById("coin-search-input");
+
   // Search filter
-  document.getElementById("coin-search-input")?.addEventListener("input", (e) => {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll(".coin-row").forEach((row) => {
-      const id = row.dataset.coinId?.toLowerCase() ?? "";
-      row.style.display = id.includes(term) ? "" : "none";
-    });
+  searchInput?.addEventListener("keypress", async (e) => {
+    if (e.key === "Enter") {
+      const term = e.target.value.toLowerCase();
+      if (coinList) coinList.innerHTML = SelectLoading(10);
+      
+      try {
+        let response = await getCoin(term);
+        coins = response.coins.slice(0, 15);
+        if (coinList) {
+          coinList.innerHTML = coins.map((c) => CoinOption(c, c.id === selectedCoin.id)).join("");
+        }
+      } catch (err) {
+        if (coinList) coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
+      }
+    }
   });
 
-  // Select coin
-  document.querySelectorAll(".coin-row").forEach((row) => {
-    row.addEventListener("click", () => {
-      const id = row.dataset.coinId;
-      const found = coins.find((c) => c.id === id);
-      if (found) {
-        selectedCoin = found;
-        currentView = "form";
-        renderInner();
-      }
-    });
+  // Select coin (Using Event Delegation)
+  coinList?.addEventListener("click", (e) => {
+    const row = e.target.closest(".coin-row");
+    if (!row) return;
+
+    const id = row.dataset.coinId;
+    const found = coins.find((c) => c.id === id);
+    if (found) {
+      selectedCoin = found;
+      currentView = "form";
+      renderInner();
+    }
   });
 };
 

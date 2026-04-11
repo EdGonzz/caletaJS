@@ -9,6 +9,12 @@ module.exports = {
     filename: "bundle.js",
     clean: true,
   },
+  devServer: {
+    allowedHosts: [
+      '.localhost'
+    ],
+    port: process.env.PORT || 8080,
+  },
   resolve: {
     extensions: [".js"]
   },
