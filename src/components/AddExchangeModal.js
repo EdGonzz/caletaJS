@@ -2,6 +2,7 @@ import getExchange from '../utils/getExchange';
 import { addSource, getSource } from '../utils/sources';
 import sprite from '../assets/sprite.svg';
 import SkeletonRow from '../utils/skeletonRow';
+import { debounce } from '../utils/helpers';
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,7 @@ const AddExchangeModalContent = () => `
         </div>
         <input
           id="add-exchange-search-input"
-          type="search"
+          type="text"
           placeholder="Busca exchanges (ej. Kraken, KuCoin)…"
           aria-label="Buscar exchange en CoinGecko"
           autocomplete="off"
@@ -390,7 +391,7 @@ const searchExchanges = async (term) => {
 
   isDefaultList = false;
   searchState = 'loading';
-  renderResults(trimmed);
+  // No llamamos renderResults() aquí — el listener de input ya mostró el skeleton.
 
   try {
     const data = await getExchange();
@@ -494,12 +495,26 @@ const openAddExchangeModal = ({ onBack, onSave } = {}) => {
     if (input?.value) searchExchanges(input.value);
   });
 
-  // Search on Enter key
-  document.getElementById('add-exchange-search-input')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const input = /** @type {HTMLInputElement} */ (e.target);
-      if (input.value) searchExchanges(input.value);
+  const optimizedSearch = debounce(searchExchanges, 500);
+
+  // Live search con debounce — muestra skeleton inmediatamente para feedback visual
+  document.getElementById('add-exchange-search-input')?.addEventListener('input', (e) => {
+    const input = /** @type {HTMLInputElement} */ (e.target);
+    const value = input.value.trim();
+
+    if (!value) {
+      // Input vacío → restaurar lista por defecto
+      loadDefaultExchanges();
+      return;
     }
+
+    // Feedback inmediato: mostrar skeleton solo si no está ya visible
+    if (searchState !== 'loading') {
+      searchState = 'loading';
+      renderResults(value);
+    }
+
+    optimizedSearch(value);
   });
 };
 

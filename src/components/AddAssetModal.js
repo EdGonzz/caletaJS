@@ -466,7 +466,8 @@ const wireCoinView = () => {
 
   // Search filter
   searchInput?.addEventListener("input", (e) => {
-    optimizedSearch(e.target.value.toLowerCase())
+    const input = /** @type {HTMLInputElement} */ (e.target);
+    if (input.value) optimizedSearch(input.value.toLocaleLowerCase())
   })
 
   // Select coin (Using Event Delegation)
