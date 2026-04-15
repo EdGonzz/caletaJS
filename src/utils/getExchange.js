@@ -2,7 +2,7 @@ const API_KEY = process.env.API_KEY;
 const API_URL = process.env.API_URL;
 
 const getExchange = async (id) => {
-  const url = id ? `${API_URL}/exchanges/${id}` : `${API_URL}/exchanges/`
+  const url = id ? `${API_URL}/exchanges/${id}` : `${API_URL}/exchanges?per_page=15&page=1`
 
   const options = {
     method: 'GET',

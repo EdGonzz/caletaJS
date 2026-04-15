@@ -5,11 +5,11 @@ export const getSource = () => {
   return data ? JSON.parse(data) : ['Overview']
 }
 
-export const addSource = (sourceName) => {
+export const addSource = (source) => {
   const sources = getSource()
 
-  if (!sources.includes(sourceName)) {
-    sources.push(sourceName)
+  if (!sources.includes(source.name)) {
+    sources.push(source)
     localStorage.setItem(SOURCE_KEY, JSON.stringify(sources))
   }
 

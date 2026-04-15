@@ -1,7 +1,8 @@
 import getCoin from "../utils/getCoin";
-import exchanges from "../utils/exchangesData";
 import { SelectExchange, SelectLoading } from "./SelectExchange";
+import { getSource } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
+import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
 import sprite from "../assets/sprite.svg";
 
 let coins = await getCoin();
@@ -11,8 +12,9 @@ let coins = await getCoin();
 let activeTab = "buy";
 /** @type {import('../utils/getCoin').Coin} */
 let selectedCoin = coins[0];
-/** @type {import('../utils/exchangesData').Exchange} */
-let selectedExchange = exchanges[0];
+/** @type {import('./SelectExchange').Exchange | null} */
+const _sources = getSource().filter((s) => s !== "Overview");
+let selectedExchange = _sources[0] ?? null;
 /** @type {'form'|'exchange'|'coin'} */
 let currentView = "form";
 
@@ -175,11 +177,13 @@ const FormView = () => `
         <div class="space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Exchange</label>
           <button id="exchange-selector-btn" class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar exchange">
-            ${selectedExchange.logoUrl
-    ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.logoUrl}" />`
-    : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-xs font-bold text-white">${selectedExchange.symbol.toUpperCase()}</div>`
+            ${selectedExchange
+    ? selectedExchange.image
+      ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.image}" />`
+      : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-xs font-bold text-white bg-slate-600">${selectedExchange.name.charAt(0).toUpperCase()}</div>`
+    : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
   }
-            <span class="text-sm font-medium text-slate-200">${selectedExchange.name}</span>
+            <span class="text-sm font-medium ${selectedExchange ? 'text-slate-200' : 'text-slate-500'}">${selectedExchange?.name ?? 'Seleccionar caleta'}</span>
             <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors ml-auto">
               <use href="${sprite}#chevron-down"></use>
             </svg>
@@ -254,6 +258,9 @@ const AddAssetModal = () => `
   <!-- Decorative blobs -->
   <div id="modal-blob-1" class="fixed top-1/4 left-1/4 w-64 h-64 bg-primary-glow/20 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none opacity-0 transition-opacity duration-500"></div>
   <div id="modal-blob-2" class="fixed bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-[100px] -z-10 animate-pulse pointer-events-none opacity-0 transition-opacity duration-500" style="animation-delay:700ms"></div>
+
+  <!-- Add Exchange Modal shell -->
+  ${AddExchangeModal()}
 `;
 
 // ─── Init Logic ────────────────────────────────────────────────────
@@ -391,12 +398,36 @@ const wireExchangeView = () => {
   document.querySelectorAll(".exchange-row").forEach((row) => {
     row.addEventListener("click", () => {
       const id = row.dataset.exchangeId;
-      const found = exchanges.find((ex) => ex.id === id);
+      const sources = getSource().filter((s) => s !== "Overview");
+      const found = sources.find((ex) => ex.id === id);
       if (found) {
         selectedExchange = found;
         currentView = "form";
         renderInner();
       }
+    });
+  });
+  // Add new exchange → open AddExchangeModal
+  document.getElementById("add-new-exchange-btn")?.addEventListener("click", () => {
+    openAddExchangeModal({
+      onBack: () => {
+        // Re-render exchange view after closing the add-exchange modal
+        currentView = "exchange";
+        renderInner();
+      },
+      onSave: (exchange) => {
+        // Auto-select the newly added exchange using the shape from sources.js
+        selectedExchange = {
+          id: exchange.id,
+          name: exchange.name,
+          image: exchange.image ?? null,
+          url: exchange.url ?? null,
+          description: exchange.url ? new URL(exchange.url).hostname.replace('www.', '') : null,
+          color: null,
+        };
+        currentView = "form";
+        renderInner();
+      },
     });
   });
 };
@@ -459,10 +490,16 @@ const initAddAssetModal = () => {
   // Close on backdrop click
   document.getElementById("modal-backdrop")?.addEventListener("click", closeModal);
 
-  // Close on Escape
+  // Close on Escape (only when AddExchangeModal is not open)
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModal();
+    if (e.key !== "Escape") return;
+    const addExchangeModal = document.getElementById("add-exchange-modal");
+    const isAddExchangeOpen = addExchangeModal && !addExchangeModal.classList.contains("opacity-0");
+    if (!isAddExchangeOpen) closeModal();
   });
+
+  // Init Add Exchange modal (Escape key + backdrop)
+  initAddExchangeModal();
 };
 
 export { initAddAssetModal };

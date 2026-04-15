@@ -1,9 +1,20 @@
-import exchanges from "../utils/exchangesData";
+import { getSource } from "../utils/sources";
 import sprite from "../assets/sprite.svg";
+import SkeletonRow from "../utils/skeletonRow";
+
+/**
+ * @typedef {Object} Exchange
+ * @property {string} id
+ * @property {string} name
+ * @property {string} [image]
+ * @property {string} [url]
+ * @property {string} [description]  - Etiqueta corta (ej: "Spot", "Futures", "0x71...3A92")
+ * @property {string} [color]
+ */
 
 /**
  * Renders a single exchange row.
- * @param {import('../utils/exchangesData').Exchange} ex
+ * @param {Exchange} ex
  * @param {boolean} isSelected
  * @returns {string}
  */
@@ -12,11 +23,9 @@ const ExchangeRow = (ex, isSelected) => {
     ? "border-primary/60 bg-primary/5"
     : "border-slate-700 bg-slate-800/40 hover:border-slate-500";
 
-  const avatar = ex.logoUrl
-    ? `<img src="${ex.logoUrl}" alt="${ex.name}" class="w-6 h-6 object-contain rounded-full" />`
-    : ex.icon
-      ? `<span class="material-symbols-outlined text-slate-300">${ex.icon}</span>`
-      : `<span class="font-bold text-white text-lg">${ex.initial}</span>`;
+  const avatar = ex.image
+    ? `<img src="${ex.image}" alt="${ex.name}" class="w-6 h-6 object-contain rounded-full" />`
+    : `<span class="font-bold text-white text-lg">${ex.name}</span>`;
 
   return `
     <button
@@ -31,7 +40,7 @@ const ExchangeRow = (ex, isSelected) => {
         </div>
         <div class="text-left">
           <h3 class="font-semibold text-white group-hover:text-primary transition-colors text-sm">${ex.name}</h3>
-          <p class="text-xs text-slate-400 font-mono">${ex.label}</p>
+          <p class="text-xs text-slate-400 font-mono">${ex.description ?? '—'}</p>
         </div>
       </div>
       <div class="flex items-center">
@@ -46,21 +55,6 @@ const ExchangeRow = (ex, isSelected) => {
 };
 
 /**
- * Skeleton loading shimmer row.
- * @returns {string}
- */
-const SkeletonRow = () => `
-  <div class="flex items-center gap-4 px-1 py-3 animate-pulse">
-    <div class="skeleton-shimmer h-10 w-10 rounded-full shrink-0"></div>
-    <div class="flex flex-col gap-2 flex-1">
-      <div class="skeleton-shimmer h-4 w-32 rounded-full"></div>
-      <div class="skeleton-shimmer h-3 w-20 rounded-full opacity-60"></div>
-    </div>
-    <div class="skeleton-shimmer h-8 w-20 rounded-lg shrink-0"></div>
-  </div>
-`;
-
-/**
  * Loading state for the exchange list.
  * @param {number} [count=5]
  * @returns {string}
@@ -72,13 +66,37 @@ const SelectLoading = (count = 5) => `
 `;
 
 /**
+ * Placeholder when the user has no saved caletas.
+ * @returns {string}
+ */
+const EmptyState = () => `
+  <div class="flex flex-col items-center justify-center py-10 text-center gap-3">
+    <svg class="w-12 h-12 text-slate-600" aria-hidden="true">
+      <use href="${sprite}#wallet"></use>
+    </svg>
+    <p class="text-slate-400 font-semibold text-sm">No tienes caletas por los momentos</p>
+    <p class="text-slate-500 text-xs max-w-52">
+      Agrega tu primera caleta usando el botón de abajo para empezar a registrar tus transacciones.
+    </p>
+  </div>
+`;
+
+/**
  * SelectExchange sub-view component.
  * Renders inside the modal when the user needs to pick an exchange.
+ * Reads caletas from sources.js (localStorage).
  *
  * @param {string} [selectedId] - Currently selected exchange ID
  * @returns {string}
  */
-const SelectExchange = (selectedId = "binance") => `
+const SelectExchange = (selectedId = "") => {
+  const sources = getSource().filter((s) => s !== "Overview");
+
+  const listContent = sources.length
+    ? sources.map((ex) => ExchangeRow(ex, ex.name === selectedId)).join("")
+    : EmptyState();
+
+  return `
   <div id="select-exchange-view" class="flex flex-col h-full">
     <!-- Header -->
     <header class="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
@@ -129,13 +147,13 @@ const SelectExchange = (selectedId = "binance") => `
 
       <!-- Section label -->
       <div class="flex justify-between items-center mb-3">
-        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Recientes</span>
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-500">Guardadas</span>
         <span class="text-xs font-semibold uppercase tracking-wider text-primary cursor-pointer hover:underline">Gestionar</span>
       </div>
 
       <!-- Exchange List -->
       <div id="exchange-list" class="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-1" style="max-height:320px">
-        ${exchanges.map((ex) => ExchangeRow(ex, ex.id === selectedId)).join("")}
+        ${listContent}
       </div>
 
       <!-- Add new -->
@@ -154,6 +172,7 @@ const SelectExchange = (selectedId = "binance") => `
     </div>
   </div>
 `;
+};
 
 export { SelectExchange, SelectLoading };
 export default SelectExchange;
