@@ -20,6 +20,14 @@ let selectedExchange = _sources[0] ?? null;
 /** @type {'form'|'exchange'|'coin'} */
 let currentView = "form";
 
+// Persisted Form State
+let quantity = "";
+let price = "66751.65";
+let date = now();
+let fees = "";
+let notes = "";
+let showNotes = false;
+
 // ─── Coin Picker Sub-view ──────────────────────────────────────────
 const CoinOption = (coin, isSelected) => `
   <button
@@ -145,7 +153,7 @@ const FormView = () => `
         <div class="space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantity</label>
           <div class="relative">
-            <input id="quantity-input" type="number" min="0" placeholder="0.00" step="any" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
+            <input id="quantity-input" type="number" min="0" placeholder="0.00" step="any" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
               <span class="text-xs font-bold text-slate-400">${selectedCoin.symbol.toUpperCase()}</span>
             </div>
@@ -161,7 +169,7 @@ const FormView = () => `
             <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
               <span class="text-slate-400 font-medium">$</span>
             </div>
-            <input id="price-input" type="number" min="0" value="66751.65" step="any" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            <input id="price-input" type="number" min="0" value="${price}" step="any" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
           </div>
         </div>
       </div>
@@ -170,7 +178,7 @@ const FormView = () => `
       <div class="space-y-2">
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Date & Time</label>
         <div class="relative">
-          <input id="date-input" type="datetime-local" value="${now()}" class="w-full pl-4 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert" aria-label="Fecha y hora" />
+          <input id="date-input" type="datetime-local" value="${date}" class="w-full pl-4 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none appearance-none [&::-webkit-calendar-picker-indicator]:invert" aria-label="Fecha y hora" />
         </div>
       </div>
 
@@ -198,7 +206,7 @@ const FormView = () => `
             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
               <span class="text-slate-400 font-medium text-sm">$</span>
             </div>
-            <input id="fees-input" type="number" min="0" placeholder="0.00" step="any" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
+            <input id="fees-input" type="number" min="0" value="${fees}" placeholder="0.00" step="any" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
           </div>
         </div>
       </div>
@@ -211,14 +219,14 @@ const FormView = () => `
           </svg>
           Add Notes
         </button>
-        <textarea id="notes-textarea" class="hidden mt-2 w-full p-3 bg-slate-800/40 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 resize-none" rows="3" placeholder="Notes about this transaction..." aria-label="Notas"></textarea>
+        <textarea id="notes-textarea" class="${showNotes ? '' : 'hidden'} mt-2 w-full p-3 bg-slate-800/40 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 resize-none" rows="3" placeholder="Notes about this transaction..." aria-label="Notas">${notes}</textarea>
       </div>
 
       <!-- Total -->
       <div class="p-4 bg-slate-800/60 rounded-xl flex justify-between items-center border border-slate-700/50">
         <div class="flex flex-col">
           <span class="text-xs text-slate-400 font-medium">Total Spent</span>
-          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${formatUsd(0)}</span>
+          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${formatUsd((parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0))}</span>
         </div>
       </div>
 
@@ -287,6 +295,13 @@ const renderInner = () => {
 const openModal = () => {
   currentView = "form";
   activeTab = "buy";
+  // Reset form state on open
+  quantity = "";
+  price = "66751.65";
+  date = now();
+  fees = "";
+  notes = "";
+  showNotes = false;
   renderInner();
 
   const backdrop = document.getElementById("modal-backdrop");
@@ -350,26 +365,44 @@ const wireFormView = () => {
   // Notes toggle
   document.getElementById("add-notes-btn")?.addEventListener("click", () => {
     const ta = document.getElementById("notes-textarea");
+    showNotes = !showNotes;
     ta?.classList.toggle("hidden");
-    if (!ta?.classList.contains("hidden")) ta?.focus();
+    if (showNotes) ta?.focus();
   });
 
-  // Total calculation
+  // Input sync with state
   const qtyInput = document.getElementById("quantity-input");
   const priceInput = document.getElementById("price-input");
+  const dateInput = document.getElementById("date-input");
   const feesInput = document.getElementById("fees-input");
+  const notesTextarea = document.getElementById("notes-textarea");
   const totalDisplay = document.getElementById("total-display");
 
   const updateTotal = () => {
-    const qty = parseFloat(qtyInput?.value) || 0;
-    const price = parseFloat(priceInput?.value) || 0;
-    const fees = parseFloat(feesInput?.value) || 0;
-    totalDisplay.textContent = formatUsd(qty * price + fees);
+    const q = parseFloat(quantity) || 0;
+    const p = parseFloat(price) || 0;
+    const f = parseFloat(fees) || 0;
+    totalDisplay.textContent = formatUsd(q * p + f);
   };
 
-  qtyInput?.addEventListener("input", updateTotal);
-  priceInput?.addEventListener("input", updateTotal);
-  feesInput?.addEventListener("input", updateTotal);
+  qtyInput?.addEventListener("input", (e) => {
+    quantity = e.target.value;
+    updateTotal();
+  });
+  priceInput?.addEventListener("input", (e) => {
+    price = e.target.value;
+    updateTotal();
+  });
+  dateInput?.addEventListener("input", (e) => {
+    date = e.target.value;
+  });
+  feesInput?.addEventListener("input", (e) => {
+    fees = e.target.value;
+    updateTotal();
+  });
+  notesTextarea?.addEventListener("input", (e) => {
+    notes = e.target.value;
+  });
 
   // Submit
   document.getElementById("submit-transaction-btn")?.addEventListener("click", () => {
