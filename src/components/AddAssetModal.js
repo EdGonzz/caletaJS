@@ -3,7 +3,9 @@ import { SelectExchange, SelectLoading } from "./SelectExchange";
 import { getSource } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
+import { debounce } from "../utils/helpers";
 import sprite from "../assets/sprite.svg";
+
 
 let coins = await getCoin();
 
@@ -444,23 +446,28 @@ const wireCoinView = () => {
   const coinList = document.getElementById("coin-list");
   const searchInput = document.getElementById("coin-search-input");
 
-  // Search filter
-  searchInput?.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") {
-      const term = e.target.value.toLowerCase();
-      if (coinList) coinList.innerHTML = SelectLoading(10);
-      
-      try {
-        let response = await getCoin(term);
-        coins = response.coins.slice(0, 15);
-        if (coinList) {
-          coinList.innerHTML = coins.map((c) => CoinOption(c, c.id === selectedCoin.id)).join("");
-        }
-      } catch (err) {
-        if (coinList) coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
+  const searchInAPI = async (query) => {
+    if (query.trim().length < 2) return
+
+    if (coinList) coinList.innerHTML = SelectLoading(10);
+
+    try {
+      let response = await getCoin(query);
+      coins = response.coins.slice(0, 15);
+      if (coinList) {
+        coinList.innerHTML = coins.map((c) => CoinOption(c, c.id === selectedCoin.id)).join("");
       }
+    } catch (err) {
+      if (coinList) coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
     }
-  });
+  }
+
+  const optimizedSearch = debounce(searchInAPI, 500)
+
+  // Search filter
+  searchInput?.addEventListener("input", (e) => {
+    optimizedSearch(e.target.value.toLowerCase())
+  })
 
   // Select coin (Using Event Delegation)
   coinList?.addEventListener("click", (e) => {
