@@ -1,6 +1,7 @@
 import sprite from "../assets/sprite.svg";
 import { SelectLoading } from "./SelectExchange";
 import getCoin from "../utils/getCoin";
+import { debounce } from "../utils/helpers";
 
 /**
  * Renders a single coin row.
@@ -76,52 +77,82 @@ const CoinPicker = (coins, selectedCoinId) => `
 /**
  * Wires up events for the CoinPicker view.
  * @param {Object} options
- * @param {Function} options.onBack - Called when back button is clicked
- * @param {Function} options.onClose - Called when close button is clicked
- * @param {Function} options.onSelect - Called when a coin is selected
+ * @param {() => void} options.onBack - Called when back button is clicked
+ * @param {() => void} options.onClose - Called when close button is clicked
+ * @param {(id: string) => void} options.onSelect - Called with the coin ID when selected
+ * @param {(coins: import('../utils/getCoin').Coin[]) => void} options.onCoinsUpdate - Syncs updated coin list back to parent
  * @param {import('../utils/getCoin').Coin[]} options.currentCoins - Reference to current coins array
  * @param {string} options.selectedCoinId - Current selected coin ID
  */
-const initCoinPicker = ({ onBack, onClose, onSelect, currentCoins, selectedCoinId }) => {
+const initCoinPicker = ({ onBack, onClose, onSelect, onCoinsUpdate, currentCoins, selectedCoinId }) => {
   document.getElementById("coin-back-btn")?.addEventListener("click", onBack);
   document.getElementById("coin-close-btn")?.addEventListener("click", onClose);
 
   const coinList = document.getElementById("coin-list");
   const searchInput = document.getElementById("coin-search-input");
 
-  // Search filter
-  searchInput?.addEventListener("keypress", async (e) => {
-    if (e.key === "Enter") {
-      const term = e.target.value.toLowerCase();
-      if (coinList) coinList.innerHTML = SelectLoading(10);
-      
-      try {
-        let response = await getCoin(term);
-        const newCoins = response.coins.slice(0, 15);
-        // We update the list in place
-        if (coinList) {
-          coinList.innerHTML = newCoins.map((c) => CoinOption(c, c.id === selectedCoinId)).join("");
-        }
-        // Notify parent about new search results if needed
-        if (onSelect) {
-            // This is a bit tricky since we want to keep the reference in AddAssetModal
-            // For now, we'll rely on the parent updating its local 'coins' variable if we expose it
-        }
-      } catch (err) {
-        if (coinList) coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
+  /** @type {boolean} */
+  let isLoading = false;
+
+  /**
+   * Busca monedas en la API y actualiza la lista.
+   * @param {string} query
+   */
+  const searchInAPI = async (query) => {
+    if (query.trim().length < 2) return;
+
+    try {
+      const response = await getCoin(query);
+      const newCoins = response.coins?.slice(0, 15) ?? [];
+      onCoinsUpdate(newCoins);
+
+      if (coinList) {
+        coinList.innerHTML = newCoins
+          .map((c) => CoinOption(c, c.id === selectedCoinId))
+          .join("");
       }
+    } catch {
+      if (coinList) {
+        coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
+      }
+    } finally {
+      isLoading = false;
     }
+  };
+
+  const optimizedSearch = debounce(searchInAPI, 500);
+
+  // Live search con debounce
+  searchInput?.addEventListener("input", (e) => {
+    const input = /** @type {HTMLInputElement} */ (e.target);
+    const value = input.value.trim().toLowerCase();
+
+    if (!value) {
+      // Restaurar lista original
+      isLoading = false;
+      if (coinList) {
+        coinList.innerHTML = currentCoins
+          .map((c) => CoinOption(c, c.id === selectedCoinId))
+          .join("");
+      }
+      return;
+    }
+
+    // Skeleton inmediato solo si no estaba ya en loading (evita reinicio de animación)
+    if (!isLoading) {
+      isLoading = true;
+      if (coinList) coinList.innerHTML = SelectLoading(10);
+    }
+
+    optimizedSearch(value);
   });
 
-  // Select coin (Using Event Delegation)
+  // Select coin (Event Delegation)
   coinList?.addEventListener("click", (e) => {
     const row = e.target.closest(".coin-row");
     if (!row) return;
-
-    const id = row.dataset.coinId;
-    onSelect(id);
+    onSelect(row.dataset.coinId);
   });
 };
 
 export { CoinPicker, initCoinPicker };
-export default CoinPicker;

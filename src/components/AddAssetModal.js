@@ -235,6 +235,7 @@ const renderInner = () => {
                 renderInner();
             }
         },
+        onCoinsUpdate: (newCoins) => { coins = newCoins; },
         currentCoins: coins,
         selectedCoinId: selectedCoin.id
     });
