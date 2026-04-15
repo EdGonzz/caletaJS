@@ -1,11 +1,10 @@
 import getCoin from "../utils/getCoin";
 import { SelectExchange, SelectLoading } from "./SelectExchange";
+import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
-import { debounce } from "../utils/helpers";
 import sprite from "../assets/sprite.svg";
-
 
 let coins = await getCoin();
 
@@ -27,66 +26,6 @@ let date = now();
 let fees = "";
 let notes = "";
 let showNotes = false;
-
-// ─── Coin Picker Sub-view ──────────────────────────────────────────
-const CoinOption = (coin, isSelected) => `
-  <button
-    data-coin-id="${coin.id}"
-    aria-label="Seleccionar ${coin.name}"
-    class="coin-row w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary/40
-      ${isSelected ? "border-primary/60 bg-primary/5" : "border-slate-700 bg-slate-800/40 hover:border-slate-500"}"
-  >
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm">
-        <img src="${coin.image || coin.thumb}" alt="${coin.name} image" class="w-6 h-6 rounded-full object-contain" />
-      </div>
-      <div class="text-left">
-        <span class="font-bold text-white text-sm">${coin.name}</span>
-        <span class="text-xs text-slate-400 font-medium ml-2">${coin.symbol.toUpperCase()}</span>
-      </div>
-    </div>
-    <div class="flex items-center">
-      ${isSelected
-    ? `<svg class="w-6 h-6 text-primary"><use href="${sprite}#circle-check"></use></svg>`
-    : `<span class="text-xs font-medium text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity mr-1">Seleccionar</span>
-           <svg class="w-6 h-6 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"><use href="${sprite}#chevron-right"></use></svg>`
-  }
-    </div>
-  </button>
-`;
-
-const CoinPickerView = () => `
-  <div id="coin-picker-view" class="flex flex-col h-full">
-    <header class="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
-      <div class="flex items-center gap-3">
-        <button id="coin-back-btn" class="text-slate-400 hover:text-white transition-colors flex items-center group focus:outline-none" aria-label="Volver al formulario">
-          <svg class="w-6 h-6 mr-1">
-            <use href="${sprite}#arrow-left"></use>
-          </svg>
-        </button>
-        <h2 class="text-xl font-bold tracking-tight text-white">Select Coin</h2>
-      </div>
-      <button id="coin-close-btn" class="text-slate-500 hover:text-slate-300 transition-colors rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-700/50 focus:outline-none" aria-label="Cerrar modal">
-        <svg class="w-6 h-6">
-          <use href="${sprite}#close"></use>
-        </svg>
-      </button>
-    </header>
-    <div class="p-6 flex-1 overflow-hidden flex flex-col">
-      <div class="relative group mb-5">
-        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <svg class="w-4 h-4">
-            <use href="${sprite}#search"></use>
-          </svg>
-        </div>
-        <input id="coin-search-input" type="text" placeholder="Search coin..." aria-label="Buscar moneda" class="block w-full pl-10 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 text-white transition-all" />
-      </div>
-      <div id="coin-list" class="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-1" style="max-height:360px">
-        ${coins.map((c) => CoinOption(c, c.id === selectedCoin.id)).join("")}
-      </div>
-    </div>
-  </div>
-`;
 
 // ─── Tab Button ────────────────────────────────────────────────────
 const TabBtn = (value, label) => {
@@ -281,11 +220,24 @@ const renderInner = () => {
   if (!inner) return;
 
   if (currentView === "exchange") {
-    inner.innerHTML = SelectExchange(selectedExchange.id);
+    inner.innerHTML = SelectExchange(selectedExchange?.id);
     wireExchangeView();
   } else if (currentView === "coin") {
-    inner.innerHTML = CoinPickerView();
-    wireCoinView();
+    inner.innerHTML = CoinPicker(coins, selectedCoin.id);
+    initCoinPicker({
+        onBack: () => { currentView = "form"; renderInner(); },
+        onClose: closeModal,
+        onSelect: (id) => {
+            const found = coins.find((c) => c.id === id);
+            if (found) {
+                selectedCoin = found;
+                currentView = "form";
+                renderInner();
+            }
+        },
+        currentCoins: coins,
+        selectedCoinId: selectedCoin.id
+    });
   } else {
     inner.innerHTML = FormView();
     wireFormView();
@@ -467,57 +419,6 @@ const wireExchangeView = () => {
   });
 };
 
-// ─── Wire Coin View ────────────────────────────────────────────────
-const wireCoinView = () => {
-  document.getElementById("coin-back-btn")?.addEventListener("click", () => {
-    currentView = "form";
-    renderInner();
-  });
-
-  document.getElementById("coin-close-btn")?.addEventListener("click", closeModal);
-
-  const coinList = document.getElementById("coin-list");
-  const searchInput = document.getElementById("coin-search-input");
-
-  const searchInAPI = async (query) => {
-    if (query.trim().length < 2) return
-
-    if (coinList) coinList.innerHTML = SelectLoading(10);
-
-    try {
-      let response = await getCoin(query);
-      coins = response.coins.slice(0, 15);
-      if (coinList) {
-        coinList.innerHTML = coins.map((c) => CoinOption(c, c.id === selectedCoin.id)).join("");
-      }
-    } catch (err) {
-      if (coinList) coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
-    }
-  }
-
-  const optimizedSearch = debounce(searchInAPI, 500)
-
-  // Search filter
-  searchInput?.addEventListener("input", (e) => {
-    const input = /** @type {HTMLInputElement} */ (e.target);
-    if (input.value) optimizedSearch(input.value.toLocaleLowerCase())
-  })
-
-  // Select coin (Using Event Delegation)
-  coinList?.addEventListener("click", (e) => {
-    const row = e.target.closest(".coin-row");
-    if (!row) return;
-
-    const id = row.dataset.coinId;
-    const found = coins.find((c) => c.id === id);
-    if (found) {
-      selectedCoin = found;
-      currentView = "form";
-      renderInner();
-    }
-  });
-};
-
 // ─── Public Init ───────────────────────────────────────────────────
 
 /**
@@ -529,7 +430,9 @@ const initAddAssetModal = () => {
   document.getElementById("add-funds")?.addEventListener("click", openModal);
 
   // Close on backdrop click
-  document.getElementById("modal-backdrop")?.addEventListener("click", closeModal);
+  document.getElementById("modal-backdrop")?.addEventListener("click", (e) => {
+      if (e.target.id === "modal-backdrop") closeModal();
+  });
 
   // Close on Escape (only when AddExchangeModal is not open)
   document.addEventListener("keydown", (e) => {
