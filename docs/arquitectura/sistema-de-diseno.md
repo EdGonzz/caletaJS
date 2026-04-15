@@ -1,131 +1,155 @@
 # Sistema de Diseño
 
-CaletaJS usa un sistema dark-mode con glassmorphism, colores neón y animaciones sutiles. El design system está definido principalmente en `src/styles/main.css` usando el bloque `@theme` de Tailwind v4.
+> Última actualización: 2026-04-14
 
----
+## Design Tokens (Tailwind CSS v4)
 
-## Design Tokens (CSS Custom Properties)
-
-### Colores
-
-| Token                        | Valor       | Uso                                              |
-|------------------------------|-------------|--------------------------------------------------|
-| `--color-primary`            | `#9079ff`   | Color acento principal (morado)                  |
-| `--color-primary-glow`       | `#0bd570`   | Color de acción principal (verde neón)           |
-| `--color-accent-red`         | `#ef4444`   | Indicadores negativos (pérdidas, errores)        |
-| `--color-background-dark`    | `#120f23`   | Fondo alternativo oscuro                         |
-| `--color-background-darker`  | `#020617`   | Capa más oscura                                  |
-| `--color-card-dark`          | `#1e293b`   | Fondo de tarjetas/paneles                        |
-| `--color-background-light`   | `#f6f5f8`   | Fondo modo claro (reservado)                     |
-
-### Tipografía
-
-| Token              | Valor                           | Uso                                  |
-|--------------------|---------------------------------|--------------------------------------|
-| `--font-display`   | `"Space Grotesk", sans-serif`   | Números, valores, texto destacado    |
-| `--font-mono`      | `ui-monospace, SFMono, Menlo…`  | Valores monetarios, hashes           |
-| `body font`        | `"Inter", sans-serif`           | Texto general (via CSS directo)      |
-
-> **Estrategia de carga:** Las fuentes `Inter` y `Space Grotesk` se cargan desde Google Fonts. Actualmente se referencian sin `<link>` explícito en el `<head>` — se aplican via Tailwind/CSS si están disponibles como system fonts.
-
-### Bordes / Radios
-
-| Token               | Valor      | Uso                           |
-|---------------------|------------|-------------------------------|
-| `--radius-default`  | `0.25rem`  | Elementos pequeños            |
-| `--radius-lg`       | `0.5rem`   | Inputs, tags                  |
-| `--radius-xl`       | `0.75rem`  | Tarjetas, modales             |
-
-### Sombras Especiales
-
-| Token             | Valor                                                               | Uso                          |
-|-------------------|---------------------------------------------------------------------|------------------------------|
-| `--shadow-neon`   | `0 0 15px rgba(11,213,112,0.4), 0 0 30px rgba(11,213,112,0.1)`    | Glow en elementos activos    |
-| `--shadow-glass`  | `0 8px 32px 0 rgba(0,0,0,0.37)`                                    | Depth en elementos glass     |
-
----
-
-## Clases de Utilidad Personalizadas
-
-Definidas en `src/styles/main.css`, fuera del sistema de Tailwind.
-
-### `.glass-panel`
-
-Panel de glassmorphism base — usado en tarjetas de estadísticas, sección de holdings, etc.
+Los tokens se definen en `src/styles/main.css` usando la directiva `@theme`:
 
 ```css
-.glass-panel {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-}
-```
+@import "tailwindcss";
 
-### `.glass-nav`
-
-Variante para la barra de navegación, con mayor opacidad y blur.
-
-```css
-.glass-nav {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-```
-
-### `.neon-text`
-
-Text-shadow verde para elementos con énfasis neón.
-
-### `.custom-scrollbar`
-
-Scrollbar personalizado (6px, fondo oscuro, thumb `#334155`). Compatible Webkit.
-
----
-
-## Fondo de la Aplicación
-
-El body usa un gradiente radial con efecto de "luz" verde-esmeralda en la esquina superior izquierda:
-
-```css
-body {
-  background-color: #0f172a;
-  background-image:
-    radial-gradient(at 0% 0%, rgba(11, 213, 112, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(15, 23, 42, 1) 0px, transparent 50%);
-  background-attachment: fixed;
+@theme {
+  --color-primary: #8b5cf6;
+  --color-background: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-elevated: #334155;
 }
 ```
 
 ---
 
-## Animaciones y Efectos
+## Paleta de Colores
 
-| Nombre            | Tipo       | Duración     | Uso                                          |
-|-------------------|------------|--------------|----------------------------------------------|
-| `dash`            | Keyframe   | 3s linear    | Animación de path SVG en gráficos            |
-| `shimmer`         | Keyframe   | 1.5s infinite| Skeleton loading en `SelectExchange`         |
-| `modal-slide-up`  | Keyframe   | 0.3s cubic   | Entrada del modal (`modal-enter` class)      |
-| CSS transitions   | Transition | 200-300ms    | Hover states, apertura/cierre de modal       |
-| `scale-95/100`    | Transform  | 300ms        | Scale del contenedor al abrir/cerrar modal   |
-| `animate-pulse`   | Tailwind   | 2s           | Blobs decorativos detrás del modal           |
+| Token | Hex | Uso |
+|---|---|---|
+| `--color-primary` | `#8b5cf6` | Acciones principales, links activos, bordes de foco |
+| `--color-background` | `#0f172a` | Fondo global (slate-900) |
+| `--color-surface` | `#1e293b` | Tarjetas, modales, contenedores |
+| `--color-surface-elevated` | `#334155` | Dropdowns, tooltips, hovers |
+| Verde (success) | `#0bd570` | Cambios positivos, confirmaciones |
+| Rojo (danger) | `#ef4444` | Cambios negativos, errores |
+| Slate-400 | `#94a3b8` | Texto secundario |
+| Slate-500 | `#64748b` | Texto terciario, placeholders |
+| Slate-700 | `#334155` | Bordes, separadores |
 
 ---
 
-## Convención de Colores en Componentes
+## Tipografía
 
-Los assets y exchanges tienen colores de marca definidos en sus data files:
+| Nivel | Clases | Ejemplo |
+|---|---|---|
+| H1 (título de página) | `text-2xl font-bold tracking-tight text-white` | "Mi Portafolio" |
+| H2 (sección) | `text-xl font-bold tracking-tight text-white` | "Tus Caletas" |
+| H3 (subsección) | `text-sm font-semibold text-white` | Nombre de exchange |
+| Body | `text-sm text-slate-400` | Texto descriptivo |
+| Caption | `text-xs text-slate-500` | Labels de sección |
+| Monospace | `text-xs font-mono text-slate-400` | Direcciones, IDs |
 
-```javascript
-// coinsData.js (ejemplo)
-{ id: "bitcoin", color: "#F7931A", logoUrl: "..." }
-// exchangesData.js (ejemplo)
-{ id: "binance", color: "#F3BA2F", initial: "B", ... }
+---
+
+## Componentes UI
+
+### Tarjetas / Containers
+
+```css
+/* Tarjeta base */
+.card {
+  @apply bg-slate-800/40 border border-slate-700 rounded-xl p-4;
+}
+
+/* Tarjeta hover */
+.card-interactive {
+  @apply bg-slate-800/40 border border-slate-700 rounded-xl p-3
+         hover:border-slate-500 cursor-pointer transition-all duration-200;
+}
 ```
 
-Estos colores se aplican inline: `style="background:${coin.color}"`.
+### Botones
+
+| Variante | Clases | Uso |
+|---|---|---|
+| Primary | `bg-primary text-white rounded-xl py-3 px-4` | Acciones principales |
+| Ghost | `bg-transparent border-dashed border-slate-600 text-slate-400` | "Agregar nuevo" |
+| Icon | `w-8 h-8 rounded-full flex items-center justify-center` | Cerrar, back |
+
+### Inputs
+
+```css
+/* Input base */
+input {
+  @apply block w-full px-4 py-3
+         bg-slate-800/40 border border-slate-700 rounded-xl
+         text-sm text-white placeholder-slate-500
+         focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50
+         transition-all duration-300;
+}
+```
+
+### Modales
+
+```css
+/* Backdrop */
+.modal-backdrop {
+  @apply fixed inset-0 z-50 bg-black/60 backdrop-blur-sm
+         flex items-end sm:items-center justify-center;
+}
+
+/* Container */
+.modal-container {
+  @apply bg-gradient-to-b from-slate-800 to-slate-900
+         w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl
+         shadow-2xl border border-slate-700/50
+         max-h-[85vh] flex flex-col;
+}
+```
 
 ---
 
-*Última actualización: 2026-03-15*
+## Iconografía (SVG Sprite)
+
+Todos los íconos se centralizan en `src/assets/sprite.svg`:
+
+```html
+<svg class="w-6 h-6 text-slate-400" aria-hidden="true">
+  <use href="${sprite}#icon-name"></use>
+</svg>
+```
+
+### Íconos Disponibles
+
+| ID | Uso |
+|---|---|
+| `trending-up` | Cambio positivo |
+| `trending-down` | Cambio negativo |
+| `wallet` | Empty state exchanges |
+| `circle-plus` | Agregar nuevo |
+| `circle-check` | Seleccionado |
+| `close` | Cerrar modal |
+| `arrow-left` | Volver/Back |
+| `search` | Campo de búsqueda |
+| `chevron-right` | Navegar forward |
+| `layout-dashboard` | Source/Dashboard |
+
+---
+
+## Animaciones y Transiciones
+
+| Tipo | Duración | Uso |
+|---|---|---|
+| `transition-colors` | 200ms | Hover en textos, bordes |
+| `transition-all` | 200ms | Hover en tarjetas interactivas |
+| `transition-opacity` | 200ms | Mostrar/ocultar labels hover |
+| `transition-transform` | 200ms | Scale en íconos hover |
+| `animate-pulse` | — | Skeleton loading |
+| Backdrop blur | — | Fondo de modales |
+
+---
+
+## Responsive
+
+| Breakpoint | Comportamiento |
+|---|---|
+| Mobile (default) | Modal full-width con `rounded-t-2xl`, layout vertical |
+| sm (640px+) | Modal centrado `max-w-md` con `rounded-2xl` |
+| Tabla | Scroll horizontal en columnas adicionales |

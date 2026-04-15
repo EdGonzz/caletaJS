@@ -1,176 +1,190 @@
 # Patrones de Diseño
 
-Este documento describe los patrones arquitectónicos y de diseño empleados en CaletaJS.
+> Última actualización: 2026-04-14
 
----
+## 1. Componentes como Funciones Puras
 
-## 1. Componentes como Funciones Puras (HTML Factory Pattern)
-
-**Qué es:** Cada componente de UI es una función JavaScript que recibe datos y devuelve un string de HTML mediante template literals.
+Cada componente UI es una **función que retorna un `string` HTML** mediante template literals.
 
 ```javascript
-// Ejemplo: StatCard.js
-const StatCard = ({ title, value, badge = "" }) => `
-  <article class="glass-panel rounded-xl p-5">
-    <header>
-      <h3 class="text-xs text-slate-400">${title}</h3>
-    </header>
-    <span class="text-2xl font-bold text-white">${value}</span>
-    ${badge ? `<span class="text-xs">${badge}</span>` : ""}
+// ✅ Correcto — función pura, sin side effects
+const MyCard = (data) => `
+  <article class="p-4 bg-slate-800 rounded-xl">
+    <h3 class="font-bold text-white">${data.title}</h3>
+    <p class="text-slate-400">${data.description ?? '—'}</p>
   </article>
 `;
+export default MyCard;
 ```
 
-**Por qué se eligió:**
+### Reglas
 
-| ✅ Pros | ⚠️ Contras |
-|---------|-----------|
-| Cero dependencias externas | No hay reactivity automática |
-| Bundle mínimo (~50KB) | Re-renders manuales en actualizaciones |
-| Curva de aprendizaje baja | Gestión de eventos imperativa post-mount |
-| Máxima libertad de diseño | Sin Virtual DOM ni diffing |
-
-> Cross-reference: [ADR-002 — Arquitectura sin frameworks](../decisions/002-arquitectura-sin-framework.md)
+- **Sin `document.*`** dentro del componente — solo strings.
+- **Props explícitos** — cada función recibe los datos que necesita.
+- **Nullish coalescing** (`??`) para valores opcionales.
+- **Optional chaining** (`?.`) para accesos profundos.
 
 ---
 
-## 2. Hash-based Router
+## 2. Event Wiring Post-Render
 
-**Qué es:** El enrutador escucha eventos `hashchange` y `load` del navegador, extrae la ruta del hash de la URL y renderiza el componente correspondiente.
+Los componentes retornan strings, así que **no se pueden adjuntar listeners inline**. Se usa el patrón `init*`:
 
+```javascript
+// En el componente
+export const initMyComponent = () => {
+  const btn = document.getElementById('my-btn');
+  btn?.addEventListener('click', handleClick);
+};
+
+// En routes.js, DESPUÉS de inyectar el HTML
+app.innerHTML = await Home();
+initHoldingsTable();   // ← Aquí se conectan los eventos
 ```
-URL: http://localhost:8080/#/coin/bitcoin
-                              ↑
-                           hash = "coin/bitcoin"
-                              ↓
-                        getHash() → "coin"
-                              ↓
-                     resolveRoutes("coin") → "/coin/:id"
-                              ↓
-                     routes["/coin/:id"] = CoinDetails
-```
+
+### Ciclo de vida
 
 ```mermaid
-flowchart TD
-    A["window: load / hashchange"] --> B["router()"]
-    B --> C["getHash()"]
-    C --> D["resolveRoutes(hash)"]
-    D --> E{Ruta encontrada?}
-    E -- Sí --> F["routes[path]"]
-    E -- No --> G["routes['/404']"]
-    F --> H["header.innerHTML = Header()"]
-    G --> H
-    H --> I["root.innerHTML = await render()"]
-    I --> J{path === '/' ?}
-    J -- Sí --> K["initHoldingsTable()"]
-    K --> L["initAddAssetModal()"]
-    J -- No --> M[Listo]
-    L --> M
+sequenceDiagram
+    Router->>Page: Importar página (lazy)
+    Page->>Router: Retorna HTML string
+    Router->>DOM: innerHTML = htmlString
+    Router->>Init: Llamar init*() functions
+    Init->>DOM: getElementById + addEventListener
 ```
-
-| ✅ Pros | ⚠️ Contras |
-|---------|-----------|
-| Sin servidor especial (deploy a CDN simple) | URLs con `#` (no-SEO friendly para crawlers sin JS) |
-| Compatible con todos los browsers | Limitado para apps con deep-linking complejo |
-| Fácil de depurar (URL visible) | Cada navigate re-renderiza toda la página |
-
-> Cross-reference: [ADR-003 — Hash Router](../decisions/003-hash-router.md)
 
 ---
 
-## 3. Patrón Mount + Init (Hydration Manual)
+## 3. Event Delegation
 
-**Qué es:** Dado que los componentes devuelven strings, los event listeners no pueden adjuntarse inline. El patrón separa el renderizado (componente HTML) de la interactividad (función `init`).
+Para listas dinámicas cuyo contenido cambia (búsquedas, filtros), se usa **delegación de eventos** en el contenedor padre:
 
 ```javascript
-// En routes.js — después de insertar HTML en el DOM:
-root.innerHTML = await render();           // 1. Mount (string to DOM)
-initHoldingsTable();                       // 2. Wire (attach events)
-initAddAssetModal();                       // 3. Wire (attach events)
+// ✅ Correcto — un solo listener en el padre
+container.addEventListener('click', (e) => {
+  const row = e.target.closest('.coin-row');
+  if (!row) return;
+  
+  const coinId = row.dataset.coinId;
+  handleCoinSelect(coinId);
+});
 ```
 
-Cada componente interactivo exporta dos cosas:
-1. **La función de render** (default export): devuelve `string`.
-2. **La función `init`** (named export): busca elementos por ID y adjunta listeners.
+### Cuándo usar
+
+| Escenario | Estrategia |
+|---|---|
+| Elementos estáticos (botones fijos) | `getElementById` + `addEventListener` directo |
+| Listas dinámicas (resultados de búsqueda, rows) | **Event delegation** en contenedor padre |
+| Elementos que se re-renderizan | **Event delegation** obligatorio |
+
+---
+
+## 4. Sistema de Modales Multi-Vista
+
+Los modales complejos (`AddAssetModal`, `AddExchangeModal`) implementan un **patrón de sub-vistas** manejado por estado interno:
 
 ```javascript
-// HoldingsTable.js
-export default HoldingsTable;        // render fn
-export const initHoldingsTable = () => {
-  const table = document.getElementById("holdings-table");
-  // ... attach events
+let currentView = 'form';  // 'form' | 'coin' | 'exchange'
+let state = { selectedCoin: null, selectedExchange: '' };
+
+const render = () => {
+  const views = {
+    form:     () => FormView(state),
+    coin:     () => CoinPickerView(state),
+    exchange: () => SelectExchange(state.selectedExchange),
+  };
+  
+  modalContent.innerHTML = views[currentView]();
+  wireEvents();  // Re-conectar listeners
 };
 ```
 
-| ✅ Pros | ⚠️ Contras |
-|---------|-----------|
-| Patrón claro y predecible | Acoplamiento implícito entre routes.js e init fns |
-| No requiere framework | Olvidar llamar `init` rompe la interactividad |
-| Permite lazy-loading de módulos | No hay lifecycle hooks automáticos |
-
----
-
-## 4. Patrón State-on-DOM (para Paginación)
-
-**Qué es:** El estado de la paginación (página actual, total de páginas) se almacena en atributos `data-*` del elemento `<table>` en el DOM, evitando variables globales de módulo.
-
-```html
-<table
-  id="holdings-table"
-  data-current-page="1"
-  data-total-pages="3"
-  data-total-items="10"
-  data-page-size="4"
->
-```
-
-```javascript
-// initHoldingsTable lee el estado del DOM
-const totalPages = Number(table.dataset.totalPages);
-const currentPage = Number(table.dataset.currentPage);
-```
-
-| ✅ Pros | ⚠️ Contras |
-|---------|-----------|
-| No requiere store global | Solo viable para estado simple |
-| Estado visible en DevTools | No escalable para estado complejo |
-| Re-hidratación trivial | Acoplado a IDs de elementos DOM |
-
----
-
-## 5. Patrón Sub-vistas en Modal (State Machine simplificada)
-
-**Qué es:** El modal `AddAssetModal` gestiona múltiples vistas (formulario, selector de exchange, selector de coin) mediante una variable `currentView` que actúa como máquina de estados mínima.
-
-```javascript
-/** @type {'form'|'exchange'|'coin'} */
-let currentView = "form";
-
-const renderInner = () => {
-  if (currentView === "exchange") { inner.innerHTML = SelectExchange(...); wireExchangeView(); }
-  else if (currentView === "coin") { inner.innerHTML = CoinPickerView(); wireCoinView(); }
-  else { inner.innerHTML = FormView(); wireFormView(); }
-};
-```
-
-Transiciones de estado:
+### Flujo
 
 ```mermaid
 stateDiagram-v2
-    [*] --> form: openModal()
-    form --> coin: Click en "Coin Selector"
-    form --> exchange: Click en "Exchange Selector"
-    coin --> form: Seleccionar coin / Back
-    exchange --> form: Seleccionar exchange / Back
-    form --> [*]: closeModal() / Escape / Backdrop click
+    [*] --> FormView
+    FormView --> CoinPicker: Click "Seleccionar moneda"
+    FormView --> ExchangeSelector: Click "Seleccionar exchange"
+    CoinPicker --> FormView: Seleccionar moneda
+    ExchangeSelector --> FormView: Seleccionar exchange
+    FormView --> [*]: Submit / Cerrar
 ```
-
-| ✅ Pros | ⚠️ Contras |
-|---------|-----------|
-| Navegación interna sin router | Estado de módulo (variable let) persiste entre aperturas |
-| Re-render quirúrgico solo del modal | Difícil de escalar a más de 3-4 vistas |
-| Transiciones CSS declarativas | Sin historial de navegación en el modal |
 
 ---
 
-*Última actualización: 2026-03-15*
+## 5. Skeleton Loading Compartido
+
+Un único componente `SkeletonRow` en `utils/skeletonRow.js` genera placeholders animados reutilizables:
+
+```javascript
+import SkeletonRow from '../utils/skeletonRow';
+
+// Mostrar N filas skeleton mientras carga
+container.innerHTML = Array.from(
+  { length: 5 },
+  () => SkeletonRow()
+).join('');
+```
+
+### Usado en
+
+- `SelectExchange.js` — mientras carga la lista de caletas
+- `AddExchangeModal.js` — mientras busca exchanges en la API
+- `AddAssetModal.js` — mientras busca monedas en la API
+
+---
+
+## 6. API Helpers con Error Handling
+
+Las llamadas a la API siguen un patrón consistente con manejo de errores graceful:
+
+```javascript
+const getCoin = async (query = '') => {
+  try {
+    const res = await fetch(`${BASE}/search?query=${query}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data?.coins ?? [];
+  } catch {
+    return [];
+  }
+};
+```
+
+### Convenciones
+
+- **Siempre retornar un valor por defecto** (`[]`, `null`) en caso de error.
+- **Sin `throw`** — el consumidor no necesita `try/catch`.
+- **`?.` y `??`** para protección contra respuestas inesperadas.
+
+---
+
+## 7. localStorage como "Base de Datos"
+
+El módulo `sources.js` abstrae la interacción con `localStorage`:
+
+```javascript
+// Leer
+const sources = getSource();         // → Exchange[] | ["Overview"]
+
+// Escribir
+addSource({ id, name, image, ... }); // Añade a la lista existente
+```
+
+### Estructura en localStorage
+
+```json
+{
+  "sources": [
+    {
+      "id": "binance",
+      "name": "Binance",
+      "image": "https://...",
+      "description": "Spot",
+      "color": "#F0B90B"
+    }
+  ]
+}
+```

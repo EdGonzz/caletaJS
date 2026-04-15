@@ -1,167 +1,149 @@
-# Arquitectura — Índice
+# CaletaJS — Índice de Arquitectura
 
-**CaletaJS** es una Single Page Application (SPA) de alto rendimiento para el seguimiento simulado de inversiones en criptomonedas. Construida con JavaScript Vanilla y Webpack 5 para maximizar la velocidad y minimizar el tamaño del bundle.
+> Documento generado automáticamente · Última actualización: 2026-04-14
 
----
+## Visión General
 
-## Grafo de dependencias de módulos
+**CaletaJS** es una SPA de seguimiento simulado de inversiones en criptomonedas construida sin frameworks UI, usando **Vanilla JavaScript ES6+**, **Webpack 5** y **Tailwind CSS v4**.
 
-```mermaid
-graph LR
-    subgraph Entry
-        I[src/index.js]
-    end
+### Principios Rectores
 
-    subgraph Router
-        R[router/routes.js]
-        RU[utils/resolveRoutes.js]
-        GH[utils/getHash.js]
-    end
-
-    subgraph Pages
-        PH[pages/Home.js]
-        PA[pages/About.js]
-        PC[pages/CoinDetails.js]
-        P4[pages/Error404.js]
-    end
-
-    subgraph Components
-        AT[ActionToolbar.js]
-        SG[StatsGrid.js]
-        SC[StatCard.js]
-        HT[HoldingsTable.js]
-        AR[AssetRow.js]
-        PG[Pagination.js]
-        HC[HistoryChart.js]
-        AD[AllocationDonut.js]
-        AM[AddAssetModal.js]
-        SE[SelectExchange.js]
-        BT[Button.js]
-        HD[Header.js]
-    end
-
-    subgraph Utils
-        FMT[utils/formatters.js]
-        CD[utils/coinsData.js]
-        ED[utils/exchangesData.js]
-        HD2[utils/holdingsData.js]
-        GC[utils/getCoin.js]
-        GE[utils/getExchange.js]
-        SR[utils/sources.js]
-    end
-
-    I --> R
-    R --> GH
-    R --> RU
-    R --> PH
-    R --> PA
-    R --> PC
-    R --> P4
-    R --> HD
-    R --> HT
-    R --> AM
-
-    PH --> AT
-    PH --> SG
-    PH --> HC
-    PH --> AD
-    PH --> HT
-    PH --> AM
-
-    SG --> SC
-    HT --> AR
-    HT --> PG
-    HT --> HD2
-    AM --> SE
-    AM --> FMT
-    AM --> CD
-    AM --> ED
-    AR --> FMT
-    AR --> SR
-```
+| Principio | Aplicación |
+|---|---|
+| Zero-JS por defecto | HTML semántico + CSS utilities, JS solo para interactividad |
+| Sin frameworks | Componentes = funciones puras que retornan `string` (template literals) |
+| Datos dinámicos | API CoinGecko + `localStorage` como persistencia |
+| Accesibilidad (WCAG 2.1 AA) | `aria-label`, foco por teclado, HTML5 semántico |
+| Performance | Lazy loading, skeleton loading, debounce en búsquedas |
 
 ---
 
 ## Stack Tecnológico
 
-| Capa            | Tecnología             | Propósito                                    |
-|-----------------|------------------------|----------------------------------------------|
-| Lenguaje        | JavaScript ES6+        | Lógica de la aplicación                     |
-| Empaquetador    | Webpack 5              | Bundle, HMR, optimización de assets         |
-| Transpilador    | Babel                  | Compatibilidad de sintaxis ES6+             |
-| Estilos         | Tailwind CSS v4        | Utilidades CSS, design system               |
-| CSS Processing  | PostCSS + Autoprefixer | Transformación y prefixado del CSS          |
-| Plantillas HTML | Template Literals JS   | Componentes como strings HTML               |
-| Enrutamiento    | Hash-based Router      | Navegación SPA sin recargas                 |
-| Variables Env   | dotenv-webpack         | Inyección de `.env` al bundle               |
+| Capa | Tecnología | Propósito |
+|---|---|---|
+| Lenguaje | JavaScript ES6+ | Lógica de app |
+| Bundler | Webpack 5 + Babel | Build, HMR, procesamiento de assets |
+| Estilos | Tailwind CSS v4 + PostCSS | Sistema de diseño utility-first |
+| Routing | Hash Router custom | Navegación SPA (`#/path`) |
+| Componentes | Template Literals | Funciones puras → HTML strings |
+| Datos | CoinGecko API + localStorage | Precios, monedas, exchanges |
+| Iconos | SVG Sprite (`sprite.svg`) | Sistema de íconos centralizado |
+| Package Mgr | **pnpm** (v10.x) | Gestión de dependencias |
 
 ---
 
-## Estructura de archivos
+## Estructura de Directorios
 
 ```text
 caleta/
 ├── public/
-│   └── index.html              # Shell HTML base, punto de entrada
+│   └── index.html                  # Shell HTML (meta, #header, #app, modals)
 ├── src/
 │   ├── assets/
-│   │   └── sprite.svg          # Sprite SVG con todos los íconos
-│   ├── components/             # Componentes UI reutilizables
-│   │   ├── ActionToolbar.js
-│   │   ├── AddAssetModal.js    # Modal de agregar transacción (con sub-vistas)
-│   │   ├── AllocationDonut.js
-│   │   ├── AssetRow.js
-│   │   ├── Button.js
-│   │   ├── Header.js
-│   │   ├── HistoryChart.js
-│   │   ├── HoldingsTable.js    # Tabla paginada de holdings
-│   │   ├── Pagination.js
-│   │   ├── SelectExchange.js
-│   │   ├── StatCard.js
-│   │   └── StatsGrid.js
-│   ├── pages/                  # Vistas mapeadas a rutas
-│   │   ├── About.js
-│   │   ├── CoinDetails.js
-│   │   ├── Error404.js
-│   │   └── Home.js
+│   │   └── sprite.svg              # SVG sprite con todos los íconos
+│   ├── components/
+│   │   ├── AddAssetModal.js        # Modal para agregar activos (multi-vista)
+│   │   ├── AddExchangeModal.js     # Modal para agregar caletas/exchanges
+│   │   ├── AllocationDonut.js      # Gráfico donut de distribución
+│   │   ├── AssetRow.js             # Fila de activo en tabla de holdings
+│   │   ├── Header.js               # Navegación principal
+│   │   ├── HistoryChart.js         # Gráfico de historial de valor
+│   │   ├── HoldingsTable.js        # Tabla paginada de activos
+│   │   ├── Pagination.js           # Componente de paginación
+│   │   ├── SelectExchange.js       # Selector de exchanges (desde localStorage)
+│   │   ├── StatCard.js             # Tarjeta de estadística
+│   │   └── StatsGrid.js            # Grid de estadísticas
+│   ├── pages/
+│   │   └── Home.js                 # Vista principal (dashboard)
 │   ├── router/
-│   │   └── routes.js           # Router principal, mapa de rutas + wiring
+│   │   └── routes.js               # Mapa de rutas + init post-render
 │   ├── styles/
-│   │   └── main.css            # Estilos globales + directivas Tailwind
+│   │   └── main.css                # CSS global + @theme tokens de Tailwind
 │   ├── utils/
-│   │   ├── coinsData.js        # Dataset estático de criptomonedas
-│   │   ├── exchangesData.js    # Dataset estático de exchanges
-│   │   ├── formatters.js       # Funciones puras de formateo
-│   │   ├── getCoin.js
-│   │   ├── getExchange.js
-│   │   ├── getHash.js          # Extrae ruta del hash de la URL
-│   │   ├── holdingsData.js     # Dataset estático de holdings del usuario
-│   │   ├── resolveRoutes.js    # Mapea hash a clave de ruta
-│   │   └── sources.js
-│   └── index.js                # Entry point: importa estilos + arranca router
-├── AGENTS.md                   # Contexto para agentes de IA
-├── GEMINI.md                   # Contexto compacto para Gemini
+│   │   ├── formatters.js           # formatUsd, now, formatBalance
+│   │   ├── getCoin.js              # API helper: buscar monedas (CoinGecko)
+│   │   ├── getExchange.js          # API helper: buscar exchanges (CoinGecko)
+│   │   ├── getHash.js              # Extraer segmento del hash
+│   │   ├── holdingsData.js         # Datos mock estáticos para Holdings
+│   │   ├── resolveRoutes.js        # Resolver hash → clave de ruta
+│   │   ├── skeletonRow.js          # Skeleton loading row reutilizable
+│   │   └── sources.js              # localStorage helper (getSource/addSource)
+│   └── index.js                    # Entry point (importa CSS + router)
 ├── package.json
-├── postcss.config.js
+├── webpack.config.js
 ├── tailwind.config.js
-└── webpack.config.js
+├── postcss.config.js
+└── babel.config.json
 ```
 
 ---
 
-## Mapa de Documentación
+## Diagrama de Dependencias
 
-| Documento                                        | Contenido                                      |
-|--------------------------------------------------|------------------------------------------------|
-| [patrones.md](./patrones.md)                     | Patrones de diseño y arquitectura              |
-| [flujo-de-datos.md](./flujo-de-datos.md)         | Flujo de datos y diagramas de secuencia        |
-| [sistema-de-diseno.md](./sistema-de-diseno.md)   | Design tokens, tipografía, efectos visuales   |
-| [accesibilidad.md](./accesibilidad.md)           | WCAG 2.1, ARIA, navegación por teclado         |
-| [seo.md](./seo.md)                               | Meta tags, SEO técnico                         |
-| [testing.md](./testing.md)                       | Tests, runner, convenciones                    |
-| [../decisions/](../decisions/)                   | ADRs — Decisiones de arquitectura              |
-| [../runbooks/](../runbooks/)                     | Guías operativas y de desarrollo               |
+```mermaid
+graph TD
+    Entry["index.js"] --> Router["router/routes.js"]
+    Entry --> Styles["styles/main.css"]
+
+    Router --> Home["pages/Home.js"]
+    Router --> Modal["components/AddAssetModal.js"]
+    Router --> ExModal["components/AddExchangeModal.js"]
+
+    Home --> StatsGrid["StatsGrid.js"]
+    Home --> Chart["HistoryChart.js"]
+    Home --> Donut["AllocationDonut.js"]
+    Home --> Table["HoldingsTable.js"]
+
+    StatsGrid --> StatCard["StatCard.js"]
+    Table --> AssetRow["AssetRow.js"]
+    Table --> Pagination["Pagination.js"]
+
+    Modal --> SelectEx["SelectExchange.js"]
+    Modal --> getCoin["utils/getCoin.js"]
+    Modal --> Skeleton["utils/skeletonRow.js"]
+
+    ExModal --> getExchange["utils/getExchange.js"]
+    ExModal --> Sources["utils/sources.js"]
+    ExModal --> Skeleton
+
+    SelectEx --> Sources
+    SelectEx --> Skeleton
+
+    getCoin --> API["CoinGecko API"]
+    getExchange --> API
+    Sources --> LS["localStorage"]
+```
 
 ---
 
-*Última actualización: 2026-03-15*
+## Documentación Detallada
+
+| Documento | Descripción |
+|---|---|
+| [patrones.md](patrones.md) | Patrones de diseño: componentes, event wiring, event delegation, skeleton loading |
+| [flujo-de-datos.md](flujo-de-datos.md) | Flujo de datos: API → localStorage → render |
+| [sistema-de-diseno.md](sistema-de-diseno.md) | Design tokens, paleta de colores, tipografía |
+| [accesibilidad.md](accesibilidad.md) | Cumplimiento WCAG 2.1 AA |
+| [seo.md](seo.md) | Estrategia SEO para SPA |
+| [testing.md](testing.md) | Estrategia de testing |
+
+## Decisiones de Arquitectura (ADR)
+
+| ADR | Título |
+|---|---|
+| [001](../decisions/001-webpack-bundler.md) | Webpack como bundler |
+| [002](../decisions/002-arquitectura-sin-framework.md) | Arquitectura sin framework |
+| [003](../decisions/003-hash-router.md) | Hash router |
+| [004](../decisions/004-tailwind-css.md) | Tailwind CSS v4 |
+| [005](../decisions/005-datos-estaticos.md) | Datos estáticos provisionales |
+| [006](../decisions/006-migracion-api-coingecko.md) | Migración a API CoinGecko + localStorage |
+
+## Runbooks
+
+| Runbook | Descripción |
+|---|---|
+| [desarrollo-local.md](../runbooks/desarrollo-local.md) | Setup del entorno local |
+| [agregar-ruta.md](../runbooks/agregar-ruta.md) | Agregar una nueva ruta/vista |
+| [troubleshooting.md](../runbooks/troubleshooting.md) | Problemas comunes y soluciones |
+| [deploy.md](../runbooks/deploy.md) | Proceso de despliegue |

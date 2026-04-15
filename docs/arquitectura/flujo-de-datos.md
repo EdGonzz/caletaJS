@@ -1,121 +1,168 @@
 # Flujo de Datos
 
+> Última actualización: 2026-04-14
+
+## Fuentes de Datos
+
+| Fuente | Tipo | Uso |
+|---|---|---|
+| CoinGecko API | Externa (REST) | Buscar monedas (`/search`), buscar exchanges (`/exchanges`) |
+| `localStorage` | Local (navegador) | Persistir caletas/exchanges del usuario (`sources`) |
+| `holdingsData.js` | Estático (mock) | Datos provisionales para la tabla de holdings |
+
 ---
 
-## Flujo principal: Navegación y Renderizado
+## Diagrama General
 
 ```mermaid
-sequenceDiagram
-    participant Browser
-    participant index.js
-    participant router
-    participant getHash
-    participant resolveRoutes
-    participant Page as Page Component
-    participant Component
-    participant DOM
+flowchart LR
+    subgraph Externo
+        API["CoinGecko API"]
+    end
 
-    Browser->>index.js: load / hashchange event
-    index.js->>router: router()
-    router->>getHash: getHash()
-    getHash-->>router: "coin" | "/" | "about" ...
-    router->>resolveRoutes: resolveRoutes(hash)
-    resolveRoutes-->>router: "/coin/:id" | "/" | "/404" ...
-    router->>DOM: header.innerHTML = Header()
-    router->>Page: await render()
-    Page->>Component: Component(data)
-    Component-->>Page: HTML string
-    Page-->>router: HTML string
-    router->>DOM: root.innerHTML = pageHTML
-    router->>router: initHoldingsTable() + initAddAssetModal()
+    subgraph Navegador
+        LS["localStorage"]
+    end
+
+    subgraph Utils
+        getCoin["getCoin.js"]
+        getExchange["getExchange.js"]
+        sources["sources.js"]
+        formatters["formatters.js"]
+        holdings["holdingsData.js"]
+    end
+
+    subgraph Componentes
+        AddAsset["AddAssetModal"]
+        AddExchange["AddExchangeModal"]
+        SelectEx["SelectExchange"]
+        Table["HoldingsTable"]
+    end
+
+    API --> getCoin
+    API --> getExchange
+    LS --> sources
+
+    getCoin --> AddAsset
+    getExchange --> AddExchange
+    sources --> SelectEx
+    sources --> AddExchange
+    holdings --> Table
+    formatters --> AddAsset
+    formatters --> Table
 ```
 
 ---
 
-## Flujo de paginación (HoldingsTable)
+## Flujos Principales
+
+### 1. Carga Inicial (Home)
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant PaginationBtn
-    participant initHoldingsTable
-    participant DOM
+    participant Router
+    participant Home
+    participant HoldingsTable
     participant holdingsData
 
-    User->>PaginationBtn: Click (data-page="2")
-    PaginationBtn->>initHoldingsTable: goToPage(2)
-    initHoldingsTable->>holdingsData: import('../utils/holdingsData')
-    holdingsData-->>initHoldingsTable: holdings[]
-    initHoldingsTable->>DOM: tbody.innerHTML = rows page 2
-    initHoldingsTable->>DOM: paginationEl.innerHTML = Pagination({page:2})
-    initHoldingsTable->>DOM: table.dataset.currentPage = "2"
-    initHoldingsTable->>initHoldingsTable: bindPaginationEvents()
+    Router->>Home: Renderizar
+    Home->>holdingsData: import holdings
+    Home->>HoldingsTable: HoldingsTable(holdings)
+    HoldingsTable-->>Router: HTML con datos mock
+    Router->>DOM: innerHTML = html
+    Router->>Init: initHoldingsTable()
 ```
 
----
+> **Nota:** Actualmente usa datos estáticos (`holdingsData.js`). Se migrará a datos reales de `localStorage` + API.
 
-## Flujo del Modal AddAsset
+### 2. Agregar Activo (AddAssetModal)
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant ActionToolbar
-    participant initAddAssetModal
-    participant AddAssetModal
-    participant renderInner
-    participant DOM
+    participant Modal as AddAssetModal
+    participant getCoin
+    participant API as CoinGecko
+    participant SelectEx as SelectExchange
+    participant sources
 
-    User->>ActionToolbar: Click "Add Funds" (#add-funds)
-    ActionToolbar->>initAddAssetModal: openModal()
-    initAddAssetModal->>renderInner: currentView = "form"
-    renderInner->>DOM: modal-inner.innerHTML = FormView()
-    renderInner->>renderInner: wireFormView()
+    User->>Modal: Abrir modal (botón +)
+    Modal-->>User: FormView (vacío)
 
-    User->>DOM: Click "Coin Selector"
-    wireFormView->>renderInner: currentView = "coin"
-    renderInner->>DOM: modal-inner.innerHTML = CoinPickerView()
-    renderInner->>renderInner: wireCoinView()
+    User->>Modal: Click "Seleccionar moneda"
+    Modal-->>User: CoinPickerView
 
-    User->>DOM: Select a coin
-    wireCoinView->>renderInner: selectedCoin = found; currentView = "form"
-    renderInner->>DOM: Vuelve a FormView() con nuevo coin
+    User->>Modal: Escribir búsqueda
+    Modal->>getCoin: getCoin("bitcoin")
+    getCoin->>API: GET /search?query=bitcoin
+    API-->>getCoin: { coins: [...] }
+    getCoin-->>Modal: coins[]
+    Modal-->>User: Lista de monedas
+
+    User->>Modal: Click en moneda
+    Modal-->>User: FormView (con moneda seleccionada)
+
+    User->>Modal: Click "Seleccionar exchange"
+    Modal->>sources: getSource()
+    sources-->>Modal: exchanges[]
+    Modal-->>User: SelectExchange (lista de caletas)
+
+    User->>Modal: Click en exchange
+    Modal-->>User: FormView (completo)
+```
+
+### 3. Agregar Exchange (AddExchangeModal)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ExModal as AddExchangeModal
+    participant getExchange
+    participant API as CoinGecko
+    participant sources
+
+    User->>ExModal: Abrir modal
+    ExModal->>getExchange: getExchange()
+    getExchange->>API: GET /exchanges
+    API-->>getExchange: exchanges[]
+    getExchange-->>ExModal: exchanges[]
+    ExModal-->>User: Lista de exchanges
+
+    User->>ExModal: Buscar "binance"
+    Note over ExModal: Filtro local en la lista ya cargada
+
+    User->>ExModal: Click en exchange
+    ExModal->>sources: addSource(exchange)
+    sources->>localStorage: Guardar en "sources"
+    ExModal-->>User: Cerrar modal
 ```
 
 ---
 
-## Estado de la aplicación
+## Estado de la Aplicación
 
-La aplicación no tiene un store centralizado. El estado se distribuye así:
-
-| Variable / Fuente          | Tipo                         | Dónde vive                        | Propósito                                 |
-|----------------------------|------------------------------|-----------------------------------|-------------------------------------------|
-| `activeTab`                | `'buy'\|'sell'\|'transfer'`  | Módulo `AddAssetModal.js` (let)   | Pestaña activa del formulario             |
-| `selectedCoin`             | `Coin`                       | Módulo `AddAssetModal.js` (let)   | Moneda seleccionada en el modal           |
-| `selectedExchange`         | `Exchange`                   | Módulo `AddAssetModal.js` (let)   | Exchange seleccionado en el modal         |
-| `currentView`              | `'form'\|'exchange'\|'coin'` | Módulo `AddAssetModal.js` (let)   | Vista activa dentro del modal             |
-| `data-current-page`        | `number` (string en DOM)     | `<table#holdings-table>` dataset  | Página actual de holdings                 |
-| `data-total-pages`         | `number` (string en DOM)     | `<table#holdings-table>` dataset  | Total de páginas de holdings              |
-| `holdings`                 | `Asset[]`                    | `utils/holdingsData.js` (const)   | Dataset completo de activos del usuario   |
-| `coins`                    | `Coin[]`                     | `utils/coinsData.js` (const)      | Catálogo de criptomonedas disponibles     |
-| `exchanges`                | `Exchange[]`                 | `utils/exchangesData.js` (const)  | Catálogo de exchanges disponibles         |
-
-> **Nota:** Todo el estado de datos es actualmente estático (sin API). Los datasets son arrays exportados desde los archivos `utils/*Data.js`.
+| Dato | Ubicación | Persistencia |
+|---|---|---|
+| Exchanges del usuario (caletas) | `localStorage.sources` | ✅ Persistente |
+| Moneda seleccionada (en modal) | Variable local del modal | ❌ En memoria |
+| Exchange seleccionado (en modal) | Variable local del modal | ❌ En memoria |
+| Holdings/portafolio | `holdingsData.js` (mock) | ❌ Estático |
+| Resultados de búsqueda (coins) | Variable local del modal | ❌ En memoria |
+| Página actual de tabla | Variable local de `initHoldingsTable` | ❌ En memoria |
 
 ---
 
-## Fuentes de datos
+## API CoinGecko — Endpoints Usados
 
-Actualmente la app utiliza **datos simulados estáticos**. No realiza llamadas reales a APIs externas.
+| Endpoint | Helper | Propósito |
+|---|---|---|
+| `GET /search?query={q}` | `getCoin.js` | Buscar monedas por nombre/símbolo |
+| `GET /exchanges` | `getExchange.js` | Listar exchanges disponibles |
 
-| Módulo                  | Contenido                                        |
-|-------------------------|--------------------------------------------------|
-| `utils/holdingsData.js` | Array de activos en cartera del usuario          |
-| `utils/coinsData.js`    | Catálogo de criptomonedas (nombre, símbolo, logo)|
-| `utils/exchangesData.js`| Catálogo de exchanges (nombre, logo, label)      |
-| `utils/sources.js`      | Fuentes o exchanges por defecto                  |
-| `utils/getCoin.js`      | Helper para buscar una coin por ID               |
-| `utils/getExchange.js`  | Helper para buscar un exchange por ID            |
+### Rate Limiting
 
----
+La API pública de CoinGecko tiene un límite de **10-30 req/min**. Se aplica:
 
-*Última actualización: 2026-03-15*
+- **Debounce** en búsquedas de monedas (300ms)
+- **Carga única** de exchanges (al abrir el modal)
+- **Sin polling** — datos se refrescan solo por acción del usuario
