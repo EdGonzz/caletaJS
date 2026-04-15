@@ -1,6 +1,6 @@
 # ADR-005: Datos Estáticos (Sin API Real)
 
-- **Estado:** Aceptada
+- **Estado:** Parcialmente Superada (ver [ADR-006](006-migracion-api-coingecko.md))
 - **Fecha:** 2026-03-01
 - **Contexto:** La aplicación necesita datos de criptomonedas, exchanges y holdings del usuario para renderizar la UI.
 

@@ -129,7 +129,7 @@ const FormView = () => `
             ${selectedExchange
     ? selectedExchange.image
       ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.image}" />`
-      : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-xs font-bold text-white bg-slate-600">${selectedExchange.name.charAt(0).toUpperCase()}</div>`
+      : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${selectedExchange.name.charAt(0).toUpperCase()}</div>`
     : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
   }
             <span class="text-sm font-medium ${selectedExchange ? 'text-slate-200' : 'text-slate-500'}">${selectedExchange?.name ?? 'Seleccionar caleta'}</span>
@@ -410,7 +410,6 @@ const wireExchangeView = () => {
           image: exchange.image ?? null,
           url: exchange.url ?? null,
           description: exchange.url ? new URL(exchange.url).hostname.replace('www.', '') : null,
-          color: null,
         };
         currentView = "form";
         renderInner();

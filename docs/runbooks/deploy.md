@@ -1,6 +1,6 @@
 # Deploy
 
----
+> Última actualización: 2026-04-15
 
 ## Proceso de Build
 
@@ -70,7 +70,7 @@ jobs:
    - **Node version:** 18 o superior
 3. Deploy automático en cada push a `main`
 
-> **Variables de entorno:** Configurarlas en Netlify → Site Settings → Environment Variables
+> **Variables de entorno:** Configurarlas en Netlify → Site Settings → Environment Variables (`API_KEY`, `API_URL`)
 
 ---
 
@@ -111,10 +111,6 @@ pnpm build && surge dist/ mi-caleta.surge.sh
 
 - [ ] `pnpm build` completa sin errores
 - [ ] Verificar que `dist/index.html` existe
-- [ ] Variables de entorno configuradas en el host (si aplica)
+- [ ] Variables de entorno configuradas en el host (`API_KEY`, `API_URL`)
 - [ ] Verificar que el bundle no incluye datos sensibles del `.env`
 - [ ] Probar el build localmente: `npx serve dist/`
-
----
-
-*Última actualización: 2026-03-15*

@@ -25,7 +25,7 @@ const ExchangeRow = (ex, isSelected) => {
 
   const avatar = ex.image
     ? `<img src="${ex.image}" alt="${ex.name}" class="w-6 h-6 object-contain rounded-full" />`
-    : `<span class="font-bold text-white text-lg">${ex.name}</span>`;
+    : `<div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">${ex.name.charAt(0).toUpperCase()}</div>`;
 
   return `
     <button
@@ -35,7 +35,7 @@ const ExchangeRow = (ex, isSelected) => {
       class="exchange-row w-full flex items-center justify-between p-3 rounded-xl border ${selectedClasses} cursor-pointer transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary/40"
     >
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-inner" style="background:${ex.color}">
+        <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0 shadow-inner overflow-hidden">
           ${avatar}
         </div>
         <div class="text-left">

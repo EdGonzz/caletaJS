@@ -1,5 +1,7 @@
 # Cómo Agregar una Nueva Ruta o Vista
 
+> Última actualización: 2026-04-15
+
 Guía paso a paso para extender el router de CaletaJS con una nueva vista.
 
 ---
@@ -106,7 +108,3 @@ if (path === "portfolio") return "/portfolio/:id";
 - [ ] Llamar `init*` en el bloque correspondiente del router
 - [ ] Actualizar `resolveRoutes.js` si aplica
 - [ ] Añadir enlace en `Header.js` si aplica
-
----
-
-*Última actualización: 2026-03-15*

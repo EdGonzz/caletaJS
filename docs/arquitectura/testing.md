@@ -1,6 +1,6 @@
 # Testing
 
----
+> Última actualización: 2026-04-15
 
 ## Estado actual
 
@@ -13,11 +13,11 @@ No hay:
 
 ---
 
-## Recomendación: Configurar Vitest
+## Recomendación: Configurar Jest
 
-Dado que el proyecto usa Webpack (no Vite), la opción más compatible sin cambiar el bundler es **Jest**. Sin embargo, para proyectos Vanilla JS modernos, **Vitest** es también una opción ligera.
+Dado que el proyecto usa Webpack (no Vite), la opción más compatible sin cambiar el bundler es **Jest**.
 
-### Opción A — Jest (compatible con Webpack/Babel)
+### Setup — Jest (compatible con Webpack/Babel)
 
 ```bash
 pnpm add -D jest @babel/preset-env babel-jest
@@ -39,10 +39,6 @@ module.exports = {
 }
 ```
 
-### Opción B — Vitest (más moderno, requiere Vite)
-
-Requeriría migración de Webpack a Vite. Ver [ADR-001](../decisions/001-webpack-bundler.md).
-
 ---
 
 ## Qué testear (Roadmap)
@@ -52,10 +48,16 @@ Dado que los componentes son funciones puras que retornan strings, son fácilmen
 | Módulo                  | Tipo de test                | Ejemplo                                           |
 |-------------------------|-----------------------------|---------------------------------------------------|
 | `utils/formatters.js`   | Unit                        | `formatUsd(1000)` → `"$1,000.00"`               |
+| `utils/formatters.js`   | Unit                        | `formatBalance(0.455612)` → `"0.455612"`         |
+| `utils/formatters.js`   | Unit                        | `now()` retorna formato `YYYY-MM-DDThh:mm`       |
 | `utils/getHash.js`      | Unit                        | Mock `location.hash`, verificar output            |
 | `utils/resolveRoutes.js`| Unit                        | `resolveRoutes("coin")` → `"/coin/:id"`          |
+| `utils/helpers.js`      | Unit                        | `debounce(fn, 300)` invoca después del delay     |
+| `utils/sources.js`      | Unit (mock localStorage)    | `addSource({...})` persiste y retorna lista       |
 | `components/StatCard.js`| Snapshot / integración      | Verificar que el HTML contiene el `title`         |
-| `components/Pagination.js` | Unit                     | Verificar botones deshabilitados en página 1/last |
+| `components/Pagination.js`| Unit                      | Verificar botones deshabilitados en página 1/last |
+| `components/AssetRow.js`| Snapshot                    | Verificar formateo de price y change badge        |
+| `utils/skeletonRow.js`  | Unit                        | Verificar que acepta opciones y genera HTML       |
 | `router/routes.js`      | Integración (JSDOM)         | Verificar que render cambia `#app.innerHTML`      |
 
 ---
@@ -66,6 +68,7 @@ Dado que los componentes son funciones puras que retornan strings, son fácilmen
 - **Naming:** `describe("formatUsd")` + `it("formato moneda positiva")` 
 - **Mocks:** Para módulos que dependen del DOM, usar `jsdom` (builtin en Jest)
 - **Sin efectos secundarios:** Los componentes son funciones puras; no requieren cleanup
+- **localStorage:** Usar `jest.spyOn(Storage.prototype, 'getItem')` para mock
 
 ---
 
@@ -76,7 +79,3 @@ pnpm test           # Ejecutar todos los tests
 pnpm test --watch   # Watch mode
 pnpm test --coverage # Reporte de cobertura
 ```
-
----
-
-*Última actualización: 2026-03-15*

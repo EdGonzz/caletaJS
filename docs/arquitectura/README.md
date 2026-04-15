@@ -1,6 +1,6 @@
 # CaletaJS — Índice de Arquitectura
 
-> Documento generado automáticamente · Última actualización: 2026-04-14
+> Documento generado automáticamente · Última actualización: 2026-04-15
 
 ## Visión General
 
@@ -38,15 +38,18 @@
 ```text
 caleta/
 ├── public/
-│   └── index.html                  # Shell HTML (meta, #header, #app, modals)
+│   └── index.html                  # Shell HTML (meta, #header, #app)
 ├── src/
 │   ├── assets/
 │   │   └── sprite.svg              # SVG sprite con todos los íconos
 │   ├── components/
+│   │   ├── ActionToolbar.js        # Barra de acciones (Overview, Add Funds, etc.)
 │   │   ├── AddAssetModal.js        # Modal para agregar activos (multi-vista)
 │   │   ├── AddExchangeModal.js     # Modal para agregar caletas/exchanges
 │   │   ├── AllocationDonut.js      # Gráfico donut de distribución
 │   │   ├── AssetRow.js             # Fila de activo en tabla de holdings
+│   │   ├── Button.js               # Botón genérico con ícono SVG
+│   │   ├── CoinPicker.js           # Selector de monedas con búsqueda API
 │   │   ├── Header.js               # Navegación principal
 │   │   ├── HistoryChart.js         # Gráfico de historial de valor
 │   │   ├── HoldingsTable.js        # Tabla paginada de activos
@@ -55,6 +58,9 @@ caleta/
 │   │   ├── StatCard.js             # Tarjeta de estadística
 │   │   └── StatsGrid.js            # Grid de estadísticas
 │   ├── pages/
+│   │   ├── About.js                # Página About (placeholder)
+│   │   ├── CoinDetails.js          # Página de detalle de moneda (placeholder)
+│   │   ├── Error404.js             # Página 404 (not found)
 │   │   └── Home.js                 # Vista principal (dashboard)
 │   ├── router/
 │   │   └── routes.js               # Mapa de rutas + init post-render
@@ -65,6 +71,7 @@ caleta/
 │   │   ├── getCoin.js              # API helper: buscar monedas (CoinGecko)
 │   │   ├── getExchange.js          # API helper: buscar exchanges (CoinGecko)
 │   │   ├── getHash.js              # Extraer segmento del hash
+│   │   ├── helpers.js              # Utilidades genéricas (debounce, etc.)
 │   │   ├── holdingsData.js         # Datos mock estáticos para Holdings
 │   │   ├── resolveRoutes.js        # Resolver hash → clave de ruta
 │   │   ├── skeletonRow.js          # Skeleton loading row reutilizable
@@ -74,7 +81,7 @@ caleta/
 ├── webpack.config.js
 ├── tailwind.config.js
 ├── postcss.config.js
-└── babel.config.json
+└── .env                            # Variables de entorno (API_KEY, API_URL)
 ```
 
 ---
@@ -87,28 +94,43 @@ graph TD
     Entry --> Styles["styles/main.css"]
 
     Router --> Home["pages/Home.js"]
-    Router --> Modal["components/AddAssetModal.js"]
-    Router --> ExModal["components/AddExchangeModal.js"]
+    Router --> About["pages/About.js"]
+    Router --> CoinDetails["pages/CoinDetails.js"]
+    Router --> Error404["pages/Error404.js"]
+    Router --> InitTable["initHoldingsTable"]
+    Router --> InitModal["initAddAssetModal"]
 
+    Home --> ActionToolbar["ActionToolbar.js"]
     Home --> StatsGrid["StatsGrid.js"]
     Home --> Chart["HistoryChart.js"]
     Home --> Donut["AllocationDonut.js"]
     Home --> Table["HoldingsTable.js"]
+    Home --> Modal["AddAssetModal.js"]
 
+    ActionToolbar --> Button["Button.js"]
     StatsGrid --> StatCard["StatCard.js"]
     Table --> AssetRow["AssetRow.js"]
     Table --> Pagination["Pagination.js"]
 
     Modal --> SelectEx["SelectExchange.js"]
+    Modal --> CoinPicker["CoinPicker.js"]
     Modal --> getCoin["utils/getCoin.js"]
-    Modal --> Skeleton["utils/skeletonRow.js"]
+    Modal --> ExModal["AddExchangeModal.js"]
+    Modal --> Formatters["utils/formatters.js"]
+    Modal --> Sources["utils/sources.js"]
+
+    CoinPicker --> getCoin
+    CoinPicker --> SelectExLoading["SelectLoading"]
 
     ExModal --> getExchange["utils/getExchange.js"]
-    ExModal --> Sources["utils/sources.js"]
-    ExModal --> Skeleton
+    ExModal --> Sources
+    ExModal --> Skeleton["utils/skeletonRow.js"]
+    ExModal --> Debounce["utils/helpers.js"]
 
     SelectEx --> Sources
     SelectEx --> Skeleton
+
+    AssetRow --> Formatters
 
     getCoin --> API["CoinGecko API"]
     getExchange --> API
@@ -121,9 +143,9 @@ graph TD
 
 | Documento | Descripción |
 |---|---|
-| [patrones.md](patrones.md) | Patrones de diseño: componentes, event wiring, event delegation, skeleton loading |
+| [patrones.md](patrones.md) | Patrones de diseño: componentes, event wiring, event delegation, skeleton loading, debounce |
 | [flujo-de-datos.md](flujo-de-datos.md) | Flujo de datos: API → localStorage → render |
-| [sistema-de-diseno.md](sistema-de-diseno.md) | Design tokens, paleta de colores, tipografía |
+| [sistema-de-diseno.md](sistema-de-diseno.md) | Design tokens, paleta de colores, tipografía, animaciones |
 | [accesibilidad.md](accesibilidad.md) | Cumplimiento WCAG 2.1 AA |
 | [seo.md](seo.md) | Estrategia SEO para SPA |
 | [testing.md](testing.md) | Estrategia de testing |
@@ -138,6 +160,7 @@ graph TD
 | [004](../decisions/004-tailwind-css.md) | Tailwind CSS v4 |
 | [005](../decisions/005-datos-estaticos.md) | Datos estáticos provisionales |
 | [006](../decisions/006-migracion-api-coingecko.md) | Migración a API CoinGecko + localStorage |
+| [007](../decisions/007-debounce-busquedas.md) | Debounce en búsquedas con feedback visual inmediato |
 
 ## Runbooks
 

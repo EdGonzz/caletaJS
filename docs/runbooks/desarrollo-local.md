@@ -1,5 +1,7 @@
 # Desarrollo Local
 
+> Última actualización: 2026-04-15
+
 ## Prerequisitos
 
 | Herramienta  | Versión mínima | Instalación                          |
@@ -24,13 +26,28 @@ pnpm install
 
 # 3. Configurar variables de entorno
 cp .env.example .env   # Si existe .env.example
-# Editar .env con los valores necesarios
+# Editar .env con tus valores
+```
 
-# 4. Iniciar el servidor de desarrollo
+### Variables de entorno requeridas
+
+```bash
+# .env
+API_KEY=tu_api_key_de_coingecko
+API_URL=https://api.coingecko.com/api/v3
+```
+
+> **Nota:** Las variables del `.env` se inyectan al bundle vía `dotenv-webpack`. Se acceden como `process.env.API_KEY` en el código. Quedan expuestas en el bundle del cliente — no incluir secretos críticos.
+
+---
+
+## Iniciar el servidor
+
+```bash
 pnpm start
 ```
 
-El servidor arranca en `http://localhost:8080` con Hot Module Replacement (HMR) activo.
+El servidor arranca con `portless` (asigna un puerto disponible automáticamente) ejecutando `webpack server --mode development` con HMR activo. Si el puerto 8080 está disponible, lo usará por defecto.
 
 ---
 
@@ -52,24 +69,12 @@ src/
 ├── router/routes.js  ← Añadir nuevas rutas aquí
 ├── pages/            ← Añadir nuevas vistas aquí
 ├── components/       ← Componentes reutilizables
-└── utils/            ← Helpers puros
+├── utils/            ← Helpers puros
+└── styles/main.css   ← Design tokens y CSS global
 
 public/
 └── index.html        ← Shell HTML — editar meta tags SEO aquí
 ```
-
----
-
-## Variables de entorno
-
-Las variables del archivo `.env` se inyectan en el bundle via `dotenv-webpack`. Se acceden como `process.env.VARIABLE_NAME` en el código.
-
-```bash
-# .env (ejemplo)
-API_KEY=tu_api_key_aqui
-```
-
-> **Nota:** Las variables de `.env` quedan expuestas en el bundle del cliente. No incluir secretos críticos.
 
 ---
 
@@ -78,8 +83,5 @@ API_KEY=tu_api_key_aqui
 1. **Nueva vista:** Crear `src/pages/NombrePagina.js` → exportar función → registrar en `src/router/routes.js`
 2. **Nuevo componente:** Crear `src/components/MiComponente.js` → exportar render fn + `initMiComponente` si es interactivo
 3. **Nuevo estilo global:** Añadir en `src/styles/main.css` (o usar clases Tailwind en el HTML)
-4. **Nuevo dato:** Añadir al array en `src/utils/*Data.js`
-
----
-
-*Última actualización: 2026-03-15*
+4. **Nueva utilidad:** Añadir en `src/utils/` como función pura
+5. **Nuevo ícono:** Agregar `<symbol>` en `src/assets/sprite.svg`

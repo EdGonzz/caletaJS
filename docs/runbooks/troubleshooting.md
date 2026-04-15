@@ -1,5 +1,7 @@
 # Troubleshooting
 
+> Última actualización: 2026-04-15
+
 Problemas comunes y sus soluciones en el desarrollo de CaletaJS.
 
 ---
@@ -16,7 +18,7 @@ pnpm install
 
 # 2. Verificar que el puerto 8080 no esté ocupado
 lsof -i :8080
-# Si está ocupado, editar webpack.config.js → devServer: { port: 3000 }
+# Si está ocupado, pnpm start usa portless que asigna uno disponible automáticamente
 
 # 3. Borrar caché de webpack
 rm -rf dist/ .cache/
@@ -49,7 +51,7 @@ content: [
 
 3. Verificar que `postcss.config.js` usa el plugin correcto:
 ```javascript
-module.exports = {
+export default {
   plugins: { "@tailwindcss/postcss": {} }
 };
 ```
@@ -75,6 +77,30 @@ if (path === "/") {
 
 ---
 
+## Los event listeners se pierden después de re-renderizar una lista
+
+**Síntomas:** Clicks en items de una lista (monedas, exchanges) dejan de funcionar después de filtrar/buscar.
+
+**Causa:** Se adjuntaron listeners directamente a los `<button>` de la lista, pero al hacer `innerHTML =` con nuevos resultados, los elementos originales se destruyen.
+
+**Solución:** Usar **event delegation** en el contenedor padre:
+
+```javascript
+// ❌ Incorrecto — listeners se pierden al re-renderizar
+document.querySelectorAll('.coin-row').forEach(row => {
+  row.addEventListener('click', () => handleSelect(row.dataset.coinId));
+});
+
+// ✅ Correcto — un solo listener en el padre
+coinList?.addEventListener('click', (e) => {
+  const row = e.target.closest('.coin-row');
+  if (!row) return;
+  handleSelect(row.dataset.coinId);
+});
+```
+
+---
+
 ## El modal no se abre al hacer click en "Add Funds"
 
 **Síntomas:** El botón `#add-funds` no dispara el modal.
@@ -91,14 +117,29 @@ document.getElementById("add-asset-modal") // ¿Devuelve el modal?
 
 ---
 
+## La búsqueda de monedas no retorna resultados
+
+**Síntomas:** Al buscar en el CoinPicker, no pasa nada.
+
+**Causa:** La búsqueda se dispara con `Enter` (evento `keypress`), no en tiempo real.
+
+**Debug:**
+```javascript
+// Verificar que el input existe y tiene el listener
+document.getElementById("coin-search-input") // ¿Existe?
+// Presionar Enter después de escribir el término
+```
+
+---
+
 ## Las variables de `.env` son `undefined` en runtime
 
-**Síntomas:** `process.env.MI_VARIABLE` es `undefined`.
+**Síntomas:** `process.env.API_KEY` es `undefined`.
 
 **Soluciones:**
 
 1. Verificar que el archivo `.env` existe en la raíz del proyecto
-2. Verificar que la variable está definida sin espacios: `MI_VARIABLE=valor`
+2. Verificar que la variable está definida sin espacios: `API_KEY=valor`
 3. Reiniciar el servidor de desarrollo (dotenv-webpack carga al iniciar, no en hot reload)
 4. Verificar que `dotenv-webpack` está instalado: `pnpm list dotenv-webpack`
 
@@ -140,4 +181,21 @@ pnpm build 2>&1 | tail -50
 
 ---
 
-*Última actualización: 2026-03-15*
+## El debounce no se ejecuta correctamente
+
+**Síntomas:** La búsqueda en AddExchangeModal no se ejecuta o se ejecuta múltiples veces.
+
+**Causa posible:** El `debounce` retorna una función que debe ser invocada con los argumentos correctos.
+
+**Debug:**
+
+```javascript
+// ❌ Incorrecto — no invoca la función retornada
+const optimizedSearch = debounce(searchExchanges, 500);
+input.addEventListener('input', optimizedSearch); // Recibe Event, no string
+
+// ✅ Correcto — pasar el valor explícitamente
+input.addEventListener('input', (e) => {
+  optimizedSearch(e.target.value);
+});
+```

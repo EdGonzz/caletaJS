@@ -1,6 +1,6 @@
 # SEO
 
----
+> Última actualización: 2026-04-15
 
 ## Estado actual del SEO
 
@@ -12,8 +12,8 @@ CaletaJS es una SPA con hash-based routing. Su SEO técnico es limitado por natu
 
 | Elemento SEO                | Implementación                                      | Archivo              |
 |-----------------------------|-----------------------------------------------------|----------------------|
-| `<meta charset="UTF-8">`    | ✅ Presente                                          | public/index.html    |
-| `<meta name="viewport">`    | ✅ `width=device-width, initial-scale=1.0`          | public/index.html    |
+| `<meta charset="UTF-8">`   | ✅ Presente                                          | public/index.html    |
+| `<meta name="viewport">`   | ✅ `width=device-width, initial-scale=1.0`          | public/index.html    |
 | `<title>`                   | ✅ "Caleta" (estático)                               | public/index.html    |
 | `lang` en `<html>`          | ✅ `lang="en"`                                      | public/index.html    |
 
@@ -55,7 +55,3 @@ Las URLs con `#` (ej. `http://localhost:8080/#/about`) tienen un comportamiento 
 | `robots.txt` | `public/`   | ❌ Falta  | Directivas para crawlers         |
 | `sitemap.xml`| `public/`   | ❌ Falta  | Mapa del sitio                   |
 | `favicon.ico`| `public/`   | ❌ Falta  | Ícono de navegador               |
-
----
-
-*Última actualización: 2026-03-15*
