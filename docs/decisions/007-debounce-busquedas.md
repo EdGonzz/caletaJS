@@ -6,7 +6,7 @@
 
 ## Contexto
 
-El modal `AddExchangeModal` permite buscar exchanges en la API de CoinGecko. Sin protección, cada keystroke dispararía una petición HTTP, saturando el rate limit de la API (10-30 req/min) y degradando la experiencia del usuario.
+El modal `AddExchangeModal` y el componente `CoinPicker` permiten buscar datos en la API de CoinGecko. Sin protección, cada keystroke dispararía una petición HTTP, saturando el rate limit de la API (10-30 req/min) y degradando la experiencia del usuario.
 
 ## Decisión
 
@@ -61,5 +61,5 @@ export const debounce = (func, delay) => {
 |---|---|
 | Throttle | Menos adecuado para search — puede enviar peticiones intermedias innecesarias |
 | Sin debounce + caché | La API de CoinGecko no es predecible; cachear todas las posibles queries no es viable |
-| Búsqueda solo con Enter | Implementada en `CoinPicker.js` como alternativa; en exchanges se prefirió búsqueda en vivo |
+| Búsqueda solo con Enter | Se implementó previamente en componentes como `CoinPicker.js`; pero se estandarizó en toda la app el uso de debounce para mejor UX |
 | RxJS / librería reactiva | Over-engineering para un único caso de uso; el helper manual es suficiente |
