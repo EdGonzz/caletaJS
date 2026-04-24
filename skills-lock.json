@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "coingecko": {
+      "source": "coingecko/skills",
+      "sourceType": "github",
+      "computedHash": "e465851730f705e524f41b5683f7fde3f6a6ca4a195268d4118a79ed6960ec73"
+    }
+  }
+}
