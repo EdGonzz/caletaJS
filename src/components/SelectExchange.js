@@ -1,4 +1,4 @@
-import { getSource } from "../utils/sources";
+import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import sprite from "../assets/sprite.svg";
 import SkeletonRow from "../utils/skeletonRow";
 
@@ -25,13 +25,13 @@ const ExchangeRow = (ex, isSelected) => {
 
   const avatar = ex.image
     ? `<img src="${ex.image}" alt="${ex.name}" class="w-6 h-6 object-contain rounded-full" />`
-    : `<div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">${ex.name.charAt(0).toUpperCase()}</div>`;
+    : `<div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">${(typeof ex === 'string' ? ex : ex.name).charAt(0).toUpperCase()}</div>`;
 
   return `
     <button
-      data-exchange-id="${ex.id}"
-      data-exchange-name="${ex.name}"
-      aria-label="Seleccionar ${ex.name}"
+      data-exchange-id="${typeof ex === 'string' ? ex : ex.id}"
+      data-exchange-name="${typeof ex === 'string' ? ex : ex.name}"
+      aria-label="Seleccionar ${typeof ex === 'string' ? ex : ex.name}"
       class="exchange-row w-full flex items-center justify-between p-3 rounded-xl border ${selectedClasses} cursor-pointer transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-primary/40"
     >
       <div class="flex items-center gap-3">
@@ -39,8 +39,8 @@ const ExchangeRow = (ex, isSelected) => {
           ${avatar}
         </div>
         <div class="text-left">
-          <h3 class="font-semibold text-white group-hover:text-primary transition-colors text-sm">${ex.name}</h3>
-          <p class="text-xs text-slate-400 font-mono">${ex.description ?? '—'}</p>
+          <h3 class="font-semibold text-white group-hover:text-primary transition-colors text-sm">${typeof ex === 'string' ? ex : ex.name}</h3>
+          <p class="text-xs text-slate-400 font-mono">${(typeof ex === 'string' ? null : ex.description) ?? '—'}</p>
         </div>
       </div>
       <div class="flex items-center">
@@ -90,10 +90,10 @@ const EmptyState = () => `
  * @returns {string}
  */
 const SelectExchange = (selectedId = "") => {
-  const sources = getSource().filter((s) => s !== "Overview");
+  const sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
 
   const listContent = sources.length
-    ? sources.map((ex) => ExchangeRow(ex, ex.name === selectedId)).join("")
+    ? sources.map((ex) => ExchangeRow(ex, (typeof ex === 'string' ? ex : ex.name) === selectedId)).join("")
     : EmptyState();
 
   return `

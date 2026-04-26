@@ -1,7 +1,7 @@
 import getCoin from "../utils/getCoin";
 import { SelectExchange, SelectLoading } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
-import { getSource } from "../utils/sources";
+import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
 import sprite from "../assets/sprite.svg";
@@ -14,7 +14,7 @@ let activeTab = "buy";
 /** @type {import('../utils/getCoin').Coin} */
 let selectedCoin = coins[0];
 /** @type {import('./SelectExchange').Exchange | null} */
-const _sources = getSource().filter((s) => s !== "Overview");
+const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
 let selectedExchange = _sources[0] ?? null;
 /** @type {'form'|'exchange'|'coin'} */
 let currentView = "form";
@@ -129,10 +129,10 @@ const FormView = () => `
             ${selectedExchange
     ? selectedExchange.image
       ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.image}" />`
-      : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${selectedExchange.name.charAt(0).toUpperCase()}</div>`
+      : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${(typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name).charAt(0).toUpperCase()}</div>`
     : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
   }
-            <span class="text-sm font-medium ${selectedExchange ? 'text-slate-200' : 'text-slate-500'}">${selectedExchange?.name ?? 'Seleccionar caleta'}</span>
+            <span class="text-sm font-medium ${selectedExchange ? 'text-slate-200' : 'text-slate-500'}">${(typeof selectedExchange === 'string' ? selectedExchange : selectedExchange?.name) ?? 'Seleccionar caleta'}</span>
             <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors ml-auto">
               <use href="${sprite}#chevron-down"></use>
             </svg>
@@ -386,8 +386,8 @@ const wireExchangeView = () => {
   document.querySelectorAll(".exchange-row").forEach((row) => {
     row.addEventListener("click", () => {
       const id = row.dataset.exchangeId;
-      const sources = getSource().filter((s) => s !== "Overview");
-      const found = sources.find((ex) => ex.id === id);
+      const sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+      const found = sources.find((ex) => (typeof ex === 'string' ? ex : ex.id) === id);
       if (found) {
         selectedExchange = found;
         currentView = "form";
