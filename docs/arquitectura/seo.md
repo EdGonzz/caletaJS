@@ -1,57 +1,17 @@
-# SEO
+# Optimización para Motores de Búsqueda (SEO)
 
-> Última actualización: 2026-04-15
+Debido a que CaletaJS es una SPA basada en *Hash Routing*, el contenido dinámico no será rastreado de manera óptima por los crawlers sin la ejecución de JavaScript activada. Sin embargo, se garantizan bases SEO estables en el punto de entrada estático.
 
-## Estado actual del SEO
+## Archivo HTML Base (`public/index.html`)
 
-CaletaJS es una SPA con hash-based routing. Su SEO técnico es limitado por naturaleza (el contenido se genera con JavaScript), pero hay optimizaciones básicas en `public/index.html`.
+- Contiene un `div#app` y un `div#header` donde se inyecta la app.
+- Incorpora las metas de `<title>` básicas.
+- Para producciones futuras, deben añadirse etiquetas dinámicas Open Graph si se opta por Server-Side Rendering o Prerendering.
 
----
+## Hash Routing vs SEO
+Actualmente el enrutador utiliza `#/path`. Este modelo asume que el usuario objetivo accede de forma directa a la aplicación una vez logueado o directamente por el índice, no siendo un sitio optimizado para descubrir sub-páginas en motores de búsqueda orgánicos.
 
-## Implementaciones actuales
-
-| Elemento SEO                | Implementación                                      | Archivo              |
-|-----------------------------|-----------------------------------------------------|----------------------|
-| `<meta charset="UTF-8">`   | ✅ Presente                                          | public/index.html    |
-| `<meta name="viewport">`   | ✅ `width=device-width, initial-scale=1.0`          | public/index.html    |
-| `<title>`                   | ✅ "Caleta" (estático)                               | public/index.html    |
-| `lang` en `<html>`          | ✅ `lang="en"`                                      | public/index.html    |
+Si en el futuro se requiriese indexación completa de todas las "páginas" (como perfiles de monedas), se necesitaría modificar la arquitectura para implementar HTML5 History API (`pushState`) y proveer soporte en el servidor para retornar el `index.html` en las diferentes URLs.
 
 ---
-
-## Elementos SEO faltantes (Roadmap)
-
-| Elemento                    | Impacto    | Descripción                                                                      |
-|-----------------------------|------------|----------------------------------------------------------------------------------|
-| `<meta name="description">` | Alto       | Descripción de la app para SERPs y previews sociales                            |
-| Open Graph tags             | Medio      | `og:title`, `og:description`, `og:image` para previews en redes sociales        |
-| Twitter Cards               | Medio      | `twitter:card`, `twitter:title`, `twitter:description`                           |
-| `<link rel="canonical">`    | Medio      | Evitar contenido duplicado si se despliega en múltiples dominios                |
-| JSON-LD / Schema.org        | Bajo       | Datos estructurados para rich results en Google                                  |
-| `<title>` dinámico          | Alto       | Cambiar `document.title` según la vista activa en el router                     |
-| `robots.txt`                | Bajo       | Controlar qué paths indexa el crawler                                           |
-| `sitemap.xml`               | Bajo       | Acelerar el descubrimiento de URLs por crawlers                                 |
-| `favicon`                   | Bajo       | Ícono de la pestaña del navegador                                               |
-
----
-
-## Consideraciones para SPAs con Hash Router
-
-Las URLs con `#` (ej. `http://localhost:8080/#/about`) tienen un comportamiento especial para SEO:
-
-- Los crawlers de Google **pueden** seguir URLs con hash si el contenido se renderiza sin JS.
-- El contenido generado por JavaScript **puede** ser indexado por Google pero **no garantizado** para otros motores.
-- Para mejorar el SEO técnico, se podría migrar a **History API** (sin hash) con un servidor que redirija todas las rutas al `index.html`.
-
-> Cross-reference: [ADR-003 — Hash Router](../decisions/003-hash-router.md)
-
----
-
-## Archivos estáticos
-
-| Archivo      | Ubicación   | Estado    | Propósito                        |
-|--------------|-------------|-----------|----------------------------------|
-| `index.html` | `public/`   | ✅ Existe | Shell HTML base de la SPA        |
-| `robots.txt` | `public/`   | ❌ Falta  | Directivas para crawlers         |
-| `sitemap.xml`| `public/`   | ❌ Falta  | Mapa del sitio                   |
-| `favicon.ico`| `public/`   | ❌ Falta  | Ícono de navegador               |
+*Última actualización: 2026-04-26*

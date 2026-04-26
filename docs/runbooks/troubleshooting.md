@@ -1,201 +1,38 @@
-# Troubleshooting
+# Troubleshooting y Solución de Problemas
 
-> Última actualización: 2026-04-15
+Guía de soluciones comunes durante el desarrollo o en tiempo de ejecución.
 
-Problemas comunes y sus soluciones en el desarrollo de CaletaJS.
+## Problemas de Desarrollo
 
----
+### 1. `pnpm start` arroja error de puerto o host
+**Síntoma:** El servidor arranca pero se cierra con un error de dirección ya en uso (EADDRINUSE) o problemas de localhost (Invalid Host Header).
+**Causa:** El puerto `8080` (o el indicado en `.env`) ya está en uso por otro proceso, o hay conflicto de dominios locales.
+**Solución:** 
+- Cambia la variable `PORT` en el `.env` (ej. `PORT=3000`).
+- Verifica la configuración de `allowedHosts: ['.localhost']` en `webpack.config.js`.
 
-## El servidor de desarrollo no inicia
+### 2. Cambios en CSS (Tailwind) no se ven reflejados
+**Síntoma:** Agregas una clase como `bg-red-500` pero en el navegador sigue transparente, a pesar del Auto-Reload.
+**Causa:** A veces `postcss-loader` o Tailwind v4 se quedan bloqueados en caché o el componente no está incluido correctamente.
+**Solución:**
+- Detén el servidor (Ctrl+C) y vuélvelo a ejecutar.
+- Tailwind v4 inspecciona recursivamente la carpeta actual. Si hay problemas severos, revisa dependencias: `pnpm update @tailwindcss/postcss tailwindcss`.
 
-**Síntomas:** `pnpm start` falla o no abre el navegador.
+## Problemas en Tiempo de Ejecución (UI/Lógica)
 
-**Soluciones:**
+### 3. Event listeners no funcionan en modales o listas
+**Síntoma:** Haces clic en un botón (`AddAssetModal`) y no ocurre nada, no hay errores en consola.
+**Causa:** El elemento no existía en el DOM al momento de ejecutar `document.getElementById()`. Esto ocurre cuando la función de `init()` se llama **antes** de renderizar el componente o actualizar un `innerHTML`.
+**Solución:**
+- Revisa el flujo asíncrono. Por ejemplo en paginación (`HoldingsTable.js`): después de inyectar nuevas filas con `tbody.innerHTML`, debes volver a suscribir eventos a los botones generados.
+- Asegúrate de que los identificadores (`id="..."`) sean consistentes y únicos.
 
-```bash
-# 1. Verificar que las dependencias estén instaladas
-pnpm install
-
-# 2. Verificar que el puerto 8080 no esté ocupado
-lsof -i :8080
-# Si está ocupado, pnpm start usa portless que asigna uno disponible automáticamente
-
-# 3. Borrar caché de webpack
-rm -rf dist/ .cache/
-pnpm start
-
-# 4. Nuclear option
-pnpm dlx /nuke  # o ver workflow /nuke
-```
-
----
-
-## Los estilos de Tailwind no se aplican
-
-**Síntomas:** Las clases de Tailwind no tienen efecto visual.
-
-**Soluciones:**
-
-1. Verificar que `tailwind.config.js` incluya los paths correctos:
-```javascript
-content: [
-  "./src/**/*.{html,js}",
-  "./public/index.html"
-]
-```
-
-2. Verificar que `main.css` tiene la directiva correcta para Tailwind v4:
-```css
-@import "tailwindcss";
-```
-
-3. Verificar que `postcss.config.js` usa el plugin correcto:
-```javascript
-export default {
-  plugins: { "@tailwindcss/postcss": {} }
-};
-```
+### 4. Peticiones a CoinGecko fallan sistemáticamente (429 Too Many Requests)
+**Síntoma:** Errores 429 en la pestaña Network, gráficos que no cargan, listas vacías.
+**Causa:** Exceso de límite de la API gratuita. O ausencia de la cabecera del token.
+**Solución:**
+- Confirma que el archivo `.env` tiene `API_KEY` correcta, y el loader `dotenv-webpack` la está inyectando.
+- Modifica el uso de la API. Cerciórate de estar empleando los mecanismos de **Debounce** (ver patrón en `src/pages` y modales) para retrasar llamadas masivas al teclear en inputs de búsqueda.
 
 ---
-
-## Los event listeners no funcionan después de navegar
-
-**Síntomas:** Botones o inputs no responden al hacer click tras usar el router hash.
-
-**Causa:** El router reemplaza `innerHTML` del `#app`, destruyendo todos los listeners previos.
-
-**Solución:** Asegurarse de que la función `init*` de cada componente interactivo se llame en el router **después** de `root.innerHTML = await render()`:
-
-```javascript
-// routes.js
-root.innerHTML = await render();
-if (path === "/") {
-  initHoldingsTable();    // ← ¿Está siendo llamado?
-  initAddAssetModal();    // ← ¿Está siendo llamado?
-}
-```
-
----
-
-## Los event listeners se pierden después de re-renderizar una lista
-
-**Síntomas:** Clicks en items de una lista (monedas, exchanges) dejan de funcionar después de filtrar/buscar.
-
-**Causa:** Se adjuntaron listeners directamente a los `<button>` de la lista, pero al hacer `innerHTML =` con nuevos resultados, los elementos originales se destruyen.
-
-**Solución:** Usar **event delegation** en el contenedor padre:
-
-```javascript
-// ❌ Incorrecto — listeners se pierden al re-renderizar
-document.querySelectorAll('.coin-row').forEach(row => {
-  row.addEventListener('click', () => handleSelect(row.dataset.coinId));
-});
-
-// ✅ Correcto — un solo listener en el padre
-coinList?.addEventListener('click', (e) => {
-  const row = e.target.closest('.coin-row');
-  if (!row) return;
-  handleSelect(row.dataset.coinId);
-});
-```
-
----
-
-## El modal no se abre al hacer click en "Add Funds"
-
-**Síntomas:** El botón `#add-funds` no dispara el modal.
-
-**Causa más probable:** `initAddAssetModal()` no se está llamando, o el botón no existe en el DOM cuando se llama.
-
-**Debug:**
-
-```javascript
-// En DevTools Console
-document.getElementById("add-funds")       // ¿Devuelve el botón?
-document.getElementById("add-asset-modal") // ¿Devuelve el modal?
-```
-
----
-
-## La búsqueda de monedas no retorna resultados
-
-**Síntomas:** Al buscar en el CoinPicker, no pasa nada.
-
-**Causa:** La búsqueda se dispara con `Enter` (evento `keypress`), no en tiempo real.
-
-**Debug:**
-```javascript
-// Verificar que el input existe y tiene el listener
-document.getElementById("coin-search-input") // ¿Existe?
-// Presionar Enter después de escribir el término
-```
-
----
-
-## Las variables de `.env` son `undefined` en runtime
-
-**Síntomas:** `process.env.API_KEY` es `undefined`.
-
-**Soluciones:**
-
-1. Verificar que el archivo `.env` existe en la raíz del proyecto
-2. Verificar que la variable está definida sin espacios: `API_KEY=valor`
-3. Reiniciar el servidor de desarrollo (dotenv-webpack carga al iniciar, no en hot reload)
-4. Verificar que `dotenv-webpack` está instalado: `pnpm list dotenv-webpack`
-
----
-
-## El build de producción falla
-
-**Síntomas:** `pnpm build` lanza errores.
-
-**Soluciones:**
-
-```bash
-# Verificar errores de sintaxis JS
-npx eslint src/ --ext .js
-
-# Limpiar y rebuildar
-rm -rf dist/
-pnpm build
-
-# Ver el error completo
-pnpm build 2>&1 | tail -50
-```
-
----
-
-## Los SVGs del sprite no se renderizan
-
-**Síntomas:** Los iconos aparecen en blanco o con un área vacía.
-
-**Causa:** Webpack procesa SVGs como `asset/resource` (URL), pero si el path del sprite no es correcto, el `<use href>` falla.
-
-**Debug:**
-
-```javascript
-// En DevTools → Network, verificar que sprite.svg se carga (200 OK)
-// En DevTools → Elements, verificar que href del <use> apunta a una URL válida
-// ejemplo: href="/static/media/sprite.abc123.svg#search"
-```
-
----
-
-## El debounce no se ejecuta correctamente
-
-**Síntomas:** La búsqueda en AddExchangeModal no se ejecuta o se ejecuta múltiples veces.
-
-**Causa posible:** El `debounce` retorna una función que debe ser invocada con los argumentos correctos.
-
-**Debug:**
-
-```javascript
-// ❌ Incorrecto — no invoca la función retornada
-const optimizedSearch = debounce(searchExchanges, 500);
-input.addEventListener('input', optimizedSearch); // Recibe Event, no string
-
-// ✅ Correcto — pasar el valor explícitamente
-input.addEventListener('input', (e) => {
-  optimizedSearch(e.target.value);
-});
-```
+*Última actualización: 2026-04-26*

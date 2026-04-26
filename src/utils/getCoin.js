@@ -31,34 +31,60 @@ const API_URL = process.env.API_URL;
  * @property {string}      last_updated                       - Última actualización en ISO 8601
  */
 
+const options = {
+  method: 'GET',
+  headers: {
+    'x-cg-demo-api-key': API_KEY,
+    'Content-Type': 'application/json'
+  }
+};
+
 /**
- * Obtiene datos de un coin específico o la lista de coins por market cap.
- *
- * @param {string} [id] - ID del coin (e.g. "bitcoin"). Si se omite, retorna el top 10.
- * @returns {Promise<Coin[] | Coin | null>} Array de coins, un coin, o null si hay error.
+ * Busca monedas de forma global.
+ * @param {string} query
+ * @returns {Promise<{coins: Array}>}
+ */
+export const searchCoins = async (query) => {
+  try {
+    const response = await fetch(`${API_URL}/search?query=${query}`, options);
+    if (!response.ok) throw new Error(`Search API Error: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching coins:', error);
+    return { coins: [] };
+  }
+};
+
+/**
+ * Obtiene el top de monedas por market cap.
+ * @param {number} limit
+ * @returns {Promise<Coin[]>}
+ */
+export const getTopCoins = async (limit = 10) => {
+  try {
+    const response = await fetch(`${API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1`, options);
+    if (!response.ok) throw new Error(`Markets API Error: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching top coins:', error);
+    return [];
+  }
+};
+
+/**
+ * Obtiene datos detallados de una moneda por su ID.
+ * @param {string} id - ID de CoinGecko (e.g. "bitcoin")
+ * @returns {Promise<Coin | null>}
  */
 const getCoin = async (id) => {
-  const url = id
-    ? `${API_URL}/search?query=${id}`
-    : `${API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1`;
-
-  const options = {
-    method: 'GET',
-    headers: {
-      'x-cg-demo-api-key': API_KEY,
-      'Content-Type': 'application/json'
-    }
-  };
-
+  if (!id) return null;
   try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
-    }
+    const response = await fetch(`${API_URL}/coins/markets?vs_currency=usd&ids=${id}`, options);
+    if (!response.ok) throw new Error(`Coin Detail API Error: ${response.status}`);
     const data = await response.json();
-    return data;
+    return data[0] || null;
   } catch (error) {
-    console.error('Error fetching data:', error);
+    console.error('Error fetching coin detail:', error);
     return null;
   }
 };

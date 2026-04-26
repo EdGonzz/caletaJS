@@ -1,110 +1,85 @@
 # Cómo Agregar una Nueva Ruta o Vista
 
-> Última actualización: 2026-04-15
+Sigue este proceso estructurado para introducir una nueva "página" completa dentro de la Single Page Application (SPA).
 
-Guía paso a paso para extender el router de CaletaJS con una nueva vista.
+## Paso 1: Crear el Componente Visual
 
----
-
-## Ejemplo: Agregar la vista `/portfolio`
-
-### Paso 1 — Crear el componente de página
+1. Navega a `src/pages/`.
+2. Crea un archivo JS, por ejemplo `NuevaVista.js`.
+3. Exporta una función que retorne el HTML (Template Literal).
+4. Exporta una función de inicialización si es que la vista va a requerir eventos de DOM.
 
 ```javascript
-// src/pages/Portfolio.js
+// src/pages/NuevaVista.js
+export const initNuevaVista = () => {
+  const btn = document.getElementById('btn-accion');
+  if(btn) {
+    btn.addEventListener('click', () => alert('Acción disparada'));
+  }
+}
 
-const Portfolio = () => {
+const NuevaVista = () => {
   return `
-    <main class="px-4 pt-6 pb-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-[1600px]">
-        <h1 class="text-2xl font-bold text-white mb-6">Mi Portfolio</h1>
-        <!-- Contenido de la vista -->
-      </div>
-    </main>
+    <div class="glass-panel p-6">
+      <h1 class="text-white text-2xl">Nueva Vista</h1>
+      <button id="btn-accion" class="btn-primary mt-4">Acción</button>
+    </div>
   `;
-};
+}
 
-export default Portfolio;
+export default NuevaVista;
 ```
 
-Si la vista tiene interactividad, exporta también una función `init`:
+## Paso 2: Registrar el Hash en `resolveRoutes.js`
 
-```javascript
-// Al final del mismo archivo
-export const initPortfolio = () => {
-  const btn = document.getElementById("portfolio-action-btn");
-  btn?.addEventListener("click", () => { /* ... */ });
-};
-```
-
----
-
-### Paso 2 — Registrar el componente en el router
-
-```javascript
-// src/router/routes.js
-import Portfolio from "../pages/Portfolio";       // ← Añadir import
-import { initPortfolio } from "../pages/Portfolio"; // ← Si tiene init
-
-const routes = {
-  "/": Home,
-  "/about": About,
-  "/coin/:id": CoinDetails,
-  "/portfolio": Portfolio,   // ← Añadir aquí
-  "/404": Error404,
-};
-
-const router = async () => {
-  // ... (código existente)
-  root.innerHTML = await render();
-
-  if (path === "/") {
-    initHoldingsTable();
-    initAddAssetModal();
-  }
-
-  if (path === "/portfolio") {   // ← Añadir bloque init
-    initPortfolio();
-  }
-};
-```
-
----
-
-### Paso 3 — Configurar resolveRoutes (si es necesario)
-
-Si la ruta es **estática** (sin parámetros dinámicos), agregarla al array:
+Edita `src/utils/resolveRoutes.js` para crear la correspondencia entre la URI del navegador (`#/nueva-vista`) y una llave estática.
 
 ```javascript
 // src/utils/resolveRoutes.js
-const staticRoutes = ["about", "404", "portfolio"]; // ← Añadir aquí
+const resolveRoutes = (route) => {
+  if (route === '/') return '/';
+  if (route === '/about') return '/about';
+  if (route === '/nueva-vista') return '/nueva-vista'; // <--- AGREGAR
+  // ...
+  return `/${route}`;
+};
+export default resolveRoutes;
 ```
 
-Si es **dinámica** (ej. `/portfolio/:id`), agregar un caso:
+## Paso 3: Mapear la Llave al Componente en `routes.js`
+
+Edita el enrutador principal en `src/router/routes.js`. Importa tu nueva vista y su método de inicialización.
 
 ```javascript
-if (path === "portfolio") return "/portfolio/:id";
+// src/router/routes.js
+import NuevaVista, { initNuevaVista } from '../pages/NuevaVista';
+
+const routes = {
+  '/': Home,
+  '/about': About,
+  '/nueva-vista': NuevaVista, // <--- AGREGAR RUTA Y COMPONENTE
+};
+
+const initFunctions = {
+  '/': initHome,
+  '/nueva-vista': initNuevaVista, // <--- AGREGAR INICIALIZADOR
+}
+
+const router = async () => {
+  // lógica de ruteo existente...
+  let render = routes[route] ? routes[route] : Error404;
+  content.innerHTML = await render();
+
+  // Llamar al inicializador si existe
+  if (initFunctions[route]) {
+    initFunctions[route]();
+  }
+};
 ```
 
----
+## Paso 4: Agregar Enlace de Navegación
 
-### Paso 4 — Agregar enlace en el Header (opcional)
-
-```javascript
-// src/components/Header.js
-<a href="#/portfolio" class="text-slate-300 hover:text-emerald-400 transition font-medium">
-  Portfolio
-</a>
-```
+Ve a `src/components/Header.js` y agrega el enlace, asegurándote de usar correctamente el hash (`href="#/nueva-vista"`).
 
 ---
-
-## Checklist
-
-- [ ] Crear `src/pages/NombrePagina.js` con `export default` del render fn
-- [ ] Si es interactiva: exportar `initNombrePagina`
-- [ ] Importar en `src/router/routes.js`
-- [ ] Añadir al objeto `routes`
-- [ ] Llamar `init*` en el bloque correspondiente del router
-- [ ] Actualizar `resolveRoutes.js` si aplica
-- [ ] Añadir enlace en `Header.js` si aplica
+*Última actualización: 2026-04-26*

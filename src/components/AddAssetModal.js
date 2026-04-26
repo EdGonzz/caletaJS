@@ -1,4 +1,4 @@
-import getCoin from "../utils/getCoin";
+import getCoin, { getTopCoins } from "../utils/getCoin";
 import { SelectExchange, SelectLoading } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
@@ -6,7 +6,7 @@ import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
 import sprite from "../assets/sprite.svg";
 
-let coins = await getCoin();
+let coins = await getTopCoins();
 
 // ─── State ─────────────────────────────────────────────────────────
 /** @type {'buy'|'sell'|'transfer'} */
@@ -21,7 +21,7 @@ let currentView = "form";
 
 // Persisted Form State
 let quantity = "";
-let price = "66751.65";
+let price = selectedCoin?.current_price?.toString() || "0";
 let date = now();
 let fees = "";
 let notes = "";
@@ -227,10 +227,23 @@ const renderInner = () => {
     initCoinPicker({
         onBack: () => { currentView = "form"; renderInner(); },
         onClose: closeModal,
-        onSelect: (id) => {
-            const found = coins.find((c) => c.id === id);
+        onSelect: async (id) => {
+            // Si la moneda seleccionada viene de búsqueda, podría no tener precio
+            let found = coins.find((c) => c.id === id);
+            
+            // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
+            if (!found || !found.current_price) {
+                const detailedCoin = await getCoin(id);
+                if (detailedCoin) {
+                    found = detailedCoin;
+                    // Opcionalmente actualizar la lista local para futuras referencias
+                    if (!coins.find(c => c.id === id)) coins.push(detailedCoin);
+                }
+            }
+
             if (found) {
                 selectedCoin = found;
+                price = found.current_price?.toString() || "0";
                 currentView = "form";
                 renderInner();
             }
@@ -250,7 +263,7 @@ const openModal = () => {
   activeTab = "buy";
   // Reset form state on open
   quantity = "";
-  price = "66751.65";
+  price = selectedCoin?.current_price?.toString() || "0";
   date = now();
   fees = "";
   notes = "";
@@ -321,6 +334,17 @@ const wireFormView = () => {
     showNotes = !showNotes;
     ta?.classList.toggle("hidden");
     if (showNotes) ta?.focus();
+  });
+
+  // Use Market Price
+  document.getElementById("use-market-btn")?.addEventListener("click", async () => {
+    const marketPrice = selectedCoin.current_price;
+    if (marketPrice) {
+        price = marketPrice.toString();
+        const priceInput = document.getElementById("price-input");
+        if (priceInput) priceInput.value = price;
+        updateTotal();
+    }
   });
 
   // Input sync with state

@@ -1,116 +1,35 @@
-# Deploy
+# Deployment
 
-> Última actualización: 2026-04-15
+Pasos requeridos para publicar CaletaJS a un entorno de producción (Vercel, Netlify, o Servidor Estático tradicional).
 
-## Proceso de Build
+## Generar Bundle de Producción
 
+1. Asegúrate de estar en la raíz de tu proyecto local y que las dependencias estén correctas.
+2. Compila el código:
 ```bash
-# Generar bundle de producción
 pnpm build
 ```
+3. El directorio `dist/` se creará y contendrá todo lo necesario: un `index.html` base y tu `bundle.js` empaquetado y ofuscado, así como los `assets`.
 
-El output se genera en `/dist`:
-```text
-dist/
-├── index.html       # HTML generado por HtmlWebpackPlugin
-├── bundle.js        # JS minificado y optimizado
-└── *.svg            # Assets SVG con hash de contenido
-```
+## Opciones de Hospedaje Estático
 
----
+### Opción A: Vercel / Netlify (Recomendado)
+Puesto que es una SPA estática, no hay servidor Node involucrado.
+- Enlázalo con tu repositorio (GitHub, GitLab).
+- En Vercel: Define el framework preset a `Other` o `Vanilla`.
+- **Comando de construcción:** `pnpm build`
+- **Directorio de salida:** `dist`
 
-## Opciones de Deploy
+### Opción B: Apache / Nginx
+- Sube el contenido de la carpeta `/dist/` al directorio raíz público (`/var/www/html/` o análogo).
+- No se requieren reglas estrictas de reescritura de URL (`mod_rewrite` o `try_files`) porque se emplea *Hash Routing*. Todas las subpáginas (e.g. `tusitio.com/#/about`) procesarán primero sobre `index.html`, donde el router de cliente asumirá el control.
 
-CaletaJS es una SPA con hash router — puede desplegarse en **cualquier static host** sin configuración especial de servidor. No requiere fallback de rutas porque el hash router funciona client-side.
+## Variables de Entorno en Producción
+Asegúrate de inyectar (en el dashboard de Vercel/Netlify, o en el servidor CI/CD) las variables:
+- `API_URL`
+- `API_KEY`
 
-### GitHub Pages
-
-```bash
-# 1. Construir
-pnpm build
-
-# 2. Opción A: Deploy manual
-# Subir contenido de /dist al branch gh-pages
-
-# 3. Opción B: GitHub Actions
-# Crear .github/workflows/deploy.yml (ver abajo)
-```
-
-**GitHub Actions workflow** (`.github/workflows/deploy.yml`):
-
-```yaml
-name: Deploy to GitHub Pages
-on:
-  push:
-    branches: [main]
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 10
-      - run: pnpm install
-      - run: pnpm build
-      - uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-```
+El script de `webpack` (a través del plugin `dotenv-webpack`) las empaquetará dentro del bundle JavaScript generado. **Nota de seguridad:** La API Key de CoinGecko quedará expuesta en el JavaScript de cliente. Considerar utilizar un backend-proxy en caso de que la clave contenga privilegios críticos o cuotas de pago elevadas.
 
 ---
-
-### Netlify
-
-1. Conectar repositorio en [netlify.com](https://netlify.com)
-2. Configurar:
-   - **Build command:** `pnpm build`
-   - **Publish directory:** `dist`
-   - **Node version:** 18 o superior
-3. Deploy automático en cada push a `main`
-
-> **Variables de entorno:** Configurarlas en Netlify → Site Settings → Environment Variables (`API_KEY`, `API_URL`)
-
----
-
-### Vercel
-
-```bash
-# Instalar Vercel CLI
-pnpm dlx vercel
-
-# Deploy desde la raíz del proyecto
-vercel --prod
-```
-
-Configuración en `vercel.json` (si necesario):
-
-```json
-{
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist"
-}
-```
-
----
-
-### Surge.sh (Deploy rápido)
-
-```bash
-# Instalar surge
-pnpm dlx surge
-
-# Build + Deploy
-pnpm build && surge dist/ mi-caleta.surge.sh
-```
-
----
-
-## Checklist pre-deploy
-
-- [ ] `pnpm build` completa sin errores
-- [ ] Verificar que `dist/index.html` existe
-- [ ] Variables de entorno configuradas en el host (`API_KEY`, `API_URL`)
-- [ ] Verificar que el bundle no incluye datos sensibles del `.env`
-- [ ] Probar el build localmente: `npx serve dist/`
+*Última actualización: 2026-04-26*

@@ -1,6 +1,6 @@
 import sprite from "../assets/sprite.svg";
 import { SelectLoading } from "./SelectExchange";
-import getCoin from "../utils/getCoin";
+import { searchCoins } from "../utils/getCoin";
 import { debounce } from "../utils/helpers";
 
 /**
@@ -102,7 +102,7 @@ const initCoinPicker = ({ onBack, onClose, onSelect, onCoinsUpdate, currentCoins
     if (query.trim().length < 2) return;
 
     try {
-      const response = await getCoin(query);
+      const response = await searchCoins(query);
       const newCoins = response.coins?.slice(0, 15) ?? [];
       onCoinsUpdate(newCoins);
 
