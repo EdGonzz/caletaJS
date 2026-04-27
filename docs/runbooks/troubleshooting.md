@@ -35,4 +35,4 @@ Guía de soluciones comunes durante el desarrollo o en tiempo de ejecución.
 - Modifica el uso de la API. Cerciórate de estar empleando los mecanismos de **Debounce** (ver patrón en `src/pages` y modales) para retrasar llamadas masivas al teclear en inputs de búsqueda.
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

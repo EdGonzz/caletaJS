@@ -61,4 +61,4 @@ caleta/
 | Decisiones (ADRs) | [../decisions/](../decisions/) |
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

@@ -42,4 +42,4 @@ API_KEY=tu_clave_de_demo_aqui
 - Si un cambio en `src/styles/main.css` o `index.html` no se refleja, puede ser útil vaciar el caché o reiniciar el servidor (Ctrl+C y `pnpm start` nuevamente).
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

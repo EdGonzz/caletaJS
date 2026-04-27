@@ -32,4 +32,4 @@ Asegúrate de inyectar (en el dashboard de Vercel/Netlify, o en el servidor CI/C
 El script de `webpack` (a través del plugin `dotenv-webpack`) las empaquetará dentro del bundle JavaScript generado. **Nota de seguridad:** La API Key de CoinGecko quedará expuesta en el JavaScript de cliente. Considerar utilizar un backend-proxy en caso de que la clave contenga privilegios críticos o cuotas de pago elevadas.
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

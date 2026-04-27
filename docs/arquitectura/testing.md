@@ -24,4 +24,4 @@ test('renders title and value', () => {
 Para componentes que exigen `init*()`, las pruebas deben inyectar el HTML pre-generado en un DOM virtual (`jsdom`), llamar al método `init()`, simular eventos como un "clic" en paginación o un "input" en el buscador, y asertar cambios de estado usando selectores de Vanilla JS (`document.querySelector`).
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

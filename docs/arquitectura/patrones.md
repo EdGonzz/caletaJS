@@ -45,16 +45,14 @@ Un manejador de rutas basado en los eventos `hashchange` y `load` del objeto `wi
 ## 4. Debounce Optimization en Entradas de Texto
 
 ### ¿Qué es y cómo funciona?
-Funciones que limitan la frecuencia de ejecución de otras operaciones pesadas, como peticiones a APIs externas (ej. búsqueda de criptomonedas). 
+Funciones que limitan la frecuencia de ejecución de otras operaciones pesadas, como peticiones a APIs externas (ej. búsqueda de criptomonedas). Se combina con **Skeleton Loading** para dar feedback inmediato.
 
 ```javascript
 // Implementado en CoinPicker.js y AddAssetModal.js
-let debounceTimeout;
+const optimizedSearch = debounce(searchInAPI, 500);
 searchInput.addEventListener('input', (e) => {
-  clearTimeout(debounceTimeout);
-  debounceTimeout = setTimeout(() => {
-    searchInAPI(e.target.value);
-  }, 300);
+  showSkeleton(); // Feedback inmediato
+  optimizedSearch(e.target.value); // Ejecución diferida
 });
 ```
 
@@ -64,5 +62,20 @@ searchInput.addEventListener('input', (e) => {
 
 *Ver ADR:* `docs/decisions/007-debounce-busquedas.md` y `008-optimizacion-busqueda-coingecko.md`
 
+## 5. SVG Sprite System
+
+### ¿Qué es y cómo funciona?
+Centralización de assets vectoriales en un único archivo `src/assets/sprite.svg`. Los iconos se instancian en el DOM mediante el elemento `<use>` de SVG.
+
+```html
+<svg class="icon"><use href="assets/sprite.svg#icon-id"></use></svg>
+```
+
+### Trade-offs
+✅ **Pros:** Reduce el número de peticiones HTTP, permite cachear todos los iconos y facilita el cambio de estilos vía CSS.
+⚠️ **Cons:** Requiere mantenimiento manual del archivo sprite y cuidado con los IDs para evitar colisiones.
+
+*Ver ADR:* `docs/decisions/009-correccion-sprite-svg.md`
+
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

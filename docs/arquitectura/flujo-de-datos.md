@@ -43,4 +43,4 @@ Los datos remotos (CoinGecko) se solicitan a través de los helpers en `src/util
 Las funciones están estructuradas para atrapar errores y retornar estados consistentes o *defaults* vacíos si el fetch falla, garantizando que los inicializadores puedan continuar y renderizar esqueletos o mensajes de error sin romper la aplicación.
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

@@ -18,4 +18,4 @@ Cumplir con el estándar WCAG 2.1 AA es fundamental. A pesar de que la UI es sim
 - Las tablas complejas deben seguir empleando `<th scope="col">`.
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

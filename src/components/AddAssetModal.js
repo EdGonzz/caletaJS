@@ -4,9 +4,10 @@ import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
+import { addHolding } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 
-let coins = await getTopCoins();
+let coins = [];
 
 // ─── State ─────────────────────────────────────────────────────────
 /** @type {'buy'|'sell'|'transfer'} */
@@ -383,7 +384,36 @@ const wireFormView = () => {
 
   // Submit
   document.getElementById("submit-transaction-btn")?.addEventListener("click", () => {
-    // TODO: Actually persist the transaction
+    if (!quantity || !price || !selectedCoin) {
+      // Basic validation visual feedback
+      const btn = document.getElementById("submit-transaction-btn");
+      btn.classList.add("!bg-red-500", "!text-white");
+      setTimeout(() => btn.classList.remove("!bg-red-500", "!text-white"), 1000);
+      return;
+    }
+
+    const holding = {
+      coinId: selectedCoin.id,
+      name: selectedCoin.name,
+      symbol: selectedCoin.symbol,
+      logoUrl: selectedCoin.image || selectedCoin.thumb,
+      balance: parseFloat(quantity),
+      price: parseFloat(price),
+      source: selectedExchange 
+        ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name) 
+        : 'Wallet',
+      sourceIcon: 'wallet',
+      type: activeTab,
+      date: date,
+      fees: parseFloat(fees) || 0,
+      notes: notes
+    };
+
+    addHolding(holding);
+    
+    // Notify other components (HoldingsTable, StatsGrid)
+    window.dispatchEvent(new CustomEvent('holdings-updated', { detail: { holding } }));
+
     closeModal();
   });
 };
@@ -449,7 +479,13 @@ const wireExchangeView = () => {
  * Wires up the "Add Funds" button to open the modal.
  * Must be called after the DOM containing AddAssetModal() has been rendered.
  */
-const initAddAssetModal = () => {
+const initAddAssetModal = async () => {
+  // Load coins if not loaded
+  if (coins.length === 0) {
+    coins = await getTopCoins();
+    selectedCoin = coins[0];
+  }
+
   // The "Add Funds" button has id="add-funds"
   document.getElementById("add-funds")?.addEventListener("click", openModal);
 

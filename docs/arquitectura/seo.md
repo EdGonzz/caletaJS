@@ -14,4 +14,4 @@ Actualmente el enrutador utiliza `#/path`. Este modelo asume que el usuario obje
 Si en el futuro se requiriese indexación completa de todas las "páginas" (como perfiles de monedas), se necesitaría modificar la arquitectura para implementar HTML5 History API (`pushState`) y proveer soporte en el servidor para retornar el `index.html` en las diferentes URLs.
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

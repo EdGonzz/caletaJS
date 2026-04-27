@@ -82,4 +82,4 @@ const router = async () => {
 Ve a `src/components/Header.js` y agrega el enlace, asegurándote de usar correctamente el hash (`href="#/nueva-vista"`).
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*

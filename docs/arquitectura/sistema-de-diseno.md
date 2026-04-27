@@ -42,4 +42,4 @@ Para indicar estados de carga sin JavaScript extra:
 - **`modal-enter`**: Animación CSS pura para la entrada de modales con un escalado y subida ligeros (`slide-up`).
 
 ---
-*Última actualización: 2026-04-26*
+*Última actualización: 2026-04-27*
