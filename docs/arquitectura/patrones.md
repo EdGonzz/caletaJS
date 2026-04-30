@@ -77,5 +77,27 @@ Centralización de assets vectoriales en un único archivo `src/assets/sprite.sv
 
 *Ver ADR:* `docs/decisions/009-correccion-sprite-svg.md`
 
+## 6. Lazy Loading con Skeletons Contenidos
+
+### ¿Qué es y cómo funciona?
+Al diferir la carga de datos (Lazy Loading) para optimizar el renderizado inicial, los estados de carga no reemplazan la estructura base de la vista. Los componentes reciben un parámetro `isLoading` que les permite renderizar toda su "cáscara" (encabezados, botones de acción y contenedores restrictivos) e inyectar animaciones de carga (skeletons) únicamente en el área designada para los datos.
+
+```javascript
+const Componente = (datos, isLoading = false) => `
+  <div class="vista-base" style="max-height: 360px">
+    <header>Mis Datos</header>
+    <div class="contenido">
+      ${isLoading ? SkeletonLoader() : renderDatos(datos)}
+    </div>
+  </div>
+`;
+```
+
+### Trade-offs
+✅ **Pros:** Elimina el *Layout Shift* al mantener restricciones físicas exactas y permite interacción prematura con botones de navegación/cierre.
+⚠️ **Cons:** Requiere lógica condicional y paramétrica adicional dentro de cada componente de presentación.
+
+*Ver ADR:* `docs/decisions/011-lazy-loading-skeletons.md`
+
 ---
-*Última actualización: 2026-04-27*
+*Última actualización: 2026-04-30*

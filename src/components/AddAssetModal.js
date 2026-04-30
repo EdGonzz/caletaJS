@@ -1,19 +1,28 @@
 import getCoin, { getTopCoins } from "../utils/getCoin";
+import { storage } from "../utils/storage";
 import { SelectExchange, SelectLoading } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
-import { addHolding } from "../utils/holdingsStorage";
+import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 
 let coins = [];
+
+const DEFAULT_COIN = {
+  id: "bitcoin",
+  symbol: "btc",
+  name: "Bitcoin",
+  image: "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
+  current_price: 0
+};
 
 // ─── State ─────────────────────────────────────────────────────────
 /** @type {'buy'|'sell'|'transfer'} */
 let activeTab = "buy";
 /** @type {import('../utils/getCoin').Coin} */
-let selectedCoin = coins[0];
+let selectedCoin = DEFAULT_COIN;
 /** @type {import('./SelectExchange').Exchange | null} */
 const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
 let selectedExchange = _sources[0] ?? null;
@@ -224,6 +233,24 @@ const renderInner = () => {
     inner.innerHTML = SelectExchange(selectedExchange?.id);
     wireExchangeView();
   } else if (currentView === "coin") {
+    // Lazy load coins if empty
+    if (coins.length === 0) {
+      inner.innerHTML = CoinPicker([], selectedCoin.id, true);
+      // Ensure buttons work even during loading
+      initCoinPicker({
+          onBack: () => { currentView = "form"; renderInner(); },
+          onClose: closeModal,
+          onSelect: () => {}, // Not selectable while loading
+          onCoinsUpdate: () => {},
+          currentCoins: [],
+          selectedCoinId: selectedCoin.id
+      });
+      getTopCoins().then(newCoins => {
+          coins = newCoins;
+          renderInner();
+      });
+      return;
+    }
     inner.innerHTML = CoinPicker(coins, selectedCoin.id);
     initCoinPicker({
         onBack: () => { currentView = "form"; renderInner(); },
@@ -259,9 +286,44 @@ const renderInner = () => {
   }
 };
 
-const openModal = () => {
+const openModal = async () => {
   currentView = "form";
   activeTab = "buy";
+  
+  // Persistencia: Seleccionar la moneda con más balance si existe
+  const holdings = getHoldings();
+  if (holdings.length > 0) {
+      // Agrupar por coinId y sumar balances
+      const balances = holdings.reduce((acc, h) => {
+          acc[h.coinId] = (acc[h.coinId] || 0) + (h.balance || 0);
+          return acc;
+      }, {});
+      
+      const topCoinId = Object.entries(balances).sort((a, b) => b[1] - a[1])[0][0];
+      const topHolding = holdings.find(h => h.coinId === topCoinId);
+      
+      if (topHolding) {
+          selectedCoin = {
+              id: topHolding.coinId,
+              name: topHolding.name,
+              symbol: topHolding.symbol,
+              image: topHolding.logoUrl,
+              current_price: topHolding.price
+          };
+      }
+  } else {
+      selectedCoin = DEFAULT_COIN;
+  }
+
+  // Persistencia de Exchange: Cargar el último usado o el primero disponible
+  const lastExchange = storage.get('caleta_last_exchange');
+  if (lastExchange) {
+      selectedExchange = lastExchange;
+  } else {
+      const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+      selectedExchange = _sources[0] ?? null;
+  }
+
   // Reset form state on open
   quantity = "";
   price = selectedCoin?.current_price?.toString() || "0";
@@ -411,6 +473,11 @@ const wireFormView = () => {
 
     addHolding(holding);
     
+    // Guardar último exchange seleccionado para persistencia
+    if (selectedExchange) {
+        storage.set('caleta_last_exchange', selectedExchange);
+    }
+    
     // Notify other components (HoldingsTable, StatsGrid)
     window.dispatchEvent(new CustomEvent('holdings-updated', { detail: { holding } }));
 
@@ -480,26 +547,32 @@ const wireExchangeView = () => {
  * Must be called after the DOM containing AddAssetModal() has been rendered.
  */
 const initAddAssetModal = async () => {
-  // Load coins if not loaded
-  if (coins.length === 0) {
-    coins = await getTopCoins();
-    selectedCoin = coins[0];
-  }
-
   // The "Add Funds" button has id="add-funds"
   document.getElementById("add-funds")?.addEventListener("click", openModal);
 
   // Close on backdrop click
-  document.getElementById("modal-backdrop")?.addEventListener("click", (e) => {
-      if (e.target.id === "modal-backdrop") closeModal();
+  document.getElementById("add-asset-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "add-asset-modal") closeModal();
   });
 
-  // Close on Escape (only when AddExchangeModal is not open)
+  // Close or go back on Escape
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
+
+    // Check if sub-modal (AddExchangeModal) is open
     const addExchangeModal = document.getElementById("add-exchange-modal");
     const isAddExchangeOpen = addExchangeModal && !addExchangeModal.classList.contains("opacity-0");
-    if (!isAddExchangeOpen) closeModal();
+    if (isAddExchangeOpen) return;
+
+    const modal = document.getElementById("add-asset-modal");
+    if (!modal || modal.classList.contains("opacity-0")) return;
+
+    if (currentView !== "form") {
+      currentView = "form";
+      renderInner();
+    } else {
+      closeModal();
+    }
   });
 
   // Init Add Exchange modal (Escape key + backdrop)

@@ -39,9 +39,10 @@ const CoinOption = (coin, isSelected) => `
  * CoinPicker sub-view component.
  * @param {import('../utils/getCoin').Coin[]} coins - Initial list of coins
  * @param {string} selectedCoinId - ID of the currently selected coin
+ * @param {boolean} [isLoading=false] - Whether the initial coin list is loading
  * @returns {string}
  */
-const CoinPicker = (coins, selectedCoinId) => `
+const CoinPicker = (coins, selectedCoinId, isLoading = false) => `
   <div id="coin-picker-view" class="flex flex-col h-full">
     <header class="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
       <div class="flex items-center gap-3">
@@ -65,10 +66,10 @@ const CoinPicker = (coins, selectedCoinId) => `
             <use href="${sprite}#search"></use>
           </svg>
         </div>
-        <input id="coin-search-input" type="text" placeholder="Search coin..." aria-label="Buscar moneda" class="block w-full pl-10 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 text-white transition-all" />
+        <input id="coin-search-input" type="text" placeholder="Search coin..." aria-label="Buscar moneda" class="block w-full pl-10 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl text-sm placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 text-white transition-all" ${isLoading ? 'disabled' : ''} />
       </div>
       <div id="coin-list" class="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-1" style="max-height:360px">
-        ${coins.map((c) => CoinOption(c, c.id === selectedCoinId)).join("")}
+        ${isLoading ? SelectLoading(10) : coins.map((c) => CoinOption(c, c.id === selectedCoinId)).join("")}
       </div>
     </div>
   </div>
