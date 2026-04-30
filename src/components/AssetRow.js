@@ -15,7 +15,7 @@
  * @property {boolean} isFlat     - True for stablecoins — renders a flat dashed line
  */
 
-import { formatUsd, formatBalance } from "../utils/formatters";
+import { formatUsd, formatBalance, formatPercent } from "../utils/formatters";
 
 /**
  * Returns the markup for the 24h change badge.

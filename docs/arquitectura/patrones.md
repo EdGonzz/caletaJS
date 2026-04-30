@@ -42,7 +42,29 @@ Un manejador de rutas basado en los eventos `hashchange` y `load` del objeto `wi
 
 *Ver ADR:* `docs/decisions/003-hash-router.md`
 
-## 4. Debounce Optimization en Entradas de Texto
+## 4. Utilidades Centralizadas (formatters.js)
+
+### ¿Qué es y cómo funciona?
+Funciones auxiliares puras agrupadas en archivos temáticos (`formatters.js`, `helpers.js`) que encapsulan lógica de transformación de datos reutilizable. Los formateadores son idempotentes y no tienen efectos secundarios.
+
+```javascript
+// src/utils/formatters.js
+export const formatUsd = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
+
+export const formatPercent = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
+
+// Uso en componentes
+import { formatUsd, formatPercent } from "../utils/formatters";
+const price = formatUsd(1234.56); // "$1,234.56"
+const change = formatPercent(-5.25); // "-5.25%"
+```
+
+### Trade-offs
+✅ **Pros:** Consistencia en el formato de datos en toda la app, fácil mantenimiento (un solo lugar para modificar), facilita pruebas unitarias (funciones puras).
+⚠️ **Cons:** Puede generar importación tediosa si hay muchos utilitarios; considerar usar `* as utils` para agrupar.
+
+## 5. Debounce Optimization en Entradas de Texto
 
 ### ¿Qué es y cómo funciona?
 Funciones que limitan la frecuencia de ejecución de otras operaciones pesadas, como peticiones a APIs externas (ej. búsqueda de criptomonedas). Se combina con **Skeleton Loading** para dar feedback inmediato.
@@ -62,7 +84,7 @@ searchInput.addEventListener('input', (e) => {
 
 *Ver ADR:* `docs/decisions/007-debounce-busquedas.md` y `008-optimizacion-busqueda-coingecko.md`
 
-## 5. SVG Sprite System
+## 6. SVG Sprite System
 
 ### ¿Qué es y cómo funciona?
 Centralización de assets vectoriales en un único archivo `src/assets/sprite.svg`. Los iconos se instancian en el DOM mediante el elemento `<use>` de SVG.
@@ -77,7 +99,7 @@ Centralización de assets vectoriales en un único archivo `src/assets/sprite.sv
 
 *Ver ADR:* `docs/decisions/009-correccion-sprite-svg.md`
 
-## 6. Lazy Loading con Skeletons Contenidos
+## 7. Lazy Loading con Skeletons Contenidos
 
 ### ¿Qué es y cómo funciona?
 Al diferir la carga de datos (Lazy Loading) para optimizar el renderizado inicial, los estados de carga no reemplazan la estructura base de la vista. Los componentes reciben un parámetro `isLoading` que les permite renderizar toda su "cáscara" (encabezados, botones de acción y contenedores restrictivos) e inyectar animaciones de carga (skeletons) únicamente en el área designada para los datos.

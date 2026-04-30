@@ -1,5 +1,5 @@
 import StatCard from "./StatCard";
-import { formatUsd } from "../utils/formatters";
+import { formatUsd, formatPercent } from "../utils/formatters";
 
 /**
  * Renders the initial shell for the stats cards.
@@ -46,7 +46,7 @@ const renderCards = (holdings = []) => {
     {
       title: "24h Portfolio Change",
       value: `${totalChange24h >= 0 ? '+' : ''}${formatUsd(totalBalance * (totalChange24h / 100))}`,
-      badge: `${totalChange24h >= 0 ? '+' : ''}${totalChange24h.toFixed(2)}%`,
+      badge: formatPercent(totalChange24h),
       description: "vs. previous 24h",
       iconLabel: "Trending Up",
       icon: totalChange24h >= 0 ? "trending-up" : "trending-down",
@@ -85,7 +85,7 @@ const renderCards = (holdings = []) => {
                 <span class="text-xs text-slate-400">${topMover.symbol.toUpperCase()}</span>
               </div>
               <span class="${topMover.change24h >= 0 ? 'text-primary' : 'text-accent-red'} text-sm font-bold">
-                ${topMover.change24h >= 0 ? '+' : ''}${topMover.change24h.toFixed(2)}%
+                ${formatPercent(topMover.change24h)}
               </span>
             </div>
           </div>
