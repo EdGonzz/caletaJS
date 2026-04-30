@@ -562,7 +562,9 @@ const initAddExchangeModal = () => {
     }
   });
 
-  document.getElementById('add-exchange-backdrop')?.addEventListener('click', closeAddExchangeModal);
+  document.getElementById('add-exchange-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'add-exchange-modal') closeAddExchangeModal();
+  });
 };
 
 export { openAddExchangeModal, initAddExchangeModal };
