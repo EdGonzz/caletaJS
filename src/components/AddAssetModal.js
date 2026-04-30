@@ -199,17 +199,17 @@ const FormView = () => `
  */
 const AddAssetModal = () => `
   <!-- Backdrop -->
-  <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-100 transition-opacity opacity-0 pointer-events-none" aria-hidden="true"></div>
+  <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] transition-opacity opacity-0 pointer-events-none" aria-hidden="true"></div>
 
   <!-- Modal -->
   <div
     id="add-asset-modal"
-    class="fixed inset-0 z-101 flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-300"
+    class="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-300"
     role="dialog"
     aria-modal="true"
     aria-label="Agregar transacción"
   >
-    <div id="modal-content" class="relative w-full max-w-lg bg-[#151e32] rounded-2xl border border-slate-700 shadow-2xl overflow-hidden transform scale-95 transition-all duration-300 pointer-events-auto max-h-[90vh] overflow-y-auto custom-scrollbar">
+    <div id="modal-content" class="relative w-full max-w-lg bg-[#151e32] rounded-2xl border border-slate-700 shadow-2xl overflow-hidden transform scale-95 transition-all duration-300 pointer-events-none max-h-[90vh] overflow-y-auto custom-scrollbar">
       <div id="modal-inner"></div>
     </div>
   </div>
@@ -342,7 +342,7 @@ const openModal = async () => {
   requestAnimationFrame(() => {
     backdrop?.classList.remove("opacity-0", "pointer-events-none");
     modal?.classList.remove("opacity-0", "pointer-events-none");
-    content?.classList.remove("scale-95");
+    content?.classList.remove("scale-95", "pointer-events-none");
     content?.classList.add("scale-100");
     blob1?.classList.remove("opacity-0");
     blob2?.classList.remove("opacity-0");
@@ -359,6 +359,7 @@ const closeModal = () => {
 
   backdrop?.classList.add("opacity-0", "pointer-events-none");
   modal?.classList.add("opacity-0", "pointer-events-none");
+  content?.classList.add("pointer-events-none");
   content?.classList.remove("scale-100");
   content?.classList.add("scale-95");
   blob1?.classList.add("opacity-0");
@@ -548,7 +549,10 @@ const wireExchangeView = () => {
  */
 const initAddAssetModal = async () => {
   // The "Add Funds" button has id="add-funds"
-  document.getElementById("add-funds")?.addEventListener("click", openModal);
+  const addFundsBtn = document.getElementById("add-funds");
+  if (addFundsBtn) {
+    addFundsBtn.addEventListener("click", openModal);
+  }
 
   // Close on backdrop click
   document.getElementById("add-asset-modal")?.addEventListener("click", (e) => {
