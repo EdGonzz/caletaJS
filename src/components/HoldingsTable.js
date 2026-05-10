@@ -1,7 +1,7 @@
 import AssetRow from "./AssetRow";
 import Pagination from "./Pagination";
 import { getHoldings } from "../utils/holdingsStorage";
-import { DEFAULT_SOURCE } from "../utils/sources";
+import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import sprite from "../assets/sprite.svg";
 
 const PAGE_SIZE = 4;
@@ -20,6 +20,11 @@ const PAGE_SIZE = 4;
  */
 const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
   const isAllView = filter === DEFAULT_SOURCE;
+  const userSources = getSource();
+  const sourceImageMap = userSources.reduce((map, s) => {
+    if (typeof s === 'object') map[s.name] = s.image;
+    return map;
+  }, {});
 
   const aggregated = transactions.reduce((acc, tx) => {
     // All-view: consolidate by coin; exchange-view: separate by coin+source
@@ -33,6 +38,7 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
         logoUrl: tx.logoUrl,
         // In all-view, source is null — we'll populate `sources` array instead
         source: isAllView ? null : tx.source,
+        sourceImage: isAllView ? null : sourceImageMap[tx.source],
         sources: [],
         sourceIcon: isAllView ? 'wallet' : (tx.sourceIcon || 'wallet'),
         balance: 0,
@@ -46,8 +52,11 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
     }
 
     // Track distinct sources (for all-view badge list)
-    if (isAllView && !acc[key].sources.includes(tx.source)) {
-      acc[key].sources.push(tx.source);
+    if (isAllView && !acc[key].sources.some(s => s.name === tx.source)) {
+      acc[key].sources.push({
+        name: tx.source,
+        image: sourceImageMap[tx.source]
+      });
     }
 
     // Balance calculation

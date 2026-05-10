@@ -11,6 +11,7 @@ const ActionToolbar = () => {
 
   const tabsHtml = sources.map(source => {
     const name = typeof source === 'string' ? source : source.name;
+    const image = typeof source === 'object' ? source.image : null;
     const isActive = name === currentFilter;
     
     let classes = "hover:border-primary/50 border border-slate-700 bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white px-3 py-1";
@@ -18,10 +19,14 @@ const ActionToolbar = () => {
       classes = "bg-primary text-background-dark text-md font-bold hover:brightness-110 px-3 py-1";
     }
     
-    // We reuse the Button structure or just create a button directly
+    const iconHtml = image 
+      ? `<img src="${image}" alt="${name}" class="w-5 h-5 rounded-md object-contain ${isActive ? '' : 'opacity-70 group-hover:opacity-100'}">`
+      : `<svg class="w-4 h-4 ${isActive ? 'text-background-dark' : 'text-slate-400'}"><use href="${sprite}#layout-dashboard" /></svg>`;
+
     return `
-      <button data-filter="${name}" class="action-filter-btn flex items-center justify-center gap-2 rounded-lg transition-all duration-200 focus:outline-none ${classes}">
-        ${name}
+      <button data-filter="${name}" class="action-filter-btn group flex items-center justify-center gap-2 rounded-lg transition-all duration-200 focus:outline-none ${classes}">
+        ${iconHtml}
+        <span>${name}</span>
       </button>
     `;
   }).join('');

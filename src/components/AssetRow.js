@@ -83,15 +83,17 @@ const sparkline = ({ isFlat, sparkPath, sparkColor, name }) => {
  * @returns {string}
  */
 const renderSource = (asset) => {
-  const { source, sources = [], sourceIcon } = asset;
+  const { source, sourceImage, sources = [], sourceIcon } = asset;
 
   // Exchange-view: single source badge
   if (source) {
+    const iconHtml = sourceImage
+      ? `<img src="${sourceImage}" alt="${source}" class="h-4 w-4 rounded-sm object-contain">`
+      : `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#${sourceIcon}"></use></svg>`;
+
     return `
       <span class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-700/50 px-2.5 py-1 text-xs font-medium text-slate-300">
-        <svg class="h-4 w-4" aria-hidden="true">
-          <use href="${sprite}#${sourceIcon}"></use>
-        </svg>
+        ${iconHtml}
         ${source}
       </span>`;
   }
@@ -104,16 +106,20 @@ const renderSource = (asset) => {
   const visible = sources.slice(0, 2);
   const overflow = sources.length - visible.length;
 
-  const badges = visible.map(s => `
-    <span class="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-700/50 px-2 py-0.5 text-xs font-medium text-slate-300">
-      <svg class="h-3.5 w-3.5" aria-hidden="true">
-        <use href="${sprite}#wallet"></use>
-      </svg>
-      ${s}
-    </span>`).join('');
+  const badges = visible.map(s => {
+    const iconHtml = s.image
+      ? `<img src="${s.image}" alt="${s.name}" class="h-3.5 w-3.5 rounded-sm object-contain">`
+      : `<svg class="h-3.5 w-3.5" aria-hidden="true"><use href="${sprite}#wallet"></use></svg>`;
+
+    return `
+      <span class="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-700/50 px-2 py-0.5 text-xs font-medium text-slate-300">
+        ${iconHtml}
+        ${s.name}
+      </span>`;
+  }).join('');
 
   const overflowBadge = overflow > 0
-    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${sources.slice(2).join(', ')}">+${overflow}</span>`
+    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${sources.slice(2).map(s => s.name).join(', ')}">+${overflow}</span>`
     : '';
 
   return `<div class="flex flex-wrap gap-1">${badges}${overflowBadge}</div>`;
