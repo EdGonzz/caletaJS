@@ -6,6 +6,7 @@ import Error404 from "../pages/Error404";
 import { initHoldingsTable } from "../components/HoldingsTable";
 import { initAddAssetModal } from "../components/AddAssetModal";
 import { initStatsGrid } from "../components/StatsGrid";
+import { initActionToolbar } from "../components/ActionToolbar";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -31,6 +32,7 @@ const router = async () => {
 
   // Wire up interactive components after the DOM is populated
   if (path === "/") {
+    initActionToolbar();
     initStatsGrid();
     initHoldingsTable();
     initAddAssetModal();

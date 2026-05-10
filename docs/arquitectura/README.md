@@ -56,9 +56,10 @@ caleta/
 | Testing | [testing.md](./testing.md) |
 | Desarrollo Local | [../runbooks/desarrollo-local.md](../runbooks/desarrollo-local.md) |
 | Agregar Ruta | [../runbooks/agregar-ruta.md](../runbooks/agregar-ruta.md) |
+| Agregar Caleta | [../runbooks/agregar-caleta.md](../runbooks/agregar-caleta.md) |
 | Troubleshooting | [../runbooks/troubleshooting.md](../runbooks/troubleshooting.md) |
 | Deploy | [../runbooks/deploy.md](../runbooks/deploy.md) |
 | Decisiones (ADRs) | [../decisions/](../decisions/) |
 
 ---
-*Última actualización: 2026-04-27*
+*Última actualización: 2026-05-09*

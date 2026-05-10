@@ -166,6 +166,12 @@ export const initHoldingsTable = () => {
 
   const pageSize = Number(table.dataset.pageSize);
   let currentData = [];
+  let activeFilter = 'Caletas'; // Default source
+
+  window.addEventListener('caleta-filter-changed', (e) => {
+    activeFilter = e.detail.source;
+    fetchPricesAndUpdate();
+  });
 
   const updateDisplay = (page = 1) => {
     if (currentData.length === 0) {
@@ -213,7 +219,11 @@ export const initHoldingsTable = () => {
 
   const fetchPricesAndUpdate = async () => {
     const rawHoldings = getHoldings();
-    let data = aggregateHoldings(rawHoldings);
+    const filteredHoldings = activeFilter === 'Caletas' 
+      ? rawHoldings 
+      : rawHoldings.filter(h => h.source === activeFilter);
+      
+    let data = aggregateHoldings(filteredHoldings);
 
     if (data.length === 0) {
       currentData = [];

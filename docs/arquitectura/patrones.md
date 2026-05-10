@@ -119,7 +119,30 @@ const Componente = (datos, isLoading = false) => `
 ✅ **Pros:** Elimina el *Layout Shift* al mantener restricciones físicas exactas y permite interacción prematura con botones de navegación/cierre.
 ⚠️ **Cons:** Requiere lógica condicional y paramétrica adicional dentro de cada componente de presentación.
 
-*Ver ADR:* `docs/decisions/011-lazy-loading-skeletons.md`
+## 8. Comunicación por Eventos Personalizados (Cross-Component Messaging)
+
+### ¿Qué es y cómo funciona?
+Para permitir que componentes independientes reaccionen a cambios de estado global (como el filtrado por caleta) sin crear dependencias directas ni utilizar un framework de gestión de estado, se utiliza la API nativa `CustomEvent`. Un componente emite el evento en el objeto global `window` y otros componentes se suscriben a él para actualizarse.
+
+```javascript
+// Emisor (ActionToolbar.js)
+const event = new CustomEvent('caleta-filter-changed', {
+  detail: { source: 'binance' }
+});
+window.dispatchEvent(event);
+
+// Receptor (HoldingsTable.js)
+window.addEventListener('caleta-filter-changed', (e) => {
+  const { source } = e.detail;
+  initHoldingsTable(source); // Re-renderizado con filtro
+});
+```
+
+### Trade-offs
+✅ **Pros:** Desacoplamiento total entre componentes (pub/sub), bajo consumo de memoria y nula sobrecarga de procesamiento comparado con un Virtual DOM.
+⚠️ **Cons:** El flujo de datos se vuelve menos predecible ("indirection"); es más difícil rastrear quién disparó un cambio sin herramientas de depuración específicas.
+
+*Ver ADR:* `docs/decisions/012-filtrado-dinamico-caletas.md`
 
 ---
-*Última actualización: 2026-04-30*
+*Última actualización: 2026-05-09*

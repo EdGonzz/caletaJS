@@ -583,5 +583,5 @@ const initAddAssetModal = async () => {
   initAddExchangeModal();
 };
 
-export { initAddAssetModal };
+export { initAddAssetModal, openModal as openAddAssetModal };
 export default AddAssetModal;

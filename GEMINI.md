@@ -49,6 +49,7 @@ pnpm build   # Production bundle → /dist
 | Testing              | [docs/arquitectura/testing.md](docs/arquitectura/testing.md) |
 | Local Dev Setup      | [docs/runbooks/desarrollo-local.md](docs/runbooks/desarrollo-local.md) |
 | Add a Route/View     | [docs/runbooks/agregar-ruta.md](docs/runbooks/agregar-ruta.md) |
+| Add a Caleta/Exchange | [docs/runbooks/agregar-caleta.md](docs/runbooks/agregar-caleta.md) |
 | Troubleshooting      | [docs/runbooks/troubleshooting.md](docs/runbooks/troubleshooting.md) |
 | Deploy               | [docs/runbooks/deploy.md](docs/runbooks/deploy.md) |
 | ADRs                 | [docs/decisions/](docs/decisions/)                   |
