@@ -144,5 +144,21 @@ window.addEventListener('caleta-filter-changed', (e) => {
 
 *Ver ADR:* `docs/decisions/012-filtrado-dinamico-caletas.md`
 
+## 9. Agregación de Datos Contextual (View-Based Aggregation)
+
+### ¿Qué es y cómo funciona?
+La aplicación maneja la consolidación de datos de forma dinámica basándose en el contexto de la vista (filtros activos). En lugar de tener una estructura de datos rígida, las funciones de agregación (como `aggregateHoldings`) transforman la data cruda del `localStorage` en tiempo real para satisfacer las necesidades semánticas de la UI.
+
+- **En la vista consolidada:** Se agrupa por entidad (moneda), sumando balances y recolectando metadatos (sources).
+- **En la vista segmentada:** Se mantiene la granularidad original por fuente.
+
+Esto garantiza que métricas como "Total Assets" sean semánticamente correctas (monedas únicas) sin perder el detalle técnico.
+
+### Trade-offs
+✅ **Pros:** Proporciona una visión clara del portafolio neto, elimina redundancia visual y mantiene la precisión de las estadísticas.
+⚠️ **Cons:** Añade lógica condicional al proceso de renderizado y requiere que los componentes de fila (AssetRow) sean lo suficientemente flexibles para representar estados agregados.
+
+*Ver ADR:* `docs/decisions/013-consolidacion-datos-vistas.md`
+
 ---
-*Última actualización: 2026-05-09*
+*Última actualización: 2026-05-10*

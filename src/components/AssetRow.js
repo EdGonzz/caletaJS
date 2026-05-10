@@ -1,18 +1,19 @@
 /**
  * @typedef {Object} Asset
- * @property {string} id          - Unique identifier (e.g. "btc")
- * @property {string} name        - Full name (e.g. "Bitcoin")
- * @property {string} symbol      - Ticker (e.g. "BTC")
- * @property {string} logoUrl     - URL to the asset's logo image
- * @property {string} source      - Custody type label (e.g. "Cold Storage")
- * @property {string} sourceIcon  - Material Symbol icon name for the source
- * @property {number} price       - Current USD price
- * @property {number} change24h   - 24-hour percentage change (signed)
- * @property {number} balance     - Amount held
- * @property {number} value       - Total USD value (price × balance)
- * @property {string} sparkPath   - SVG path `d` attribute for the 7-day sparkline
- * @property {string} sparkColor  - Stroke color for the sparkline (#hex)
- * @property {boolean} isFlat     - True for stablecoins — renders a flat dashed line
+ * @property {string}   id          - Unique identifier (e.g. "btc")
+ * @property {string}   name        - Full name (e.g. "Bitcoin")
+ * @property {string}   symbol      - Ticker (e.g. "BTC")
+ * @property {string}   logoUrl     - URL to the asset's logo image
+ * @property {string|null} source   - Exchange name. Null in all-view (use `sources` instead).
+ * @property {string[]} sources     - All exchanges holding this asset (populated in all-view).
+ * @property {string}   sourceIcon  - Material Symbol icon name for the source
+ * @property {number}   price       - Current USD price
+ * @property {number}   change24h   - 24-hour percentage change (signed)
+ * @property {number}   balance     - Amount held
+ * @property {number}   value       - Total USD value (price × balance)
+ * @property {string}   sparkPath   - SVG path `d` attribute for the 7-day sparkline
+ * @property {string}   sparkColor  - Stroke color for the sparkline (#hex)
+ * @property {boolean}  isFlat      - True for stablecoin — renders a flat dashed line
  */
 
 import { formatUsd, formatBalance, formatPercent } from "../utils/formatters";
@@ -73,6 +74,52 @@ const sparkline = ({ isFlat, sparkPath, sparkColor, name }) => {
 };
 
 /**
+ * Renders the Source cell content based on the current view mode.
+ *
+ * - All-view (asset.sources populated): shows up to 2 exchange badges + overflow count.
+ * - Exchange-view (asset.source populated): shows the single exchange badge.
+ *
+ * @param {Asset} asset
+ * @returns {string}
+ */
+const renderSource = (asset) => {
+  const { source, sources = [], sourceIcon } = asset;
+
+  // Exchange-view: single source badge
+  if (source) {
+    return `
+      <span class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-700/50 px-2.5 py-1 text-xs font-medium text-slate-300">
+        <svg class="h-4 w-4" aria-hidden="true">
+          <use href="${sprite}#${sourceIcon}"></use>
+        </svg>
+        ${source}
+      </span>`;
+  }
+
+  // All-view: show first exchange + overflow badge if needed
+  if (sources.length === 0) {
+    return `<span class="text-xs text-slate-500 italic">—</span>`;
+  }
+
+  const visible = sources.slice(0, 2);
+  const overflow = sources.length - visible.length;
+
+  const badges = visible.map(s => `
+    <span class="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-700/50 px-2 py-0.5 text-xs font-medium text-slate-300">
+      <svg class="h-3.5 w-3.5" aria-hidden="true">
+        <use href="${sprite}#wallet"></use>
+      </svg>
+      ${s}
+    </span>`).join('');
+
+  const overflowBadge = overflow > 0
+    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${sources.slice(2).join(', ')}">+${overflow}</span>`
+    : '';
+
+  return `<div class="flex flex-wrap gap-1">${badges}${overflowBadge}</div>`;
+};
+
+/**
  * AssetRow — renders a single <tr> for the Holdings table.
  * @param {Asset} asset
  * @returns {string}
@@ -114,12 +161,7 @@ const AssetRow = (asset) => {
 
       <!-- Source -->
       <td class="px-6 py-4">
-        <span class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-700/50 px-2.5 py-1 text-xs font-medium text-slate-300">
-          <svg class="h-4 w-4" aria-hidden="true">
-            <use href="${sprite}#${sourceIcon}"></use>
-          </svg>
-          ${source}
-        </span>
+        ${renderSource(asset)}
       </td>
 
       <!-- Price -->

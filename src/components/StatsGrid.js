@@ -34,7 +34,7 @@ const renderCards = (holdings = []) => {
     {
       title: "Total Balance",
       value: formatUsd(totalBalance),
-      description: holdings.length > 0 ? `Across ${holdings.length} assets` : "No assets added",
+      description: holdings.length > 0 ? `Across ${holdings.length} unique coin${holdings.length !== 1 ? 's' : ''}` : "No assets added",
       iconLabel: "Wallet",
       icon: "wallet",
       extra: `

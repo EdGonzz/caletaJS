@@ -1,41 +1,59 @@
 import AssetRow from "./AssetRow";
 import Pagination from "./Pagination";
 import { getHoldings } from "../utils/holdingsStorage";
+import { DEFAULT_SOURCE } from "../utils/sources";
 import sprite from "../assets/sprite.svg";
 
 const PAGE_SIZE = 4;
 
 /**
  * Aggregates individual transactions into a list of unique assets.
- * @param {Array} transactions 
+ *
+ * - When `filter` is DEFAULT_SOURCE ("Caletas" / all-view): groups by coinId only,
+ *   consolidating balances cross-exchange and collecting all source names.
+ * - When `filter` is a specific exchange: groups by coinId-source, showing one
+ *   row per coin per exchange.
+ *
+ * @param {Array}  transactions - Raw holding records from storage.
+ * @param {string} filter       - Active filter key (DEFAULT_SOURCE or exchange name).
  * @returns {Array}
  */
-const aggregateHoldings = (transactions) => {
+const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
+  const isAllView = filter === DEFAULT_SOURCE;
+
   const aggregated = transactions.reduce((acc, tx) => {
-    // Group by coinId and source to show separate rows for different sources
-    const key = `${tx.coinId}-${tx.source}`;
+    // All-view: consolidate by coin; exchange-view: separate by coin+source
+    const key = isAllView ? tx.coinId : `${tx.coinId}-${tx.source}`;
+
     if (!acc[key]) {
       acc[key] = {
         id: tx.coinId,
         name: tx.name,
         symbol: tx.symbol,
         logoUrl: tx.logoUrl,
-        source: tx.source,
-        sourceIcon: tx.sourceIcon || 'wallet',
+        // In all-view, source is null — we'll populate `sources` array instead
+        source: isAllView ? null : tx.source,
+        sources: [],
+        sourceIcon: isAllView ? 'wallet' : (tx.sourceIcon || 'wallet'),
         balance: 0,
-        price: tx.price, // Last price recorded (initial fallback)
+        price: tx.price,
         change24h: 0,
         value: 0,
-        sparkPath: "M0,15 Q25,25 50,10 T100,5", // Dummy initial sparkline
+        sparkPath: "M0,15 Q25,25 50,10 T100,5",
         sparkColor: "#64748b",
         isFlat: tx.symbol.toLowerCase().includes("usd") || tx.symbol.toLowerCase().includes("eur"),
       };
     }
-    
-    // Simplistic balance calculation based on transaction type
+
+    // Track distinct sources (for all-view badge list)
+    if (isAllView && !acc[key].sources.includes(tx.source)) {
+      acc[key].sources.push(tx.source);
+    }
+
+    // Balance calculation
     if (tx.type === 'buy' || tx.type === 'transfer') acc[key].balance += tx.balance;
     if (tx.type === 'sell') acc[key].balance -= tx.balance;
-    
+
     return acc;
   }, {});
 
@@ -223,7 +241,7 @@ export const initHoldingsTable = () => {
       ? rawHoldings 
       : rawHoldings.filter(h => h.source === activeFilter);
       
-    let data = aggregateHoldings(filteredHoldings);
+    let data = aggregateHoldings(filteredHoldings, activeFilter);
 
     if (data.length === 0) {
       currentData = [];
