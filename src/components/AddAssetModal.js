@@ -1,6 +1,6 @@
 import getCoin, { getTopCoins } from "../utils/getCoin";
 import { storage } from "../utils/storage";
-import { SelectExchange, SelectLoading } from "./SelectExchange";
+import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
