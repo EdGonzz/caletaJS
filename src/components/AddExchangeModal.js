@@ -2,7 +2,7 @@ import getExchange from '../utils/getExchange';
 import { addSource, getSource } from '../utils/sources';
 import sprite from '../assets/sprite.svg';
 import SkeletonRow from '../utils/skeletonRow';
-import { debounce } from '../utils/helpers';
+import { debounce, escapeHTML } from '../utils/helpers';
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
@@ -33,10 +33,10 @@ let isDefaultList = false;
 const ExchangeResultRow = (exchange, isSaved = false) => {
   const logo = exchange.image
     ? `<div class="h-12 w-12 rounded-xl border border-slate-700 bg-slate-800 shrink-0 overflow-hidden flex items-center justify-center">
-         <img src="${exchange.image}" alt="${exchange.name}" class="h-full w-full object-contain" loading="lazy" />
+         <img src="${escapeHTML(exchange.image)}" alt="${escapeHTML(exchange.name)}" class="h-full w-full object-contain" loading="lazy" />
        </div>`
     : `<div class="h-12 w-12 rounded-xl border border-slate-700 bg-slate-800 shrink-0 flex items-center justify-center">
-         <span class="text-lg font-bold text-white">${exchange.name.charAt(0).toUpperCase()}</span>
+         <span class="text-lg font-bold text-white">${escapeHTML(exchange.name.charAt(0).toUpperCase())}</span>
        </div>`;
 
   const urlDisplay = exchange.url
@@ -52,7 +52,7 @@ const ExchangeResultRow = (exchange, isSaved = false) => {
   const actionBtn = isSaved
     ? `<button
             class="flex min-w-[76px] items-center justify-center rounded-lg h-9 px-4 bg-slate-700/60 text-slate-500 text-sm font-bold cursor-not-allowed select-none"
-            aria-label="${exchange.name} ya está guardada como caleta"
+            aria-label="${escapeHTML(exchange.name)} ya está guardada como caleta"
             disabled
           >
             <svg class="w-4 h-4 mr-1.5 shrink-0" aria-hidden="true"><use href="${sprite}#check"></use></svg>
@@ -60,11 +60,11 @@ const ExchangeResultRow = (exchange, isSaved = false) => {
           </button>`
     : `<button
             class="save-exchange-btn flex min-w-[76px] items-center justify-center rounded-lg h-9 px-4 bg-primary hover:brightness-110 text-slate-900 text-sm font-bold transition-all shadow-lg shadow-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
-            aria-label="Guardar ${exchange.name} como caleta"
-            data-exchange-id="${exchange.id}"
-            data-exchange-name="${exchange.name}"
-            data-exchange-image="${exchange.image ?? ''}"
-            data-exchange-url="${exchange.url ?? ''}"
+            aria-label="Guardar ${escapeHTML(exchange.name)} como caleta"
+            data-exchange-id="${escapeHTML(exchange.id)}"
+            data-exchange-name="${escapeHTML(exchange.name)}"
+            data-exchange-image="${escapeHTML(exchange.image ?? '')}"
+            data-exchange-url="${escapeHTML(exchange.url ?? '')}"
           >
             Guardar
           </button>`;
@@ -72,15 +72,15 @@ const ExchangeResultRow = (exchange, isSaved = false) => {
   return `
     <div
       class="exchange-api-row flex flex-col gap-0 px-4 py-3 hover:bg-slate-800/50 rounded-lg transition-colors cursor-default"
-      data-exchange-id="${exchange.id}"
+      data-exchange-id="${escapeHTML(exchange.id)}"
     >
       <!-- Main row -->
       <div class="flex items-center gap-4 justify-between min-w-0">
         <div class="flex items-center gap-4 min-w-0">
           ${logo}
           <div class="flex flex-col justify-center min-w-0">
-            <p class="text-white text-base font-semibold leading-normal truncate">${exchange.name}</p>
-            <p class="text-slate-400 text-sm font-normal leading-normal truncate">${urlDisplay}</p>
+            <p class="text-white text-base font-semibold leading-normal truncate">${escapeHTML(exchange.name)}</p>
+            <p class="text-slate-400 text-sm font-normal leading-normal truncate">${escapeHTML(urlDisplay)}</p>
             ${trustDots ? `<div class="flex items-center gap-1.5 mt-1">${trustDots}<span class="text-xs text-slate-500">Trust</span></div>` : ''}
           </div>
         </div>
@@ -122,7 +122,7 @@ const ExchangeResultRow = (exchange, isSaved = false) => {
 const EmptyState = (term) => `
   <div class="flex flex-col items-center justify-center py-12 text-center">
     <svg class="w-12 h-12 text-slate-600 mb-4"><use href="${sprite}#search"></use></svg>
-    <p class="text-slate-400 font-medium mb-1">Sin resultados para "<span class="text-white">${term}</span>"</p>
+    <p class="text-slate-400 font-medium mb-1">Sin resultados para "<span class="text-white">${escapeHTML(term)}</span>"</p>
     <p class="text-slate-500 text-sm">Intenta con el nombre exacto del exchange en CoinGecko.</p>
   </div>
 `;
