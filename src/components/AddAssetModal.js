@@ -8,7 +8,7 @@ import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 
-let coins = [];
+let coins = new Map();
 
 const DEFAULT_COIN = {
   id: "bitcoin",
@@ -234,7 +234,7 @@ const renderInner = () => {
     wireExchangeView();
   } else if (currentView === "coin") {
     // Lazy load coins if empty
-    if (coins.length === 0) {
+    if (coins.size === 0) {
       inner.innerHTML = CoinPicker([], selectedCoin.id, true);
       // Ensure buttons work even during loading
       initCoinPicker({
@@ -246,18 +246,20 @@ const renderInner = () => {
           selectedCoinId: selectedCoin.id
       });
       getTopCoins().then(newCoins => {
-          coins = newCoins;
+          coins = new Map(newCoins.map(c => [c.id, c]));
           renderInner();
       });
       return;
     }
-    inner.innerHTML = CoinPicker(coins, selectedCoin.id);
+
+    const coinsArray = Array.from(coins.values());
+    inner.innerHTML = CoinPicker(coinsArray, selectedCoin.id);
     initCoinPicker({
         onBack: () => { currentView = "form"; renderInner(); },
         onClose: closeModal,
         onSelect: async (id) => {
             // Si la moneda seleccionada viene de búsqueda, podría no tener precio
-            let found = coins.find((c) => c.id === id);
+            let found = coins.get(id);
             
             // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
             if (!found || !found.current_price) {
@@ -265,7 +267,7 @@ const renderInner = () => {
                 if (detailedCoin) {
                     found = detailedCoin;
                     // Opcionalmente actualizar la lista local para futuras referencias
-                    if (!coins.find(c => c.id === id)) coins.push(detailedCoin);
+                    if (!coins.has(id)) coins.set(id, detailedCoin);
                 }
             }
 
@@ -276,8 +278,8 @@ const renderInner = () => {
                 renderInner();
             }
         },
-        onCoinsUpdate: (newCoins) => { coins = newCoins; },
-        currentCoins: coins,
+        onCoinsUpdate: (newCoins) => { coins = new Map(newCoins.map(c => [c.id, c])); },
+        currentCoins: coinsArray,
         selectedCoinId: selectedCoin.id
     });
   } else {
