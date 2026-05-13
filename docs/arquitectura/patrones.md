@@ -160,5 +160,27 @@ Esto garantiza que métricas como "Total Assets" sean semánticamente correctas 
 
 *Ver ADR:* `docs/decisions/013-consolidacion-datos-vistas.md`
 
+## 10. Protección XSS en Templating (Safe Templating)
+
+### ¿Qué es y cómo funciona?
+Debido al uso de strings para componentes, se aplica un patrón de "Escapado por Defecto" mediante una utilidad `escapeHTML`. Todo dato que provenga de una fuente externa (API o Input de usuario) debe pasar por esta función antes de integrarse al string del componente.
+
+### Trade-offs
+✅ **Pros:** Proporciona una capa de seguridad crítica contra ataques XSS sin la sobrecarga de un motor de plantillas pesado.
+⚠️ **Cons:** Requiere disciplina manual del desarrollador; un descuido puede dejar una brecha de seguridad.
+
+*Ver ADR:* `docs/decisions/014-seguridad-escape-html-xss.md`
+
+## 11. Estructuras de Datos Eficientes (Map over Array)
+
+### ¿Qué es y cómo funciona?
+Para operaciones de búsqueda frecuente (e.g. buscar una moneda por ID tras seleccionarla), se prefieren objetos `Map` sobre `Array`. Esto garantiza una complejidad de $O(1)$ en lugar de $O(n)$, manteniendo la UI fluida incluso con miles de elementos.
+
+### Trade-offs
+✅ **Pros:** Ganancia de rendimiento masiva en búsquedas (99%+ en listas grandes).
+⚠️ **Cons:** Requiere conversión a `Array` para el renderizado iterativo, aunque esta operación es menos frecuente que la búsqueda.
+
+*Ver ADR:* `docs/decisions/015-optimizacion-lookup-monedas-map.md`
+
 ---
-*Última actualización: 2026-05-10*
+*Última actualización: 2026-05-13*
