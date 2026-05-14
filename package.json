@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "portless run webpack server --mode development",
-    "build": "webpack --mode production"
+    "build": "webpack --mode production",
+    "test": "node --test src/**/*.test.js"
   },
   "keywords": [
     "spa",
