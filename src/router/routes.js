@@ -7,6 +7,8 @@ import { initHoldingsTable } from "../components/HoldingsTable";
 import { initAddAssetModal } from "../components/AddAssetModal";
 import { initStatsGrid } from "../components/StatsGrid";
 import { initActionToolbar } from "../components/ActionToolbar";
+import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
+import { initAllocationDonut } from "../components/AllocationDonut";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -19,6 +21,9 @@ const routes = {
 };
 
 const router = async () => {
+  // Cleanup active charts to prevent memory leaks during SPA navigation
+  cleanupHistoryChart();
+
   const header = document.getElementById("header");
   const root = document.getElementById("app");
 
@@ -35,6 +40,8 @@ const router = async () => {
     initActionToolbar();
     initStatsGrid();
     initHoldingsTable();
+    initHistoryChart();
+    initAllocationDonut(); // Debe ir después de initHoldingsTable (escucha prices-updated)
     initAddAssetModal();
   }
 }
