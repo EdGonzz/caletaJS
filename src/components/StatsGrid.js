@@ -82,7 +82,7 @@ const renderCards = (holdings = []) => {
             <div>
               <div class="flex items-center gap-2">
                 <span class="text-lg font-bold text-white">${topMover.name}</span>
-                <span class="text-xs text-slate-400">${topMover.symbol.toUpperCase()}</span>
+                <span class="text-xs text-slate-400">${(topMover.symbol ?? '').toUpperCase()}</span>
               </div>
               <span class="${topMover.change24h >= 0 ? 'text-primary' : 'text-accent-red'} text-sm font-bold">
                 ${formatPercent(topMover.change24h)}

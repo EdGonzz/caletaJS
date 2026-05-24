@@ -93,7 +93,7 @@ const renderDonut = (data) => {
         <div class="flex items-center justify-between text-sm">
           <div class="flex items-center gap-2">
             <span class="${color.class} size-2.5 rounded-full ${color.shadow}" aria-hidden="true"></span>
-            <span class="text-slate-300 font-medium">${item.name} (${item.symbol.toUpperCase()})</span>
+            <span class="text-slate-300 font-medium">${item.name ?? 'Unknown'} (${(item.symbol ?? '').toUpperCase()})</span>
           </div>
           <span class="font-mono text-white font-semibold">${item.pct.toFixed(2)}%</span>
         </div>`;

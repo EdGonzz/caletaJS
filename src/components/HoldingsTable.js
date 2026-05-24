@@ -47,7 +47,7 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
         value: 0,
         sparkPath: "M0,15 Q25,25 50,10 T100,5",
         sparkColor: "#64748b",
-        isFlat: tx.symbol.toLowerCase().includes("usd") || tx.symbol.toLowerCase().includes("eur"),
+        isFlat: (tx.symbol ?? '').toLowerCase().includes("usd") || (tx.symbol ?? '').toLowerCase().includes("eur"),
       };
     }
 

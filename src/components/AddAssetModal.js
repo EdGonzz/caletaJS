@@ -102,7 +102,7 @@ const FormView = () => `
         <div class="space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantity</label>
           <div class="relative">
-            <input id="quantity-input" type="number" min="0" placeholder="0.00" step="any" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
+            <input id="quantity-input" type="text" inputmode="decimal" placeholder="0.00" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
               <span class="text-xs font-bold text-slate-400">${selectedCoin.symbol.toUpperCase()}</span>
             </div>
@@ -118,7 +118,7 @@ const FormView = () => `
             <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
               <span class="text-slate-400 font-medium">$</span>
             </div>
-            <input id="price-input" type="number" min="0" value="${price}" step="any" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            <input id="price-input" type="text" inputmode="decimal" placeholder="0.00" value="${price}" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
           </div>
         </div>
       </div>
@@ -155,7 +155,7 @@ const FormView = () => `
             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
               <span class="text-slate-400 font-medium text-sm">$</span>
             </div>
-            <input id="fees-input" type="number" min="0" value="${fees}" placeholder="0.00" step="any" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
+            <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
           </div>
         </div>
       </div>
@@ -421,6 +421,19 @@ const wireFormView = () => {
   const notesTextarea = document.getElementById("notes-textarea");
   const totalDisplay = document.getElementById("total-display");
 
+  const sanitizeInput = (inputEl) => {
+    let val = inputEl.value;
+    val = val.replace(/[^0-9.,]/g, "");
+    const matches = val.match(/[.,]/g);
+    if (matches && matches.length > 1) {
+      const firstIndex = val.indexOf(matches[0]);
+      const secondIndex = val.indexOf(matches[1], firstIndex + 1);
+      val = val.substring(0, secondIndex);
+    }
+    inputEl.value = val;
+    return val.replace(/,/g, ".");
+  };
+
   const updateTotal = () => {
     const q = parseFloat(quantity) || 0;
     const p = parseFloat(price) || 0;
@@ -428,19 +441,19 @@ const wireFormView = () => {
     totalDisplay.textContent = formatUsd(q * p + f);
   };
 
-  qtyInput?.addEventListener("input", (e) => {
-    quantity = e.target.value;
+  qtyInput?.addEventListener("input", () => {
+    quantity = sanitizeInput(qtyInput);
     updateTotal();
   });
-  priceInput?.addEventListener("input", (e) => {
-    price = e.target.value;
+  priceInput?.addEventListener("input", () => {
+    price = sanitizeInput(priceInput);
     updateTotal();
   });
   dateInput?.addEventListener("input", (e) => {
     date = e.target.value;
   });
-  feesInput?.addEventListener("input", (e) => {
-    fees = e.target.value;
+  feesInput?.addEventListener("input", () => {
+    fees = sanitizeInput(feesInput);
     updateTotal();
   });
   notesTextarea?.addEventListener("input", (e) => {
@@ -449,7 +462,11 @@ const wireFormView = () => {
 
   // Submit
   document.getElementById("submit-transaction-btn")?.addEventListener("click", () => {
-    if (!quantity || !price || !selectedCoin) {
+    const parsedQty = parseFloat(quantity);
+    const parsedPrice = parseFloat(price);
+    const parsedFees = parseFloat(fees) || 0;
+
+    if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || isNaN(parsedFees) || !selectedCoin) {
       // Basic validation visual feedback
       const btn = document.getElementById("submit-transaction-btn");
       btn.classList.add("!bg-red-500", "!text-white");
@@ -462,15 +479,15 @@ const wireFormView = () => {
       name: selectedCoin.name,
       symbol: selectedCoin.symbol,
       logoUrl: selectedCoin.image || selectedCoin.thumb,
-      balance: parseFloat(quantity),
-      price: parseFloat(price),
+      balance: parsedQty,
+      price: parsedPrice,
       source: selectedExchange 
         ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name) 
         : 'Wallet',
       sourceIcon: 'wallet',
       type: activeTab,
       date: date,
-      fees: parseFloat(fees) || 0,
+      fees: parsedFees,
       notes: notes
     };
 
