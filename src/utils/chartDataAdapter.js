@@ -45,6 +45,21 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
   const aggregated = aggregateForHistory();
   if (aggregated.length === 0) return [];
 
+  const holdings = getHoldings();
+
+  // Para cada coin, calcular la fecha más temprana de transacción.
+  // Así evitamos proyectar el balance actual hacia fechas en que el usuario
+  // todavía no tenía esa posición.
+  /** @type {Map<string, string>} coinId → 'YYYY-MM-DD' */
+  const startDateByCoin = new Map();
+  for (const h of holdings) {
+    const rawDate = h.date || h.createdAt;
+    if (!rawDate) continue;
+    const date = rawDate.split('T')[0];
+    const current = startDateByCoin.get(h.coinId);
+    if (!current || date < current) startDateByCoin.set(h.coinId, date);
+  }
+
   const histories = await Promise.all(
     aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
   );
@@ -52,9 +67,20 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
   /** @type {Map<string, number>} */
   const portfolioByDate = new Map();
 
-  aggregated.forEach(({ balance }, i) => {
+  aggregated.forEach(({ coinId, balance }, i) => {
+    const startDate = startDateByCoin.get(coinId);
+
+    // Deduplicar precios por fecha (el último punto del día gana)
+    // y omitir fechas anteriores a cuando el usuario adquirió la coin.
+    /** @type {Map<string, number>} */
+    const priceByDate = new Map();
     for (const { time, value } of histories[i]) {
-      portfolioByDate.set(time, (portfolioByDate.get(time) ?? 0) + balance * value);
+      if (startDate && time < startDate) continue;
+      priceByDate.set(time, value);
+    }
+
+    for (const [time, price] of priceByDate) {
+      portfolioByDate.set(time, (portfolioByDate.get(time) ?? 0) + balance * price);
     }
   });
 
@@ -62,6 +88,7 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([time, value]) => ({ time, value }));
 };
+
 
 /**
  * Construye datos de allocation a partir de holdings ya procesados por HoldingsTable.

@@ -130,6 +130,66 @@ describe('chartDataAdapter', () => {
       assert.ok(receivedSignal !== null, 'El signal debe haberse propagado al fetch');
     });
 
+    test('debe filtrar fechas anteriores a la propiedad date de la transacción', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy', date: '2024-01-02T12:00:00' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return {
+            ok: true,
+            json: async () => ({
+              prices: [
+                [1704067200000, 40000], // 2024-01-01
+                [1704153600000, 45000], // 2024-01-02
+                [1704240000000, 50000]  // 2024-01-03
+              ]
+            })
+          };
+        }
+        return { ok: false };
+      };
+
+      const res = await buildPortfolioHistorySeries(30);
+
+      assert.strictEqual(res.length, 2);
+      assert.strictEqual(res[0].time, '2024-01-02');
+      assert.strictEqual(res[0].value, 45000);
+      assert.strictEqual(res[1].time, '2024-01-03');
+      assert.strictEqual(res[1].value, 50000);
+    });
+
+    test('debe filtrar fechas anteriores a la propiedad createdAt de la transacción si date no existe', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy', createdAt: '2024-01-02T12:00:00.000Z' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return {
+            ok: true,
+            json: async () => ({
+              prices: [
+                [1704067200000, 40000], // 2024-01-01
+                [1704153600000, 45000], // 2024-01-02
+                [1704240000000, 50000]  // 2024-01-03
+              ]
+            })
+          };
+        }
+        return { ok: false };
+      };
+
+      const res = await buildPortfolioHistorySeries(30);
+
+      assert.strictEqual(res.length, 2);
+      assert.strictEqual(res[0].time, '2024-01-02');
+      assert.strictEqual(res[0].value, 45000);
+    });
+
     test('debe retornar array vacío si no hay holdings', async () => {
       mockStorage.set('caleta_user_holdings', JSON.stringify([]));
       const res = await buildPortfolioHistorySeries(30);
