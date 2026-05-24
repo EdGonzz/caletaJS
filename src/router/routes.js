@@ -37,12 +37,15 @@ const router = async () => {
   root.innerHTML = await render();
 
   // Wire up interactive components after the DOM is populated
+  // Order matters: listeners (StatsGrid, AllocationDonut) must register BEFORE
+  // HoldingsTable dispatches 'prices-updated', which can happen synchronously
+  // when aggregated holdings have zero net balance.
   if (path === "/") {
     initActionToolbar();
-    initStatsGrid();
-    initHoldingsTable();
+    initStatsGrid();       // Registers prices-updated listener
+    initAllocationDonut(); // Registers prices-updated listener
+    initHoldingsTable();   // May dispatch prices-updated synchronously
     initHistoryChart();
-    initAllocationDonut(); // Debe ir después de initHoldingsTable (escucha prices-updated)
     initAddAssetModal();
   }
 }
