@@ -1,5 +1,6 @@
 import { buildAllocationData } from "../utils/chartDataAdapter.js";
 import { formatUsd } from "../utils/formatters.js";
+import { getHoldings } from "../utils/holdingsStorage.js";
 import sprite from "../assets/sprite.svg";
 
 // Paleta de colores premium cíclica del design system
@@ -13,30 +14,48 @@ const COLOR_PALETTE = [
   { class: "bg-emerald-500", stroke: "#10b981", shadow: "shadow-[0_0_8px_#10b981]" },
 ];
 
-const AllocationDonut = () => `
-  <div class="glass-panel flex h-full flex-col rounded-xl p-6 lg:col-span-4">
-    <div class="mb-6 flex items-center justify-between">
-      <h3 class="text-lg font-bold text-white">Allocation</h3>
-      <div class="flex rounded-lg border border-slate-700/50 bg-slate-800/50 p-0.5" role="group" aria-label="Allocation view type">
-        <span class="px-2.5 py-1 text-[10px] font-semibold text-primary bg-primary/10 rounded-md">Token</span>
+const AllocationDonut = () => {
+  const initialHoldings = getHoldings();
+  const hasAssets = initialHoldings.length > 0;
+
+  return `
+    <div class="glass-panel flex h-full flex-col rounded-xl p-6 lg:col-span-4">
+      <div class="mb-6 flex items-center justify-between">
+        <h3 class="text-lg font-bold text-white">Allocation</h3>
+        <div class="flex rounded-lg border border-slate-700/50 bg-slate-800/50 p-0.5" role="group" aria-label="Allocation view type">
+          <span class="px-2.5 py-1 text-[10px] font-semibold text-primary bg-primary/10 rounded-md">Token</span>
+        </div>
+      </div>
+      <div id="allocation-donut-container" class="relative flex flex-1 flex-col items-center justify-center min-h-55">
+        ${
+          hasAssets
+            ? `<!-- Loading State -->
+               <div class="flex flex-col items-center justify-center gap-3 py-12" aria-busy="true">
+                 <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" role="status" aria-label="Cargando distribución"></div>
+                 <span class="text-xs text-slate-400 font-medium">Cargando distribución...</span>
+               </div>`
+            : renderDonut([])
+        }
       </div>
     </div>
-    <div id="allocation-donut-container" class="relative flex flex-1 flex-col items-center justify-center min-h-55">
-      <!-- Renderizado dinámico via initAllocationDonut() -->
-    </div>
-  </div>
-`;
+  `;
+};
 
 const renderDonut = (data) => {
   if (data.length === 0) {
     return `
-      <div class="flex flex-col items-center justify-center text-center p-4">
-        <svg class="text-4xl text-slate-600 mb-2" aria-hidden="true">
-          <use href="${sprite}#chart-pie"></use>
-        </svg>
-        <h4 class="text-sm font-semibold text-white mb-1">Sin distribución</h4>
-        <p class="text-xs text-slate-400 max-w-50">
-          Agrega transacciones para ver la distribución de tus activos.
+      <div class="flex flex-col items-center justify-center text-center p-6 py-12 max-w-sm mx-auto">
+        <div class="relative mb-4">
+          <div class="absolute inset-0 bg-primary/10 blur-xl rounded-full"></div>
+          <div class="relative rounded-full bg-slate-800/50 p-4 border border-slate-700/50">
+            <svg class="h-10 w-10 text-slate-500" aria-hidden="true">
+              <use href="${sprite}#chart-pie"></use>
+            </svg>
+          </div>
+        </div>
+        <h4 class="text-sm font-semibold text-white mb-1">Sin distribución de activos</h4>
+        <p class="text-xs text-slate-400 leading-relaxed max-w-[240px] mx-auto">
+          Tu portafolio está vacío. Usa el botón de <strong class="text-primary font-semibold">Add Funds</strong> para agregar tus primeros activos y ver la distribución.
         </p>
       </div>
     `;
