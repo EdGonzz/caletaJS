@@ -47,8 +47,8 @@ let _chart = null;
 let _series = null;
 /** @type {AbortController | null} */
 let _abortController = null;
-/** @type {boolean} */
-let _isInitialized = false;
+/** @type {number} */
+let _requestId = 0;
 
 export const initHistoryChart = async () => {
   const container = document.getElementById("history-chart-container");
@@ -57,11 +57,19 @@ export const initHistoryChart = async () => {
   // Cleanup de cualquier instancia previa
   cleanupHistoryChart();
 
+  const currentRequest = ++_requestId;
+  _abortController = new AbortController();
+
   // Mostrar loading state
   showLoadingState(container);
 
   // Cargar datos iniciales (30 días por defecto)
-  const data = await buildPortfolioHistorySeries(30);
+  const data = await buildPortfolioHistorySeries(30, _abortController.signal);
+
+  // Guard: invalidar si el request es stale o el contenedor fue removido
+  if (currentRequest !== _requestId || !document.body.contains(container)) {
+    return;
+  }
 
   if (!data || data.length === 0) {
     showEmptyState(container);
@@ -120,8 +128,20 @@ export const initHistoryChart = async () => {
           b.setAttribute("aria-pressed", isActive ? "true" : "false");
         });
 
+        // Cancelar petición previa y crear nueva
+        const periodRequest = ++_requestId;
+        if (_abortController) {
+          _abortController.abort();
+        }
+        _abortController = new AbortController();
+
         // Fetch nuevos datos y actualizar serie
-        const newData = await buildPortfolioHistorySeries(days);
+        const newData = await buildPortfolioHistorySeries(days, _abortController.signal);
+
+        if (periodRequest !== _requestId || _abortController.signal.aborted) {
+          return;
+        }
+
         if (_series && _chart && newData.length > 0) {
           _series.setData(newData);
           _chart.timeScale().fitContent();
@@ -151,11 +171,13 @@ export const cleanupHistoryChart = () => {
     _abortController = null;
   }
 
+  // Invalidar requests en vuelo para prevenir race conditions
+  _requestId++;
+
   if (_chart) {
     _chart.remove();
     _chart = null;
     _series = null;
-    _isInitialized = false;
   }
 };
 

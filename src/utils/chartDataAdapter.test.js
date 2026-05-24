@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import { getAggregatedHoldings, buildPortfolioHistorySeries, buildAllocationData } from './chartDataAdapter.js';
+import { buildPortfolioHistorySeries, buildAllocationData } from './chartDataAdapter.js';
 
 describe('chartDataAdapter', () => {
   let mockStorage = new Map();
@@ -16,7 +16,7 @@ describe('chartDataAdapter', () => {
       clear: () => mockStorage.clear(),
     };
 
-    // Configurar API variables de entorno mock si no existen
+    // Configurar API variables de entorno mock
     process.env.API_KEY = 'mock-key';
     process.env.API_URL = 'https://api.coingecko.com/api/v3';
   });
@@ -26,54 +26,33 @@ describe('chartDataAdapter', () => {
     globalThis.fetch = originalFetch;
   });
 
-  describe('getAggregatedHoldings()', () => {
-    test('debe retornar array vacío si no hay holdings', () => {
-      mockStorage.set('caleta_user_holdings', JSON.stringify([]));
-      const res = getAggregatedHoldings();
-      assert.deepStrictEqual(res, []);
-    });
-
-    test('debe agrupar holdings con el mismo coinId sumando sus montos', () => {
-      const holdings = [
-        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', amount: 1.5, currentPrice: 50000 },
-        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', amount: 0.5, currentPrice: 50000 },
-        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', amount: 10, currentPrice: 3000 }
-      ];
-      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
-
-      const res = getAggregatedHoldings();
-      assert.strictEqual(res.length, 2);
-      
-      const btc = res.find(h => h.coinId === 'bitcoin');
-      const eth = res.find(h => h.coinId === 'ethereum');
-
-      assert.strictEqual(btc.totalAmount, 2.0);
-      assert.strictEqual(eth.totalAmount, 10);
-    });
-  });
-
   describe('buildAllocationData()', () => {
     test('debe calcular porcentajes y montos ordenados de mayor a menor', () => {
       const holdings = [
-        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', amount: 2, currentPrice: 40000 }, // Value = 80000 (80%)
-        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', amount: 5, currentPrice: 4000 }  // Value = 20000 (20%)
+        { id: 'bitcoin', name: 'Bitcoin', symbol: 'btc', value: 80000 },  // 80%
+        { id: 'ethereum', name: 'Ethereum', symbol: 'eth', value: 20000 }  // 20%
       ];
-      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
 
-      const res = buildAllocationData();
+      const res = buildAllocationData(holdings);
       assert.strictEqual(res.length, 2);
-      assert.strictEqual(res[0].coinId, 'bitcoin'); // El más grande primero
+      assert.strictEqual(res[0].id, 'bitcoin');
+      assert.strictEqual(res[0].value, 80000);
       assert.strictEqual(res[0].pct, 80);
+      assert.strictEqual(res[1].id, 'ethereum');
+      assert.strictEqual(res[1].value, 20000);
       assert.strictEqual(res[1].pct, 20);
+    });
+
+    test('debe retornar array vacío si no hay holdings', () => {
+      const res = buildAllocationData([]);
+      assert.deepStrictEqual(res, []);
     });
 
     test('debe retornar array vacío si el valor total es 0', () => {
       const holdings = [
-        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', amount: 0, currentPrice: 40000 }
+        { id: 'bitcoin', name: 'Bitcoin', symbol: 'btc', value: 0 }
       ];
-      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
-
-      const res = buildAllocationData();
+      const res = buildAllocationData(holdings);
       assert.deepStrictEqual(res, []);
     });
   });
@@ -81,8 +60,8 @@ describe('chartDataAdapter', () => {
   describe('buildPortfolioHistorySeries()', () => {
     test('debe retornar historial del portafolio sumando los valores ponderados por día', async () => {
       const holdings = [
-        { coinId: 'bitcoin', amount: 2, currentPrice: 50000 },
-        { coinId: 'ethereum', amount: 10, currentPrice: 3000 }
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 2, type: 'buy' },
+        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', balance: 10, type: 'buy' }
       ];
       mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
 
@@ -122,6 +101,33 @@ describe('chartDataAdapter', () => {
       assert.strictEqual(res[0].value, 100000);
       assert.strictEqual(res[1].time, '2024-01-02');
       assert.strictEqual(res[1].value, 115000);
+    });
+
+    test('debe propagar AbortSignal a getCoinHistory', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      const controller = new AbortController();
+      controller.abort(); // Abortar inmediatamente
+
+      // fetch debe recibir el signal abortado
+      let receivedSignal = null;
+      globalThis.fetch = async (url, opts) => {
+        receivedSignal = opts?.signal ?? null;
+        // Simular error de abort
+        if (opts?.signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+        return { ok: true, json: async () => ({ prices: [] }) };
+      };
+
+      const res = await buildPortfolioHistorySeries(30, controller.signal);
+      assert.deepStrictEqual(res, []);
+      assert.ok(receivedSignal !== null, 'El signal debe haberse propagado al fetch');
     });
 
     test('debe retornar array vacío si no hay holdings', async () => {

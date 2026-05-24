@@ -97,15 +97,35 @@ const renderDonut = (data) => {
     </nav>`;
 };
 
+/** @type {((e: Event) => void) | null} */
+let _pricesHandler = null;
+
 export const initAllocationDonut = () => {
   const container = document.getElementById("allocation-donut-container");
   if (!container) return;
 
-  window.addEventListener('prices-updated', (e) => {
+  // Remover listener previo si existe para evitar acumulación
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+  }
+
+  _pricesHandler = (e) => {
     const { holdings } = e.detail;
     const data = buildAllocationData(holdings);
     container.innerHTML = renderDonut(data);
-  });
+  };
+
+  window.addEventListener('prices-updated', _pricesHandler);
+};
+
+/**
+ * Limpia el listener de eventos para prevenir memory leaks en SPA navigation.
+ */
+export const cleanupAllocationDonut = () => {
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+    _pricesHandler = null;
+  }
 };
 
 export default AllocationDonut;
