@@ -8,7 +8,7 @@ import { initAddAssetModal } from "../components/AddAssetModal";
 import { initStatsGrid } from "../components/StatsGrid";
 import { initActionToolbar } from "../components/ActionToolbar";
 import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
-import { initAllocationDonut } from "../components/AllocationDonut";
+import { initAllocationDonut, cleanupAllocationDonut } from "../components/AllocationDonut";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -21,8 +21,9 @@ const routes = {
 };
 
 const router = async () => {
-  // Cleanup active charts to prevent memory leaks during SPA navigation
+  // Cleanup active charts and listeners to prevent memory leaks during SPA navigation
   cleanupHistoryChart();
+  cleanupAllocationDonut();
 
   const header = document.getElementById("header");
   const root = document.getElementById("app");

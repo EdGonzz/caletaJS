@@ -38,14 +38,15 @@ const aggregateForHistory = () => {
  * Realiza 1 llamada API por coinId único.
  *
  * @param {number} days - Período en días (1, 7, 30, 90, 365)
+ * @param {AbortSignal} [signal] - Señal para abortar peticiones en vuelo
  * @returns {Promise<{ time: string, value: number }[]>}
  */
-export const buildPortfolioHistorySeries = async (days = 30) => {
+export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
   const aggregated = aggregateForHistory();
   if (aggregated.length === 0) return [];
 
   const histories = await Promise.all(
-    aggregated.map(({ coinId }) => getCoinHistory(coinId, days))
+    aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
   );
 
   /** @type {Map<string, number>} */
