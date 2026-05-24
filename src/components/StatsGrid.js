@@ -96,6 +96,9 @@ const renderCards = (holdings = []) => {
   return cards.map((card) => StatCard(card)).join("");
 };
 
+/** @type {((e: Event) => void) | null} */
+let _pricesHandler = null;
+
 /**
  * Initializes the stats grid by listening to price updates.
  */
@@ -103,10 +106,27 @@ export const initStatsGrid = () => {
   const container = document.getElementById("stats-grid-container");
   if (!container) return;
 
-  window.addEventListener('prices-updated', (e) => {
+  // Remover listener previo si existe para evitar acumulación
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+  }
+
+  _pricesHandler = (e) => {
     const { holdings } = e.detail;
     container.innerHTML = renderCards(holdings);
-  });
+  };
+
+  window.addEventListener('prices-updated', _pricesHandler);
+};
+
+/**
+ * Limpia el listener de eventos para prevenir memory leaks en SPA navigation.
+ */
+export const cleanupStatsGrid = () => {
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+    _pricesHandler = null;
+  }
 };
 
 export default StatsGrid;

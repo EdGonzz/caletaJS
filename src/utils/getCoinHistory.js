@@ -25,7 +25,9 @@ const options = {
  */
 export const getCoinHistory = async (coinId, days = 30, signal = null) => {
   if (!coinId) return [];
-  const url = `${API_URL}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}&interval=daily`;
+  // Para períodos <= 7 días omitimos interval=daily para obtener granularidad intradía
+  const intervalParam = days <= 7 ? '' : '&interval=daily';
+  const url = `${API_URL}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}${intervalParam}`;
   try {
     const fetchOptions = signal ? { ...options, signal } : options;
     const res = await fetch(url, fetchOptions);
@@ -39,7 +41,10 @@ export const getCoinHistory = async (coinId, days = 30, signal = null) => {
       value: price
     }));
   } catch (err) {
-    console.error(`getCoinHistory(${coinId}, ${days}):`, err);
+    // Suprimir logs de cancelaciones intencionales (AbortController)
+    if (err.name !== 'AbortError') {
+      console.error(`getCoinHistory(${coinId}, ${days}):`, err);
+    }
     return [];
   }
 };

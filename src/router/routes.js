@@ -3,9 +3,9 @@ import Home from "../pages/Home";
 import About from "../pages/About";
 import CoinDetails from "../pages/CoinDetails";
 import Error404 from "../pages/Error404";
-import { initHoldingsTable } from "../components/HoldingsTable";
+import { initHoldingsTable, cleanupHoldingsTable } from "../components/HoldingsTable";
 import { initAddAssetModal } from "../components/AddAssetModal";
-import { initStatsGrid } from "../components/StatsGrid";
+import { initStatsGrid, cleanupStatsGrid } from "../components/StatsGrid";
 import { initActionToolbar } from "../components/ActionToolbar";
 import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
 import { initAllocationDonut, cleanupAllocationDonut } from "../components/AllocationDonut";
@@ -24,6 +24,8 @@ const router = async () => {
   // Cleanup active charts and listeners to prevent memory leaks during SPA navigation
   cleanupHistoryChart();
   cleanupAllocationDonut();
+  cleanupStatsGrid();
+  cleanupHoldingsTable();
 
   const header = document.getElementById("header");
   const root = document.getElementById("app");
@@ -45,7 +47,7 @@ const router = async () => {
     initStatsGrid();       // Registers prices-updated listener
     initAllocationDonut(); // Registers prices-updated listener
     initHoldingsTable();   // May dispatch prices-updated synchronously
-    initHistoryChart();
+    await initHistoryChart(); // Async: chart creation with API fetch
     initAddAssetModal();
   }
 }

@@ -181,6 +181,11 @@ const HoldingsTable = () => {
   return view;
 };
 
+/** @type {((e: Event) => void) | null} */
+let _filterHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _holdingsHandler = null;
+
 /**
  * Wires up dynamic data, pagination, and real-time updates.
  */
@@ -195,10 +200,20 @@ export const initHoldingsTable = () => {
   let currentData = [];
   let activeFilter = 'Caletas'; // Default source
 
-  window.addEventListener('caleta-filter-changed', (e) => {
+  // Remover listeners previos para evitar acumulación
+  if (_filterHandler) {
+    window.removeEventListener('caleta-filter-changed', _filterHandler);
+  }
+  if (_holdingsHandler) {
+    window.removeEventListener('holdings-updated', _holdingsHandler);
+  }
+
+  _filterHandler = (e) => {
     activeFilter = e.detail.source;
     fetchPricesAndUpdate();
-  });
+  };
+
+  window.addEventListener('caleta-filter-changed', _filterHandler);
 
   const updateDisplay = (page = 1) => {
     if (currentData.length === 0) {
@@ -318,9 +333,24 @@ export const initHoldingsTable = () => {
   });
 
   // Listen for new transactions
-  window.addEventListener('holdings-updated', () => {
+  _holdingsHandler = () => {
     fetchPricesAndUpdate();
-  });
+  };
+  window.addEventListener('holdings-updated', _holdingsHandler);
+};
+
+/**
+ * Limpia los listeners de eventos para prevenir memory leaks en SPA navigation.
+ */
+export const cleanupHoldingsTable = () => {
+  if (_filterHandler) {
+    window.removeEventListener('caleta-filter-changed', _filterHandler);
+    _filterHandler = null;
+  }
+  if (_holdingsHandler) {
+    window.removeEventListener('holdings-updated', _holdingsHandler);
+    _holdingsHandler = null;
+  }
 };
 
 export default HoldingsTable;

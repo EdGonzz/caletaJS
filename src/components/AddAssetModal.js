@@ -466,7 +466,7 @@ const wireFormView = () => {
     const parsedPrice = parseFloat(price);
     const parsedFees = parseFloat(fees) || 0;
 
-    if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || isNaN(parsedFees) || !selectedCoin) {
+    if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0  || !selectedCoin) {
       // Basic validation visual feedback
       const btn = document.getElementById("submit-transaction-btn");
       btn.classList.add("!bg-red-500", "!text-white");
