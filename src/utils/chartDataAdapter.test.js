@@ -190,6 +190,39 @@ describe('chartDataAdapter', () => {
       assert.strictEqual(res[0].value, 45000);
     });
 
+    test('debe soportar periodos intradía (días <= 7) ordenando numéricamente por timestamp sin agrupar por fecha', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return {
+            ok: true,
+            json: async () => ({
+              prices: [
+                [1704240000000, 42000], // 2024-01-03 00:00:00 (1704240000 segs)
+                [1704067200000, 40000], // 2024-01-01 00:00:00 (1704067200 segs)
+                [1704153600000, 41000]  // 2024-01-02 00:00:00 (1704153600 segs)
+              ]
+            })
+          };
+        }
+        return { ok: false };
+      };
+
+      const res = await buildPortfolioHistorySeries(7);
+
+      assert.strictEqual(res.length, 3);
+      assert.strictEqual(res[0].time, 1704067200);
+      assert.strictEqual(res[0].value, 40000);
+      assert.strictEqual(res[1].time, 1704153600);
+      assert.strictEqual(res[1].value, 41000);
+      assert.strictEqual(res[2].time, 1704240000);
+      assert.strictEqual(res[2].value, 42000);
+    });
+
     test('debe retornar array vacío si no hay holdings', async () => {
       mockStorage.set('caleta_user_holdings', JSON.stringify([]));
       const res = await buildPortfolioHistorySeries(30);

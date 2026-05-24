@@ -78,16 +78,16 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
     /** @type {Map<string, number>} */
     const priceByDate = new Map();
     for (const { time, value } of histories[i]) {
-      const dateKey = isIntraday
+      const dateStr = isIntraday
         ? new Date(time * 1000).toISOString().split('T')[0]
         : time;
 
-      if (startDate && dateKey < startDate) continue;
-      priceByDate.set(dateKey, value);
+      if (startDate && dateStr < startDate) continue;
+      priceByDate.set(time, value);
     }
 
-    for (const [dateKey, price] of priceByDate) {
-      portfolioByDate.set(dateKey, (portfolioByDate.get(dateKey) ?? 0) + balance * price);
+    for (const [timeKey, price] of priceByDate) {
+      portfolioByDate.set(timeKey, (portfolioByDate.get(timeKey) ?? 0) + balance * price);
     }
   });
 
