@@ -1,6 +1,7 @@
 import { buildAllocationData } from "../utils/chartDataAdapter.js";
 import { formatUsd } from "../utils/formatters.js";
 import { getHoldings } from "../utils/holdingsStorage.js";
+import { escapeHTML } from "../utils/helpers.js";
 import sprite from "../assets/sprite.svg";
 
 // Paleta de colores premium cíclica del design system
@@ -81,7 +82,7 @@ const renderDonut = (data) => {
           stroke-linecap="${item.pct === 100 ? 'butt' : 'round'}"
           stroke-width="10"
           class="transition-all duration-500"
-          aria-label="${item.name}: ${item.pct.toFixed(2)}%">
+          aria-label="${escapeHTML(item.name)}: ${item.pct.toFixed(2)}%">
         </circle>`;
     })
     .join("");
@@ -93,7 +94,7 @@ const renderDonut = (data) => {
         <div class="flex items-center justify-between text-sm">
           <div class="flex items-center gap-2">
             <span class="${color.class} size-2.5 rounded-full ${color.shadow}" aria-hidden="true"></span>
-            <span class="text-slate-300 font-medium">${item.name ?? 'Unknown'} (${(item.symbol ?? '').toUpperCase()})</span>
+            <span class="text-slate-300 font-medium">${escapeHTML(item.name ?? 'Unknown')} (${(item.symbol ?? '').toUpperCase()})</span>
           </div>
           <span class="font-mono text-white font-semibold">${item.pct.toFixed(2)}%</span>
         </div>`;

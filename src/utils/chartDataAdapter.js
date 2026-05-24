@@ -39,13 +39,14 @@ const aggregateForHistory = () => {
  *
  * @param {number} days - Período en días (1, 7, 30, 90, 365)
  * @param {AbortSignal} [signal] - Señal para abortar peticiones en vuelo
- * @returns {Promise<{ time: string, value: number }[]>}
+ * @returns {Promise<{ time: string|number, value: number }[]>}
  */
 export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
   const aggregated = aggregateForHistory();
   if (aggregated.length === 0) return [];
 
   const holdings = getHoldings();
+  const isIntraday = days <= 7;
 
   // Para cada coin, calcular la fecha más temprana de transacción.
   // Así evitamos proyectar el balance actual hacia fechas en que el usuario
@@ -72,20 +73,26 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
 
     // Deduplicar precios por fecha (el último punto del día gana)
     // y omitir fechas anteriores a cuando el usuario adquirió la coin.
+    // Para intradía (timestamps UNIX), agrupar por fecha YYYY-MM-DD.
+    // Para diario (YYYY-MM-DD), usar la fecha como clave directamente.
     /** @type {Map<string, number>} */
     const priceByDate = new Map();
     for (const { time, value } of histories[i]) {
-      if (startDate && time < startDate) continue;
-      priceByDate.set(time, value);
+      const dateKey = isIntraday
+        ? new Date(time * 1000).toISOString().split('T')[0]
+        : time;
+
+      if (startDate && dateKey < startDate) continue;
+      priceByDate.set(dateKey, value);
     }
 
-    for (const [time, price] of priceByDate) {
-      portfolioByDate.set(time, (portfolioByDate.get(time) ?? 0) + balance * price);
+    for (const [dateKey, price] of priceByDate) {
+      portfolioByDate.set(dateKey, (portfolioByDate.get(dateKey) ?? 0) + balance * price);
     }
   });
 
   return [...portfolioByDate.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => isIntraday ? a - b : a.localeCompare(b))
     .map(([time, value]) => ({ time, value }));
 };
 

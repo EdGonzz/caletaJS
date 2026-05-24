@@ -11,7 +11,7 @@ const options = {
 
 /**
  * @typedef {Object} PricePoint
- * @property {string} time - La fecha en formato YYYY-MM-DD
+ * @property {string|number} time - YYYY-MM-DD para períodos >7d, Unix timestamp (seg) para períodos ≤7d
  * @property {number} value - El precio en USD
  */
 
@@ -36,8 +36,12 @@ export const getCoinHistory = async (coinId, days = 30, signal = null) => {
     
     if (!prices || !Array.isArray(prices)) return [];
 
+    // Períodos <= 7 días: devolver timestamps UNIX (segundos) para granularidad intradía.
+    // Lightweight Charts acepta UTCTimestamp en segundos desde epoch.
+    // Períodos > 7 días: devolver YYYY-MM-DD (fecha completa, no hay granularidad intradía).
+    const isIntraday = days <= 7;
     return prices.map(([ts, price]) => ({
-      time: new Date(ts).toISOString().split('T')[0], // "YYYY-MM-DD"
+      time: isIntraday ? Math.floor(ts / 1000) : new Date(ts).toISOString().split('T')[0],
       value: price
     }));
   } catch (err) {
