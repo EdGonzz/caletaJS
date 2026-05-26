@@ -267,9 +267,9 @@ const showLoadingState = (container) => {
 const showEmptyState = (container) => {
   container.innerHTML = `
     <div class="flex flex-col items-center justify-center text-center p-6 py-12 max-w-sm mx-auto">
-<svg class="w-10 h-10 text-slate-600 mb-3" aria-hidden="true">```
-
-📏 **Severity**: suggestion
+      <svg class="w-10 h-10 text-slate-600 mb-3" aria-hidden="true">
+        <use href="${sprite}#trending-up"></use>
+      </svg>
         <use href="${sprite}#trending-up"></use>
       </svg>
       <h4 class="text-sm font-semibold text-white mb-1">Sin historial de portafolio</h4>
