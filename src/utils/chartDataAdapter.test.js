@@ -223,6 +223,48 @@ describe('chartDataAdapter', () => {
       assert.strictEqual(res[2].value, 42000);
     });
 
+    test('debe alinear timestamps intradía desalineados entre diferentes monedas', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy' },
+        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', balance: 2, type: 'buy' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return {
+            ok: true,
+            json: async () => ({
+              prices: [
+                [1704067201000, 40000], // 2024-01-01 00:00:01 (redondea a 1704067200)
+                [1704067502000, 41000]  // 2024-01-01 00:05:02 (redondea a 1704067500)
+              ]
+            })
+          };
+        }
+        if (url.includes('ethereum')) {
+          return {
+            ok: true,
+            json: async () => ({
+              prices: [
+                [1704067198000, 2000],  // 2024-01-01 23:59:58 (redondea a 1704067200)
+                [1704067499000, 2100]   // 2024-01-01 00:04:59 (redondea a 1704067500)
+              ]
+            })
+          };
+        }
+        return { ok: false };
+      };
+
+      const res = await buildPortfolioHistorySeries(1);
+
+      assert.strictEqual(res.length, 2);
+      assert.strictEqual(res[0].time, 1704067200);
+      assert.strictEqual(res[0].value, 44000);
+      assert.strictEqual(res[1].time, 1704067500);
+      assert.strictEqual(res[1].value, 45200);
+    });
+
     test('debe retornar array vacío si no hay holdings', async () => {
       mockStorage.set('caleta_user_holdings', JSON.stringify([]));
       const res = await buildPortfolioHistorySeries(30);
