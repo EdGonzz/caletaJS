@@ -49,6 +49,10 @@ let _series = null;
 let _abortController = null;
 /** @type {number} */
 let _requestId = 0;
+/** @type {(() => void) | null} */
+let _holdingsHandler = null;
+/** @type {number} */
+let _currentDays = 30;
 
 export const initHistoryChart = async () => {
   const container = document.getElementById("history-chart-container");
@@ -60,11 +64,17 @@ export const initHistoryChart = async () => {
   const currentRequest = ++_requestId;
   _abortController = new AbortController();
 
+  // Registrar handler para cuando se actualizan holdings y recargar gráfico
+  _holdingsHandler = () => {
+    initHistoryChart();
+  };
+  window.addEventListener("holdings-updated", _holdingsHandler);
+
   // Mostrar loading state
   showLoadingState(container);
 
-  // Cargar datos iniciales (30 días por defecto)
-  const data = await buildPortfolioHistorySeries(30, _abortController.signal);
+  // Cargar datos iniciales (período seleccionado actual)
+  const data = await buildPortfolioHistorySeries(_currentDays, _abortController.signal);
 
   // Guard: invalidar si el request es stale o el contenedor fue removido
   if (currentRequest !== _requestId || !document.body.contains(container)) {
@@ -116,10 +126,24 @@ export const initHistoryChart = async () => {
   // Configurar botones de período
   const selector = document.getElementById("history-period-selector");
   if (selector) {
-    const buttons = selector.querySelectorAll("button");
+    // Clonar para limpiar event listeners previos
+    const newSelector = selector.cloneNode(true);
+    if (selector.parentNode) {
+      selector.parentNode.replaceChild(newSelector, selector);
+    }
+
+    const buttons = newSelector.querySelectorAll("button");
     buttons.forEach((btn) => {
+      const btnDays = Number(btn.dataset.days);
+      const isActive = btnDays === _currentDays;
+
+      // Sincronizar estilo inicial con _currentDays
+      btn.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
+      btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+
       btn.addEventListener("click", async (e) => {
         const days = Number(e.currentTarget.dataset.days);
+        _currentDays = days; // Guardar el día seleccionado
 
         // Guardar referencia al botón anteriormente activo para fallback
         const prevActiveButton = Array.from(buttons).find((b) => b.getAttribute("aria-pressed") === "true") || btn;
@@ -189,6 +213,14 @@ export const cleanupHistoryChart = () => {
     _chart = null;
     _series = null;
   }
+
+  if (_holdingsHandler) {
+    window.removeEventListener("holdings-updated", _holdingsHandler);
+    _holdingsHandler = null;
+  }
+
+  // Resetear período por defecto al desmontar la vista
+  _currentDays = 30;
 };
 
 /**
