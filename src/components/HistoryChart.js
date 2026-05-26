@@ -121,7 +121,10 @@ export const initHistoryChart = async () => {
       btn.addEventListener("click", async (e) => {
         const days = Number(e.currentTarget.dataset.days);
 
-        // Actualizar UI activa de los botones
+        // Guardar referencia al botón anteriormente activo para fallback
+        const prevActiveButton = Array.from(buttons).find((b) => b.getAttribute("aria-pressed") === "true") || btn;
+
+        // Actualizar UI activa de los botones eager
         buttons.forEach((b) => {
           const isActive = b === e.currentTarget;
           b.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
@@ -145,6 +148,13 @@ export const initHistoryChart = async () => {
         if (_series && _chart && newData.length > 0) {
           _series.setData(newData);
           _chart.timeScale().fitContent();
+        } else {
+          // Revertir UI al botón previamente activo si no hay datos nuevos
+          buttons.forEach((b) => {
+            const isActive = b === prevActiveButton;
+            b.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
+            b.setAttribute("aria-pressed", isActive ? "true" : "false");
+          });
         }
       });
     });
