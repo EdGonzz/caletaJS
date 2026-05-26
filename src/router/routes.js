@@ -22,7 +22,7 @@ const routes = {
 
 const router = async () => {
   // Cleanup active charts and listeners to prevent memory leaks during SPA navigation
-  cleanupHistoryChart();
+  cleanupHistoryChart(true);
   cleanupAllocationDonut();
   cleanupStatsGrid();
   cleanupHoldingsTable();

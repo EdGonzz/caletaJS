@@ -62,22 +62,26 @@ export const initHistoryChart = async () => {
   if (!container) return;
 
   // Cleanup de cualquier instancia previa
-  cleanupHistoryChart();
+  cleanupHistoryChart(false);
 
   const currentRequest = ++_requestId;
   _abortController = new AbortController();
 
   // Registrar handler para cuando se actualizan holdings y recargar gráfico
-  _holdingsHandler = () => {
-    initHistoryChart();
-  };
-  window.addEventListener("holdings-updated", _holdingsHandler);
+  if (!_holdingsHandler) {
+    _holdingsHandler = () => {
+      initHistoryChart();
+    };
+    window.addEventListener("holdings-updated", _holdingsHandler);
+  }
 
   // Registrar handler para cuando cambia el filtro de caleta (filter changed)
-  _filterHandler = () => {
-    initHistoryChart();
-  };
-  window.addEventListener("caleta-filter-changed", _filterHandler);
+  if (!_filterHandler) {
+    _filterHandler = () => {
+      initHistoryChart();
+    };
+    window.addEventListener("caleta-filter-changed", _filterHandler);
+  }
 
   // Mostrar loading state
   showLoadingState(container);
@@ -197,7 +201,7 @@ export const initHistoryChart = async () => {
 // HMR: Vanilla JS - cleanup before module replacement
 if (typeof module !== "undefined" && module.hot) {
   module.hot.dispose(() => {
-    cleanupHistoryChart();
+    cleanupHistoryChart(true);
   });
   module.hot.accept(() => {
     // Re-inicializar en el próximo ciclo del router
@@ -206,8 +210,9 @@ if (typeof module !== "undefined" && module.hot) {
 
 /**
  * Cleanup de las instancias del chart para evitar memory leaks.
+ * @param {boolean} [isNavigation=false] - Indica si la limpieza es por navegación SPA.
  */
-export const cleanupHistoryChart = () => {
+export const cleanupHistoryChart = (isNavigation = false) => {
   // Cancelar cualquier petición en curso
   if (_abortController) {
     _abortController.abort();
@@ -223,18 +228,21 @@ export const cleanupHistoryChart = () => {
     _series = null;
   }
 
-  if (_holdingsHandler) {
-    window.removeEventListener("holdings-updated", _holdingsHandler);
-    _holdingsHandler = null;
-  }
+  // Si es por navegación SPA, limpiar event listeners y resetear el período por defecto
+  if (isNavigation) {
+    if (_holdingsHandler) {
+      window.removeEventListener("holdings-updated", _holdingsHandler);
+      _holdingsHandler = null;
+    }
 
-  if (_filterHandler) {
-    window.removeEventListener("caleta-filter-changed", _filterHandler);
-    _filterHandler = null;
-  }
+    if (_filterHandler) {
+      window.removeEventListener("caleta-filter-changed", _filterHandler);
+      _filterHandler = null;
+    }
 
-  // Resetear período por defecto al desmontar la vista
-  _currentDays = 30;
+    // Resetear período por defecto al desmontar la vista
+    _currentDays = 30;
+  }
 };
 
 /**
