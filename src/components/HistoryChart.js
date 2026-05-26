@@ -1,5 +1,6 @@
 import { createChart, AreaSeries } from "lightweight-charts";
 import { buildPortfolioHistorySeries } from "../utils/chartDataAdapter.js";
+import { currentFilter } from "./ActionToolbar.js";
 import sprite from "../assets/sprite.svg";
 
 const HistoryChart = () => {
@@ -51,6 +52,8 @@ let _abortController = null;
 let _requestId = 0;
 /** @type {(() => void) | null} */
 let _holdingsHandler = null;
+/** @type {(() => void) | null} */
+let _filterHandler = null;
 /** @type {number} */
 let _currentDays = 30;
 
@@ -70,11 +73,17 @@ export const initHistoryChart = async () => {
   };
   window.addEventListener("holdings-updated", _holdingsHandler);
 
+  // Registrar handler para cuando cambia el filtro de caleta (filter changed)
+  _filterHandler = () => {
+    initHistoryChart();
+  };
+  window.addEventListener("caleta-filter-changed", _filterHandler);
+
   // Mostrar loading state
   showLoadingState(container);
 
-  // Cargar datos iniciales (período seleccionado actual)
-  const data = await buildPortfolioHistorySeries(_currentDays, _abortController.signal);
+  // Cargar datos iniciales (período seleccionado actual y filtro activo)
+  const data = await buildPortfolioHistorySeries(_currentDays, _abortController.signal, currentFilter);
 
   // Guard: invalidar si el request es stale o el contenedor fue removido
   if (currentRequest !== _requestId || !document.body.contains(container)) {
@@ -163,7 +172,7 @@ export const initHistoryChart = async () => {
         _abortController = new AbortController();
 
         // Fetch nuevos datos y actualizar serie
-        const newData = await buildPortfolioHistorySeries(days, _abortController.signal);
+        const newData = await buildPortfolioHistorySeries(days, _abortController.signal, currentFilter);
 
         if (periodRequest !== _requestId || _abortController.signal.aborted) {
           return;
@@ -217,6 +226,11 @@ export const cleanupHistoryChart = () => {
   if (_holdingsHandler) {
     window.removeEventListener("holdings-updated", _holdingsHandler);
     _holdingsHandler = null;
+  }
+
+  if (_filterHandler) {
+    window.removeEventListener("caleta-filter-changed", _filterHandler);
+    _filterHandler = null;
   }
 
   // Resetear período por defecto al desmontar la vista

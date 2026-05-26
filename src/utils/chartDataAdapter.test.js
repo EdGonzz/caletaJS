@@ -270,5 +270,111 @@ describe('chartDataAdapter', () => {
       const res = await buildPortfolioHistorySeries(30);
       assert.deepStrictEqual(res, []);
     });
+
+    // ==========================================
+    // Tests para filtrado por source (filterSource)
+    // ==========================================
+
+    test('debe incluir todos los holdings cuando filterSource es "Caletas" (vista general)', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy', source: 'Binance' },
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 2, type: 'buy', source: 'Kraken' },
+        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', balance: 5, type: 'buy', source: 'Binance' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return { ok: true, json: async () => ({ prices: [[1704067200000, 40000]] }) };
+        }
+        if (url.includes('ethereum')) {
+          return { ok: true, json: async () => ({ prices: [[1704067200000, 2000]] }) };
+        }
+        return { ok: false };
+      };
+
+      const res = await buildPortfolioHistorySeries(30, null, 'Caletas');
+
+      // Balance total BTC: 1 + 2 = 3 → 3 * 40000 = 120000
+      // Balance ETH: 5 → 5 * 2000 = 10000
+      // Total: 130000
+      assert.strictEqual(res.length, 1);
+      assert.strictEqual(res[0].value, 130000,
+        'La vista general (Caletas) debe consolidar holdings cross-exchange');
+    });
+
+    test('debe incluir todos los holdings cuando no se proporciona filterSource (backward compat)', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy', source: 'Binance' },
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 2, type: 'buy', source: 'Kraken' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return { ok: true, json: async () => ({ prices: [[1704067200000, 40000]] }) };
+        }
+        return { ok: false };
+      };
+
+      // Sin filterSource → usa DEFAULT_SOURCE (backward compat)
+      const res = await buildPortfolioHistorySeries(30);
+
+      // Balance BTC: 1 + 2 = 3 → 3 * 40000 = 120000
+      assert.strictEqual(res.length, 1);
+      assert.strictEqual(res[0].value, 120000,
+        'Sin filterSource debe usar DEFAULT_SOURCE e incluir todos los holdings');
+    });
+
+    test('debe filtrar holdings por source específico (ej: Binance)', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy', source: 'Binance' },
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 2, type: 'buy', source: 'Kraken' },
+        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', balance: 5, type: 'buy', source: 'Binance' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return { ok: true, json: async () => ({ prices: [[1704067200000, 40000]] }) };
+        }
+        if (url.includes('ethereum')) {
+          return { ok: true, json: async () => ({ prices: [[1704067200000, 2000]] }) };
+        }
+        return { ok: false };
+      };
+
+      const res = await buildPortfolioHistorySeries(30, null, 'Binance');
+
+      // Solo Binance: BTC 1 * 40000 + ETH 5 * 2000 = 40000 + 10000 = 50000
+      assert.strictEqual(res.length, 1);
+      assert.strictEqual(res[0].value, 50000,
+        'Debe filtrar solo holdings del source Binance');
+    });
+
+    test('debe retornar array vacío si el source filtrado no tiene holdings', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy', source: 'Binance' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      const res = await buildPortfolioHistorySeries(30, null, 'Kraken');
+
+      assert.deepStrictEqual(res, [],
+        'Debe retornar array vacío si el source no tiene holdings');
+    });
+
+    test('debe ignorar holdings con tipo "sell" al filtrar por source', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 5, type: 'buy', source: 'Binance' },
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 5, type: 'sell', source: 'Binance' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      const res = await buildPortfolioHistorySeries(30, null, 'Binance');
+
+      assert.deepStrictEqual(res, [],
+        'Debe retornar vacío si el balance neto es 0 después de ventas');
+    });
   });
 });

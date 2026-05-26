@@ -1,5 +1,6 @@
 import { getHoldings } from './holdingsStorage.js';
 import { getCoinHistory } from './getCoinHistory.js';
+import { DEFAULT_SOURCE } from './sources.js';
 
 /**
  * Agrega holdings crudos por coinId, sumando balances cross-exchange.
@@ -39,10 +40,16 @@ const aggregateForHistory = (holdings = []) => {
  *
  * @param {number} days - Período en días (1, 7, 30, 90, 365)
  * @param {AbortSignal} [signal] - Señal para abortar peticiones en vuelo
+ * @param {string} [filterSource] - Filter by source (DEFAULT_SOURCE = "Caletas" = all)
  * @returns {Promise<{ time: string|number, value: number }[]>}
  */
-export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
-  const holdings = getHoldings();
+export const buildPortfolioHistorySeries = async (days = 30, signal = null, filterSource = DEFAULT_SOURCE) => {
+  const rawHoldings = getHoldings();
+  const isAllView = filterSource === DEFAULT_SOURCE;
+  const holdings = isAllView
+    ? rawHoldings
+    : rawHoldings.filter(h => h.source === filterSource);
+
   const aggregated = aggregateForHistory(holdings);
   if (aggregated.length === 0) return [];
 
