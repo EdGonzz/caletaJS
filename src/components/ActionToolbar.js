@@ -47,13 +47,22 @@ const ActionToolbar = () => {
   return view;
 }
 
+/** @type {(() => void) | null} */
+let _walletHandler = null;
+/** @type {(() => void) | null} */
+let _fundsHandler = null;
+/** @type {Array<{el: Element, handler: (e: Event) => void}>} */
+let _filterHandlers = [];
+
 export const initActionToolbar = () => {
+  cleanupActionToolbar();
+
   // Add Wallet
   const addWalletBtn = document.getElementById("add-wallet");
   if (addWalletBtn) {
-    addWalletBtn.addEventListener("click", () => {
+    _walletHandler = () => {
       openAddExchangeModal({
-        onSave: (exchange) => {
+        onSave: () => {
           // Re-render toolbar to include new source
           const wrapper = document.getElementById("action-toolbar-wrapper");
           if (wrapper) {
@@ -62,25 +71,27 @@ export const initActionToolbar = () => {
           }
         }
       });
-    });
+    };
+    addWalletBtn.addEventListener("click", _walletHandler);
   }
 
   // Add Funds
   const addFundsBtn = document.getElementById("add-funds");
   if (addFundsBtn) {
-    addFundsBtn.addEventListener("click", openAddAssetModal);
+    _fundsHandler = openAddAssetModal;
+    addFundsBtn.addEventListener("click", _fundsHandler);
   }
 
   // Filter Buttons
   document.querySelectorAll('.action-filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    const handler = (e) => {
       const filter = e.currentTarget.dataset.filter;
       if (currentFilter !== filter) {
         currentFilter = filter;
-        
+
         // Notify other components
         window.dispatchEvent(new CustomEvent('caleta-filter-changed', { detail: { source: currentFilter } }));
-        
+
         // Re-render toolbar to update active tab
         const wrapper = document.getElementById("action-toolbar-wrapper");
         if (wrapper) {
@@ -88,8 +99,27 @@ export const initActionToolbar = () => {
           initActionToolbar();
         }
       }
-    });
+    };
+    btn.addEventListener('click', handler);
+    _filterHandlers.push({ el: btn, handler });
   });
-}
+};
+
+export const cleanupActionToolbar = () => {
+  const addWalletBtn = document.getElementById("add-wallet");
+  if (addWalletBtn && _walletHandler) {
+    addWalletBtn.removeEventListener("click", _walletHandler);
+    _walletHandler = null;
+  }
+  const addFundsBtn = document.getElementById("add-funds");
+  if (addFundsBtn && _fundsHandler) {
+    addFundsBtn.removeEventListener("click", _fundsHandler);
+    _fundsHandler = null;
+  }
+  _filterHandlers.forEach(({ el, handler }) => {
+    el.removeEventListener('click', handler);
+  });
+  _filterHandlers = [];
+};
 
 export default ActionToolbar;

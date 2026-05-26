@@ -270,8 +270,6 @@ const showEmptyState = (container) => {
       <svg class="w-10 h-10 text-slate-600 mb-3" aria-hidden="true">
         <use href="${sprite}#trending-up"></use>
       </svg>
-        <use href="${sprite}#trending-up"></use>
-      </svg>
       <h4 class="text-sm font-semibold text-white mb-1">Sin historial de portafolio</h4>
       <p class="text-xs text-slate-400 leading-relaxed">
         Agrega activos con montos reales para calcular la evolución histórica de tu patrimonio.

@@ -557,6 +557,9 @@ const AddExchangeModal = () => `
 /** @type {((e: KeyboardEvent) => void) | null} */
 let _keydownHandler = null;
 
+/** @type {((e: MouseEvent) => void) | null} */
+let _backdropHandler = null;
+
 const initAddExchangeModal = () => {
   cleanupAddExchangeModal();
 
@@ -569,15 +572,22 @@ const initAddExchangeModal = () => {
 
   document.addEventListener('keydown', _keydownHandler);
 
-  document.getElementById('add-exchange-modal')?.addEventListener('click', (e) => {
+  _backdropHandler = (e) => {
     if (e.target.id === 'add-exchange-modal') closeAddExchangeModal();
-  });
+  };
+
+  document.getElementById('add-exchange-modal')?.addEventListener('click', _backdropHandler);
 };
 
 const cleanupAddExchangeModal = () => {
   if (_keydownHandler) {
     document.removeEventListener('keydown', _keydownHandler);
     _keydownHandler = null;
+  }
+  if (_backdropHandler) {
+    const modal = document.getElementById('add-exchange-modal');
+    if (modal) modal.removeEventListener('click', _backdropHandler);
+    _backdropHandler = null;
   }
 };
 

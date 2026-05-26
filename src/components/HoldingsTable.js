@@ -186,6 +186,8 @@ const HoldingsTable = () => {
 let _filterHandler = null;
 /** @type {((e: Event) => void) | null} */
 let _holdingsHandler = null;
+/** @type {(() => void) | null} */
+let _refreshHandler = null;
 
 /**
  * Wires up dynamic data, pagination, and real-time updates.
@@ -325,13 +327,17 @@ export const initHoldingsTable = () => {
   fetchPricesAndUpdate();
 
   // Manual Refresh Button
-  document.getElementById("refresh-prices-btn")?.addEventListener("click", () => {
-    const btn = document.getElementById("refresh-prices-btn");
-    btn.querySelector('svg')?.classList.add("animate-spin");
-    fetchPricesAndUpdate().finally(() => {
-      setTimeout(() => btn.querySelector('svg')?.classList.remove("animate-spin"), 500);
-    });
-  });
+  const refreshBtn = document.getElementById("refresh-prices-btn");
+  if (refreshBtn) {
+    _refreshHandler = () => {
+      const btn = document.getElementById("refresh-prices-btn");
+      btn?.querySelector('svg')?.classList.add("animate-spin");
+      fetchPricesAndUpdate().finally(() => {
+        setTimeout(() => btn?.querySelector('svg')?.classList.remove("animate-spin"), 500);
+      });
+    };
+    refreshBtn.addEventListener("click", _refreshHandler);
+  }
 
   // Listen for new transactions
   _holdingsHandler = () => {
@@ -351,6 +357,11 @@ export const cleanupHoldingsTable = () => {
   if (_holdingsHandler) {
     window.removeEventListener('holdings-updated', _holdingsHandler);
     _holdingsHandler = null;
+  }
+  if (_refreshHandler) {
+    const btn = document.getElementById("refresh-prices-btn");
+    if (btn) btn.removeEventListener("click", _refreshHandler);
+    _refreshHandler = null;
   }
 };
 

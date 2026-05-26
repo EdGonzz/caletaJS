@@ -593,13 +593,17 @@ const wireExchangeView = () => {
 /** @type {((e: KeyboardEvent) => void) | null} */
 let _keydownHandler = null;
 
+/** @type {((e: MouseEvent) => void) | null} */
+let _astBackdropHandler = null;
+
 const initAddAssetModal = async () => {
   cleanupAddAssetModal();
 
   // Close on backdrop click
-  document.getElementById("add-asset-modal")?.addEventListener("click", (e) => {
+  _astBackdropHandler = (e) => {
     if (e.target.id === "add-asset-modal") closeModal();
-  });
+  };
+  document.getElementById("add-asset-modal")?.addEventListener("click", _astBackdropHandler);
 
   // Close or go back on Escape
   _keydownHandler = (e) => {
@@ -631,6 +635,11 @@ const cleanupAddAssetModal = () => {
   if (_keydownHandler) {
     document.removeEventListener("keydown", _keydownHandler);
     _keydownHandler = null;
+  }
+  if (_astBackdropHandler) {
+    const modal = document.getElementById("add-asset-modal");
+    if (modal) modal.removeEventListener("click", _astBackdropHandler);
+    _astBackdropHandler = null;
   }
   cleanupAddExchangeModal();
 };

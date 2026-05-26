@@ -6,7 +6,7 @@ import Error404 from "../pages/Error404";
 import { initHoldingsTable, cleanupHoldingsTable } from "../components/HoldingsTable";
 import { initAddAssetModal, cleanupAddAssetModal } from "../components/AddAssetModal";
 import { initStatsGrid, cleanupStatsGrid } from "../components/StatsGrid";
-import { initActionToolbar } from "../components/ActionToolbar";
+import { initActionToolbar, cleanupActionToolbar } from "../components/ActionToolbar";
 import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
 import { initAllocationDonut, cleanupAllocationDonut } from "../components/AllocationDonut";
 
@@ -27,17 +27,18 @@ const router = async () => {
   cleanupStatsGrid();
   cleanupHoldingsTable();
   cleanupAddAssetModal();
+  cleanupActionToolbar();
 
   const header = document.getElementById("header");
   const root = document.getElementById("app");
 
-  let hash = getHash();
-  let path = resolveRoutes(hash);
+  const segments = getHash();
+  const { path, params } = resolveRoutes(segments);
 
-  let render = (routes[path] ? routes[path] : routes["/404"]);
+  const render = (routes[path] ? routes[path] : routes["/404"]);
 
   header.innerHTML = Header();
-  root.innerHTML = await render();
+  root.innerHTML = await render(params);
 
   // Wire up interactive components after the DOM is populated
   // Order matters: listeners (StatsGrid, AllocationDonut) must register BEFORE
