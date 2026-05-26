@@ -4,7 +4,7 @@ import About from "../pages/About";
 import CoinDetails from "../pages/CoinDetails";
 import Error404 from "../pages/Error404";
 import { initHoldingsTable, cleanupHoldingsTable } from "../components/HoldingsTable";
-import { initAddAssetModal } from "../components/AddAssetModal";
+import { initAddAssetModal, cleanupAddAssetModal } from "../components/AddAssetModal";
 import { initStatsGrid, cleanupStatsGrid } from "../components/StatsGrid";
 import { initActionToolbar } from "../components/ActionToolbar";
 import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
@@ -26,6 +26,7 @@ const router = async () => {
   cleanupAllocationDonut();
   cleanupStatsGrid();
   cleanupHoldingsTable();
+  cleanupAddAssetModal();
 
   const header = document.getElementById("header");
   const root = document.getElementById("app");

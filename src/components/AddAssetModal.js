@@ -4,7 +4,7 @@ import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
-import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
+import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 
@@ -568,18 +568,19 @@ const wireExchangeView = () => {
 
 // ─── Public Init ───────────────────────────────────────────────────
 
-/**
- * Wires up the "Add Funds" button to open the modal.
- * Must be called after the DOM containing AddAssetModal() has been rendered.
- */
+/** @type {((e: KeyboardEvent) => void) | null} */
+let _keydownHandler = null;
+
 const initAddAssetModal = async () => {
+  cleanupAddAssetModal();
+
   // Close on backdrop click
   document.getElementById("add-asset-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "add-asset-modal") closeModal();
   });
 
   // Close or go back on Escape
-  document.addEventListener("keydown", (e) => {
+  _keydownHandler = (e) => {
     if (e.key !== "Escape") return;
 
     // Check if sub-modal (AddExchangeModal) is open
@@ -596,11 +597,21 @@ const initAddAssetModal = async () => {
     } else {
       closeModal();
     }
-  });
+  };
+
+  document.addEventListener("keydown", _keydownHandler);
 
   // Init Add Exchange modal (Escape key + backdrop)
   initAddExchangeModal();
 };
 
-export { initAddAssetModal, openModal as openAddAssetModal };
+const cleanupAddAssetModal = () => {
+  if (_keydownHandler) {
+    document.removeEventListener("keydown", _keydownHandler);
+    _keydownHandler = null;
+  }
+  cleanupAddExchangeModal();
+};
+
+export { initAddAssetModal, cleanupAddAssetModal, openModal as openAddAssetModal };
 export default AddAssetModal;
