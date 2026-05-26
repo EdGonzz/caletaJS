@@ -192,6 +192,8 @@ export const initHistoryChart = async () => {
             b.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
             b.setAttribute("aria-pressed", isActive ? "true" : "false");
           });
+          // Revertir _currentDays al valor del botón previamente activo
+          _currentDays = Number(prevActiveButton.dataset.days);
         }
       });
     });

@@ -3,6 +3,7 @@ import Pagination from "./Pagination";
 import { getHoldings } from "../utils/holdingsStorage";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import sprite from "../assets/sprite.svg";
+import { currentFilter } from "./ActionToolbar";
 
 const PAGE_SIZE = 4;
 
@@ -198,7 +199,7 @@ export const initHoldingsTable = () => {
 
   const pageSize = Number(table.dataset.pageSize);
   let currentData = [];
-  let activeFilter = 'Caletas'; // Default source
+  let activeFilter = currentFilter; // Default source
 
   // Remover listeners previos para evitar acumulación
   if (_filterHandler) {
