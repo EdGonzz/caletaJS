@@ -1,7 +1,6 @@
 import Button from "./Button";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { openAddExchangeModal } from "./AddExchangeModal";
-import { openAddAssetModal } from "./AddAssetModal";
 import sprite from "../assets/sprite.svg";
 
 export let currentFilter = DEFAULT_SOURCE;
@@ -62,15 +61,6 @@ export const initActionToolbar = () => {
           }
         }
       });
-    });
-  }
-
-  // Add Funds
-  const addFundsBtn = document.getElementById("add-funds");
-  if (addFundsBtn) {
-    // Remove old listeners by cloning the node if needed, but since it's freshly rendered, we just add it
-    addFundsBtn.addEventListener("click", () => {
-      openAddAssetModal();
     });
   }
 

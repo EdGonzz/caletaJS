@@ -5,10 +5,10 @@ import { getCoinHistory } from './getCoinHistory.js';
  * Agrega holdings crudos por coinId, sumando balances cross-exchange.
  * Replica la lógica de buy/sell de HoldingsTable.aggregateHoldings().
  *
+ * @param {Array} holdings - Array de holdings crudos
  * @returns {{ coinId: string, name: string, symbol: string, balance: number }[]}
  */
-const aggregateForHistory = () => {
-  const holdings = getHoldings();
+const aggregateForHistory = (holdings = []) => {
   /** @type {Map<string, { coinId: string, name: string, symbol: string, balance: number }>} */
   const map = new Map();
 
@@ -42,10 +42,10 @@ const aggregateForHistory = () => {
  * @returns {Promise<{ time: string|number, value: number }[]>}
  */
 export const buildPortfolioHistorySeries = async (days = 30, signal = null) => {
-  const aggregated = aggregateForHistory();
+  const holdings = getHoldings();
+  const aggregated = aggregateForHistory(holdings);
   if (aggregated.length === 0) return [];
 
-  const holdings = getHoldings();
   const isIntraday = days <= 7;
 
   // Para cada coin, calcular la fecha más temprana de transacción.
