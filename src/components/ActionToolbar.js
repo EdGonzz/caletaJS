@@ -1,6 +1,7 @@
 import Button from "./Button";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { openAddExchangeModal } from "./AddExchangeModal";
+import { openAddAssetModal } from "./AddAssetModal";
 import sprite from "../assets/sprite.svg";
 
 export let currentFilter = DEFAULT_SOURCE;
@@ -62,6 +63,12 @@ export const initActionToolbar = () => {
         }
       });
     });
+  }
+
+  // Add Funds
+  const addFundsBtn = document.getElementById("add-funds");
+  if (addFundsBtn) {
+    addFundsBtn.addEventListener("click", openAddAssetModal);
   }
 
   // Filter Buttons

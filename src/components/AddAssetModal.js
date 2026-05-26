@@ -573,12 +573,6 @@ const wireExchangeView = () => {
  * Must be called after the DOM containing AddAssetModal() has been rendered.
  */
 const initAddAssetModal = async () => {
-  // The "Add Funds" button has id="add-funds"
-  const addFundsBtn = document.getElementById("add-funds");
-  if (addFundsBtn) {
-    addFundsBtn.addEventListener("click", openModal);
-  }
-
   // Close on backdrop click
   document.getElementById("add-asset-modal")?.addEventListener("click", (e) => {
     if (e.target.id === "add-asset-modal") closeModal();
