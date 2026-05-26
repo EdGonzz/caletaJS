@@ -47,8 +47,8 @@ const router = async () => {
     initStatsGrid();       // Registers prices-updated listener
     initAllocationDonut(); // Registers prices-updated listener
     initHoldingsTable();   // May dispatch prices-updated synchronously
-    await initHistoryChart(); // Async: chart creation with API fetch
     initAddAssetModal();
+    await initHistoryChart(); // Async: chart creation with API fetch
   }
 }
 
