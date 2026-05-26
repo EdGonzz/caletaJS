@@ -423,20 +423,42 @@ const wireFormView = () => {
 
   const sanitizeInput = (inputEl) => {
     let val = inputEl.value;
-    // Permitir solo números y separadores decimales
+    const start = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+
+    // Permitir solo números y separadores decimales/miles
     val = val.replace(/[^0-9.,]/g, "");
-    
-    // Normalizar comas a puntos
+
+    // Resolver ambigüedad si se usan tanto comas como puntos (miles vs decimal)
+    if (val.includes(",") && val.includes(".")) {
+      const firstComma = val.indexOf(",");
+      const firstPoint = val.indexOf(".");
+      if (firstComma < firstPoint) {
+        // Formato americano (1,234.56): la coma es miles, la removemos
+        val = val.replace(/,/g, "");
+      } else {
+        // Formato europeo (1.234,56): el punto es miles, lo removemos
+        val = val.replace(/\./g, "");
+      }
+    }
+
+    // Normalizar comas restantes a puntos (como separador decimal)
     val = val.replace(/,/g, ".");
-    
-    // Si hay múltiples puntos, conservar solo el primero y remover los siguientes
+
+    // Conservar solo el primer punto decimal y remover los duplicados subsiguientes
     const firstPointIndex = val.indexOf(".");
     if (firstPointIndex !== -1) {
       val = val.substring(0, firstPointIndex + 1) + 
             val.substring(firstPointIndex + 1).replace(/\./g, "");
     }
-    
+
     inputEl.value = val;
+
+    // Restaurar posición del cursor para evitar que salte al final al editar
+    if (inputEl === document.activeElement && start !== null && end !== null) {
+      inputEl.setSelectionRange(start, end);
+    }
+
     return val;
   };
 
