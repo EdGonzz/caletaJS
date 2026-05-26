@@ -84,11 +84,11 @@ const FormView = () => `
         <button id="coin-selector-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar moneda">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
-              <img src="${selectedCoin.image || selectedCoin.thumb}" alt="${selectedCoin.name}" class="w-5 h-5 rounded-full" />
+              <img src="${selectedCoin?.image || selectedCoin?.thumb || ''}" alt="${selectedCoin?.name ?? ''}" class="w-5 h-5 rounded-full" />
             </div>
             <div class="flex flex-col items-start">
-              <span class="font-bold text-white">${selectedCoin.name}</span>
-              <span class="text-xs text-slate-400 font-medium">${selectedCoin.symbol.toUpperCase()}</span>
+              <span class="font-bold text-white">${selectedCoin?.name ?? ''}</span>
+              <span class="text-xs text-slate-400 font-medium">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
             </div>
           </div>
           <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors">
@@ -104,7 +104,7 @@ const FormView = () => `
           <div class="relative">
             <input id="quantity-input" type="text" inputmode="decimal" placeholder="0.00" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-              <span class="text-xs font-bold text-slate-400">${selectedCoin.symbol.toUpperCase()}</span>
+              <span class="text-xs font-bold text-slate-400">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
             </div>
           </div>
         </div>
@@ -423,15 +423,21 @@ const wireFormView = () => {
 
   const sanitizeInput = (inputEl) => {
     let val = inputEl.value;
+    // Permitir solo números y separadores decimales
     val = val.replace(/[^0-9.,]/g, "");
-    const matches = val.match(/[.,]/g);
-    if (matches && matches.length > 1) {
-      const firstIndex = val.indexOf(matches[0]);
-      const secondIndex = val.indexOf(matches[1], firstIndex + 1);
-      val = val.substring(0, secondIndex);
+    
+    // Normalizar comas a puntos
+    val = val.replace(/,/g, ".");
+    
+    // Si hay múltiples puntos, conservar solo el primero y remover los siguientes
+    const firstPointIndex = val.indexOf(".");
+    if (firstPointIndex !== -1) {
+      val = val.substring(0, firstPointIndex + 1) + 
+            val.substring(firstPointIndex + 1).replace(/\./g, "");
     }
+    
     inputEl.value = val;
-    return val.replace(/,/g, ".");
+    return val;
   };
 
   const updateTotal = () => {
@@ -475,10 +481,10 @@ const wireFormView = () => {
     }
 
     const holding = {
-      coinId: selectedCoin.id,
-      name: selectedCoin.name,
-      symbol: selectedCoin.symbol,
-      logoUrl: selectedCoin.image || selectedCoin.thumb,
+      coinId: selectedCoin?.id ?? '',
+      name: selectedCoin?.name ?? '',
+      symbol: selectedCoin?.symbol ?? '',
+      logoUrl: selectedCoin?.image || selectedCoin?.thumb || '',
       balance: parsedQty,
       price: parsedPrice,
       source: selectedExchange 
