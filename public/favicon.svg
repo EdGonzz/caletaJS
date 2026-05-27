@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <!-- Gradiente oficial de la marca Caleta -->
+    <linearGradient id="fav-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#9079ff" />
+      <stop offset="100%" stop-color="#0bd570" />
+    </linearGradient>
+  </defs>
+
+  <!-- C Circular Estilizada y Simétrica (márgenes de seguridad incorporados para evitar recortes) -->
+  <path d="M 68 32 A 26 26 0 1 0 68 68" 
+        stroke="url(#fav-grad)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+        
+  <!-- Flecha alcista integrada, gruesa y centrada -->
+  <path d="M 36 60 L 50 46 L 58 54 L 78 34" 
+        stroke="url(#fav-grad)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+        
+  <!-- Punta de la flecha en verde neón de alta legibilidad -->
+  <path d="M 58 34 H 78 V 54" 
+        stroke="#0bd570" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
