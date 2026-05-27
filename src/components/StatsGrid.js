@@ -99,10 +99,26 @@ export const initStatsGrid = () => {
   const container = document.getElementById("stats-grid-container");
   if (!container) return;
 
-  window.addEventListener('prices-updated', (e) => {
+  if (_statsHandler) {
+    window.removeEventListener('prices-updated', _statsHandler);
+  }
+
+  _statsHandler = (e) => {
     const { holdings } = e.detail;
     container.innerHTML = renderCards(holdings);
-  });
+  };
+
+  window.addEventListener('prices-updated', _statsHandler);
+};
+
+/** @type {((e: Event) => void) | null} */
+let _statsHandler = null;
+
+export const cleanupStatsGrid = () => {
+  if (_statsHandler) {
+    window.removeEventListener('prices-updated', _statsHandler);
+    _statsHandler = null;
+  }
 };
 
 export default StatsGrid;

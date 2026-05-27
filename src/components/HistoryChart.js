@@ -14,13 +14,17 @@ const HistoryChart = () => {
 
   const periodButtons = periods
     .map(
-      ({ label, days, active }) =>
-        `<button
-        class="${active ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all"
+      ({ label, days, active }, i, arr) => {
+        const isFirst = i === 0;
+        const isLast = i === arr.length - 1;
+        const radius = isFirst ? 'rounded-l-full' : isLast ? 'rounded-r-full' : '';
+        return `<button
+        class="${active ? "bg-primary/20 text-primary font-semibold" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} ${radius} px-3 py-1 text-xs transition-all btn-press"
         data-days="${days}"
-        aria-label="Show ${label} history"
+        aria-label="Mostrar historial de ${label}"
         aria-pressed="${active ? "true" : "false"}"
-      >${label}</button>`,
+      >${label}</button>`;
+      },
     )
     .join("");
 
@@ -31,7 +35,7 @@ const HistoryChart = () => {
           <h3 class="text-lg font-bold text-white">History</h3>
           <span class="material-symbols-outlined cursor-help text-sm text-slate-500" aria-label="Portfolio value over time">info</span>
         </div>
-        <div id="history-period-selector" class="flex rounded-lg border border-slate-700/50 bg-slate-800/50 p-1" role="group" aria-label="Time period selector">
+        <div id="history-period-selector" class="flex rounded-full border border-slate-700/50 bg-slate-800/50 p-0.5" role="group" aria-label="Selector de período">
           ${periodButtons}
         </div>
       </div>
@@ -146,12 +150,16 @@ export const initHistoryChart = async () => {
     }
 
     const buttons = newSelector.querySelectorAll("button");
-    buttons.forEach((btn) => {
+    buttons.forEach((btn, index) => {
       const btnDays = Number(btn.dataset.days);
       const isActive = btnDays === _currentDays;
 
-      // Sincronizar estilo inicial con _currentDays
-      btn.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
+      // Sincronizar estilo inicial con _currentDays (conservando el radius original)
+      const isFirst = index === 0;
+      const isLast = index === buttons.length - 1;
+      const radius = isFirst ? 'rounded-l-full' : isLast ? 'rounded-r-full' : '';
+      const activeClass = isActive ? "bg-primary/20 text-primary font-semibold" : "text-slate-400 hover:bg-slate-700/50 hover:text-white";
+      btn.className = `${activeClass} ${radius} px-3 py-1 text-xs transition-all btn-press`;
       btn.setAttribute("aria-pressed", isActive ? "true" : "false");
 
       btn.addEventListener("click", async (e) => {
@@ -162,10 +170,13 @@ export const initHistoryChart = async () => {
         const prevActiveButton = Array.from(buttons).find((b) => b.getAttribute("aria-pressed") === "true") || btn;
 
         // Actualizar UI activa de los botones eager
-        buttons.forEach((b) => {
-          const isActive = b === e.currentTarget;
-          b.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
-          b.setAttribute("aria-pressed", isActive ? "true" : "false");
+        buttons.forEach((b, bi) => {
+          const isBFirst = bi === 0;
+          const isBLast = bi === buttons.length - 1;
+          const bRadius = isBFirst ? 'rounded-l-full' : isBLast ? 'rounded-r-full' : '';
+          const bActive = b === e.currentTarget;
+          b.className = `${bActive ? "bg-primary/20 text-primary font-semibold" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} ${bRadius} px-3 py-1 text-xs transition-all btn-press`;
+          b.setAttribute("aria-pressed", bActive ? "true" : "false");
         });
 
         // Cancelar petición previa y crear nueva
@@ -187,10 +198,13 @@ export const initHistoryChart = async () => {
           _chart.timeScale().fitContent();
         } else {
           // Revertir UI al botón previamente activo si no hay datos nuevos
-          buttons.forEach((b) => {
-            const isActive = b === prevActiveButton;
-            b.className = `${isActive ? "bg-primary/20 text-primary" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} rounded px-3 py-1 text-xs font-medium transition-all`;
-            b.setAttribute("aria-pressed", isActive ? "true" : "false");
+          buttons.forEach((b, bi) => {
+            const isBFirst = bi === 0;
+            const isBLast = bi === buttons.length - 1;
+            const bRadius = isBFirst ? 'rounded-l-full' : isBLast ? 'rounded-r-full' : '';
+            const bActive = b === prevActiveButton;
+            b.className = `${bActive ? "bg-primary/20 text-primary font-semibold" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} ${bRadius} px-3 py-1 text-xs transition-all btn-press`;
+            b.setAttribute("aria-pressed", bActive ? "true" : "false");
           });
           // Revertir _currentDays al valor del botón previamente activo
           _currentDays = Number(prevActiveButton.dataset.days);

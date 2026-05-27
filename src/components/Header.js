@@ -9,8 +9,10 @@ const Header = (currentPath = '/') => {
       <div class="px-4 sm:px-6 lg:px-8">
         <section class="flex items-center justify-between h-12">
           <section class="flex items-center">
-            <a href="#/" class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#0bd570] to-[#06b6d4]" aria-label="Caleta — Inicio">
-              Caleta
+            <a href="#/" class="flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#9079ff] rounded-lg p-1 transition-opacity hover:opacity-90" aria-label="Caleta — Inicio">
+              <span class="text-xl font-bold text-white tracking-wider">
+                Caleta<span class="text-emerald-400">.js</span>
+              </span>
             </a>
           </section>
 

@@ -60,7 +60,7 @@ const FormView = () => `
     <!-- Header -->
     <header class="flex items-center justify-between px-6 py-5 border-b border-slate-700/50 bg-[#151e32]/80 backdrop-blur-md">
       <h1 class="text-xl font-bold tracking-tight text-white">Add Transaction</h1>
-      <button id="modal-close-btn" class="text-slate-400 hover:text-slate-200 transition-colors rounded-lg p-1 hover:bg-slate-700/50 focus:outline-none" aria-label="Cerrar modal">
+      <button id="modal-close-btn" class="text-slate-400 hover:text-slate-200 transition-colors rounded-lg p-1 hover:bg-slate-700/50" aria-label="Cerrar modal">
         <svg class="w-6 h-6">
           <use href="${sprite}#close"></use>
         </svg>
@@ -81,7 +81,7 @@ const FormView = () => `
       <!-- Coin Selector -->
       <div class="space-y-2">
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Select Coin</label>
-        <button id="coin-selector-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar moneda">
+        <button id="coin-selector-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group" aria-label="Seleccionar moneda">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
               <img src="${selectedCoin?.image || selectedCoin?.thumb || ''}" alt="${selectedCoin?.name ?? ''}" class="w-5 h-5 rounded-full" width="20" height="20" loading="lazy" />
@@ -112,7 +112,7 @@ const FormView = () => `
         <div class="space-y-2">
           <div class="flex justify-between items-center">
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Price Per Coin</label>
-            <button id="use-market-btn" class="text-[10px] text-primary hover:brightness-110 font-semibold transition-colors focus:outline-none" aria-label="Usar precio de mercado">Use Market</button>
+            <button id="use-market-btn" class="text-[10px] text-primary hover:brightness-110 font-semibold transition-colors" aria-label="Usar precio de mercado">Use Market</button>
           </div>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
@@ -135,7 +135,7 @@ const FormView = () => `
       <div class="grid grid-cols-2 gap-4">
         <div class="space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Exchange</label>
-          <button id="exchange-selector-btn" class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar exchange">
+          <button id="exchange-selector-btn" class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group" aria-label="Seleccionar exchange">
             ${selectedExchange
     ? selectedExchange.image
       ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.image}" width="20" height="20" loading="lazy" />`
@@ -162,7 +162,7 @@ const FormView = () => `
 
       <!-- Notes toggle -->
       <div class="pt-1">
-        <button id="add-notes-btn" class="flex items-center text-xs font-semibold text-slate-400 hover:text-primary transition-colors focus:outline-none" aria-label="Agregar notas">
+        <button id="add-notes-btn" class="flex items-center text-xs font-semibold text-slate-400 hover:text-primary transition-colors" aria-label="Agregar notas">
           <svg class="w-4 h-4 mr-1">
             <use href="${sprite}#pencil"></use>
           </svg>
@@ -187,7 +187,7 @@ const FormView = () => `
       <!-- Submit -->
       <button
         id="submit-transaction-btn"
-        class="w-full py-4 bg-primary-glow hover:brightness-110 text-slate-900 font-bold rounded-xl shadow-lg shadow-primary-glow/20 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 text-base focus:outline-none"
+        class="w-full py-4 bg-primary hover:brightness-110 text-slate-900 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl active:scale-[0.99] transition-all duration-200 text-base btn-press"
         aria-label="Agregar transacción"
       >
         Add Transaction
