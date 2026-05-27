@@ -1,61 +1,151 @@
+import { buildAllocationData } from "../utils/chartDataAdapter.js";
+import { formatUsd } from "../utils/formatters.js";
+import { getHoldings } from "../utils/holdingsStorage.js";
+import { escapeHTML } from "../utils/helpers.js";
+import sprite from "../assets/sprite.svg";
+
+// Paleta de colores premium cíclica del design system
+const COLOR_PALETTE = [
+  { class: "bg-primary", stroke: "#0bd570", shadow: "shadow-[0_0_8px_#0bd570]" },
+  { class: "bg-blue-500", stroke: "#3b82f6", shadow: "shadow-[0_0_8px_#3b82f6]" },
+  { class: "bg-rose-500", stroke: "#f43f5e", shadow: "shadow-[0_0_8px_#f43f5e]" },
+  { class: "bg-amber-500", stroke: "#f59e0b", shadow: "shadow-[0_0_8px_#f59e0b]" },
+  { class: "bg-purple-500", stroke: "#a855f7", shadow: "shadow-[0_0_8px_#a855f7]" },
+  { class: "bg-cyan-500", stroke: "#06b6d4", shadow: "shadow-[0_0_8px_#06b6d4]" },
+  { class: "bg-emerald-500", stroke: "#10b981", shadow: "shadow-[0_0_8px_#10b981]" },
+];
+
 const AllocationDonut = () => {
-  const allocations = [
-    { name: "Bitcoin", pct: "67.55%", color: "bg-primary", shadow: "shadow-[0_0_8px_#0bd570]", stroke: "#0bd570", dasharray: "168 251", offset: "0" },
-    { name: "Ethereum", pct: "19.20%", color: "bg-blue-500", shadow: "shadow-[0_0_8px_#3b82f6]", stroke: "#3b82f6", dasharray: "50 251", offset: "-175" },
-    { name: "Solana", pct: "13.25%", color: "bg-accent-red", shadow: "shadow-[0_0_8px_#ef4444]", stroke: "#ef4444", dasharray: "33 251", offset: "-230" },
-  ];
+  const initialHoldings = getHoldings();
+  const hasAssets = initialHoldings.length > 0;
 
-  const legendItems = allocations
-    .map(
-      ({ name, pct, color, shadow }) => `
-      <div class="flex items-center justify-between text-sm">
-        <div class="flex items-center gap-2">
-          <span class="${color} size-2 rounded-full ${shadow}"></span>
-          <span class="text-slate-300">${name}</span>
-        </div>
-        <span class="font-mono text-white">${pct}</span>
-      </div>`
-    )
-    .join("");
-
-  const donutSegments = allocations
-    .map(
-      ({ stroke, dasharray, offset }) => `
-      <circle cx="50" cy="50" fill="transparent" r="40"
-        stroke="${stroke}" stroke-dasharray="${dasharray}"
-        stroke-dashoffset="${offset}" stroke-linecap="round"
-        stroke-width="12"></circle>`
-    )
-    .join("");
-
-  const view = `
+  return `
     <div class="glass-panel flex h-full flex-col rounded-xl p-6 lg:col-span-4">
       <div class="mb-6 flex items-center justify-between">
         <h3 class="text-lg font-bold text-white">Allocation</h3>
-        <div class="flex rounded-lg border border-slate-700/50 bg-slate-800/50 p-0.5" role="group" aria-label="Allocation view toggle">
-          <button class="rounded bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-white shadow-sm" aria-label="View by token">Token</button>
-          <button class="rounded px-2 py-0.5 text-[10px] font-medium text-slate-400 hover:text-white" aria-label="View by portfolio">Portfolio</button>
+        <div class="flex rounded-lg border border-slate-700/50 bg-slate-800/50 p-0.5" role="group" aria-label="Allocation view type">
+          <span class="px-2.5 py-1 text-[10px] font-semibold text-primary bg-primary/10 rounded-md">Token</span>
         </div>
       </div>
-      <div class="relative flex flex-1 flex-col items-center justify-center">
-        <div class="relative size-48">
-          <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-label="Portfolio allocation donut chart">
-            <circle cx="50" cy="50" fill="transparent" r="40" stroke="#1e293b" stroke-width="12"></circle>
-            ${donutSegments}
-          </svg>
-          <div class="absolute inset-0 flex flex-col items-center justify-center">
-            <span class="text-2xl font-bold text-white">100%</span>
-            <span class="text-xs text-slate-400">Deployed</span>
-          </div>
-        </div>
-        <nav class="mt-6 w-full space-y-3" aria-label="Allocation breakdown">
-          ${legendItems}
-        </nav>
+      <div id="allocation-donut-container" class="relative flex flex-1 flex-col items-center justify-center min-h-55">
+        ${
+          hasAssets
+            ? `<!-- Loading State -->
+               <div class="flex flex-col items-center justify-center gap-3 py-12" aria-busy="true">
+                 <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" role="status" aria-label="Cargando distribución"></div>
+                 <span class="text-xs text-slate-400 font-medium">Cargando distribución...</span>
+               </div>`
+            : renderDonut([])
+        }
       </div>
     </div>
   `;
+};
 
-  return view;
+const renderDonut = (data) => {
+  if (data.length === 0) {
+    return `
+      <div class="flex flex-col items-center justify-center text-center p-6 py-12 max-w-sm mx-auto">
+        <div class="relative mb-4">
+          <div class="absolute inset-0 bg-primary/10 blur-xl rounded-full"></div>
+          <div class="relative rounded-full bg-slate-800/50 p-4 border border-slate-700/50">
+            <svg class="h-10 w-10 text-slate-500" aria-hidden="true">
+              <use href="${sprite}#chart-pie"></use>
+            </svg>
+          </div>
+        </div>
+        <h4 class="text-sm font-semibold text-white mb-1">Sin distribución de activos</h4>
+        <p class="text-xs text-slate-400 leading-relaxed max-w-[240px] mx-auto">
+          Tu portafolio está vacío. Usa el botón de <strong class="text-primary font-semibold">Add Funds</strong> para agregar tus primeros activos y ver la distribución.
+        </p>
+      </div>
+    `;
+  }
+
+  const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+  const r = 40;
+  const circumference = 2 * Math.PI * r;
+  let accumulatedPct = 0;
+
+  const donutSegments = data
+    .map((item, index) => {
+      const color = COLOR_PALETTE[index % COLOR_PALETTE.length];
+      const pctValue = (item.pct / 100) * circumference;
+      const offset = -(accumulatedPct / 100) * circumference;
+      accumulatedPct += item.pct;
+
+      return `
+        <circle cx="50" cy="50" fill="transparent" r="${r}"
+          stroke="${color.stroke}"
+          stroke-dasharray="${pctValue.toFixed(2)} ${circumference.toFixed(2)}"
+          stroke-dashoffset="${offset.toFixed(2)}"
+          stroke-linecap="${item.pct === 100 ? 'butt' : 'round'}"
+          stroke-width="10"
+          class="transition-all duration-500"
+          aria-label="${escapeHTML(item.name)}: ${item.pct.toFixed(2)}%">
+        </circle>`;
+    })
+    .join("");
+
+  const legendItems = data
+    .map((item, index) => {
+      const color = COLOR_PALETTE[index % COLOR_PALETTE.length];
+      return `
+        <div class="flex items-center justify-between text-sm">
+          <div class="flex items-center gap-2">
+            <span class="${color.class} size-2.5 rounded-full ${color.shadow}" aria-hidden="true"></span>
+            <span class="text-slate-300 font-medium">${escapeHTML(item.name ?? 'Unknown')} (${(item.symbol ?? '').toUpperCase()})</span>
+          </div>
+          <span class="font-mono text-white font-semibold">${item.pct.toFixed(2)}%</span>
+        </div>`;
+    })
+    .join("");
+
+  return `
+    <div class="relative size-48 flex items-center justify-center">
+      <svg class="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-label="Portfolio allocation donut chart">
+        <circle cx="50" cy="50" fill="transparent" r="${r}" stroke="#1e293b" stroke-width="10"></circle>
+        ${donutSegments}
+      </svg>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <span class="text-lg font-bold text-white tracking-tight">${formatUsd(totalValue)}</span>
+        <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Total</span>
+      </div>
+    </div>
+    <nav class="mt-6 w-full space-y-3 max-h-40 overflow-y-auto pr-1 scrollbar-thin" aria-label="Allocation breakdown">
+      ${legendItems}
+    </nav>`;
+};
+
+/** @type {((e: Event) => void) | null} */
+let _pricesHandler = null;
+
+export const initAllocationDonut = () => {
+  const container = document.getElementById("allocation-donut-container");
+  if (!container) return;
+
+  // Remover listener previo si existe para evitar acumulación
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+  }
+
+  _pricesHandler = (e) => {
+    const { holdings } = e.detail;
+    const data = buildAllocationData(holdings);
+    container.innerHTML = renderDonut(data);
+  };
+
+  window.addEventListener('prices-updated', _pricesHandler);
+};
+
+/**
+ * Limpia el listener de eventos para prevenir memory leaks en SPA navigation.
+ */
+export const cleanupAllocationDonut = () => {
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+    _pricesHandler = null;
+  }
 };
 
 export default AllocationDonut;

@@ -1,13 +1,13 @@
-const resolveRoutes = (path) => {
-  if (path === "/") return path;
+const resolveRoutes = (segments) => {
+  if (segments.length === 0) return { path: '/', params: {} };
 
-  const staticRoutes = ["about", "404"];
+  const route = segments[0];
 
-  if (staticRoutes.includes(path)) return `/${path}`;
+  if (['about', '404'].includes(route)) return { path: `/${route}`, params: {} };
 
-  if (path === "coin") return "/coin/:id";
+  if (route === 'coin') return { path: '/coin/:id', params: { id: segments[1] || null } };
 
-  return "/404";
-}
+  return { path: '/404', params: {} };
+};
 
 export default resolveRoutes;

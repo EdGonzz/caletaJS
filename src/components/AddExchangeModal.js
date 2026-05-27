@@ -554,18 +554,42 @@ const AddExchangeModal = () => `
  * Wires up the modal keyboard trap (Escape key).
  * Call this once after AddExchangeModal() HTML is in the DOM.
  */
+/** @type {((e: KeyboardEvent) => void) | null} */
+let _keydownHandler = null;
+
+/** @type {((e: MouseEvent) => void) | null} */
+let _backdropHandler = null;
+
 const initAddExchangeModal = () => {
-  document.addEventListener('keydown', (e) => {
+  cleanupAddExchangeModal();
+
+  _keydownHandler = (e) => {
     if (e.key === 'Escape') {
       const modal = document.getElementById('add-exchange-modal');
       if (!modal?.classList.contains('opacity-0')) closeAddExchangeModal();
     }
-  });
+  };
 
-  document.getElementById('add-exchange-modal')?.addEventListener('click', (e) => {
+  document.addEventListener('keydown', _keydownHandler);
+
+  _backdropHandler = (e) => {
     if (e.target.id === 'add-exchange-modal') closeAddExchangeModal();
-  });
+  };
+
+  document.getElementById('add-exchange-modal')?.addEventListener('click', _backdropHandler);
 };
 
-export { openAddExchangeModal, initAddExchangeModal };
+const cleanupAddExchangeModal = () => {
+  if (_keydownHandler) {
+    document.removeEventListener('keydown', _keydownHandler);
+    _keydownHandler = null;
+  }
+  if (_backdropHandler) {
+    const modal = document.getElementById('add-exchange-modal');
+    if (modal) modal.removeEventListener('click', _backdropHandler);
+    _backdropHandler = null;
+  }
+};
+
+export { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal };
 export default AddExchangeModal;

@@ -143,4 +143,7 @@ dist
 
 todo.md
 
-# End of https://www.toptal.com/developers/gitignore/api/node
+# End of https://www.toptal.com/developers/gitignore/api/nodetemporal/
+.playwright-cli/
+
+/temp/

@@ -35,4 +35,34 @@ Guía de soluciones comunes durante el desarrollo o en tiempo de ejecución.
 - Modifica el uso de la API. Cerciórate de estar empleando los mecanismos de **Debounce** (ver patrón en `src/pages` y modales) para retrasar llamadas masivas al teclear en inputs de búsqueda.
 
 ---
-*Última actualización: 2026-04-27*
+*Última actualización: 2026-05-23*
+
+### 5. HistoryChart muestra "Cargando historial..." infinitamente
+**Síntoma:** El spinner de carga del gráfico nunca desaparece, aunque la API de CoinGecko responde correctamente.
+**Causa:** `createChart()` de Lightweight Charts hace `appendChild` del canvas sin limpiar el contenido previo del contenedor. El HTML del loading state permanece visible.
+**Solución:**
+- Verificar que `initHistoryChart()` limpia el contenedor antes de crear el chart: `container.innerHTML = ""`.
+- Asegurarse de que el flujo `buildPortfolioHistorySeries()` retorna datos antes de crear el chart.
+
+### 6. Error 404 a URL `undefined`
+**Síntoma:** Error en consola: `Failed to load resource: the server responded with a status of 404 (Not Found) @ http://caleta.localhost:1355/undefined`.
+**Causa:** Una propiedad `logoUrl` (o similar) con valor `undefined` se usa como `src` de un `<img>`, generando una URL inválida.
+**Solución:**
+- Verificar que todos los holdings en localStorage tengan la propiedad `logoUrl`.
+- Usar optional chaining o fallbacks en templates: `src="${holding.logoUrl || '/fallback.png'}"`.
+
+### 7. HMR bloqueado con "Aborted because HistoryChart.js is not accepted"
+**Síntoma:** Webpack forza un full reload en lugar de hot update al guardar cambios en `HistoryChart.js`.
+**Causa:** En vanilla JS (sin React Refresh), cada módulo debe aceptar explícitamente sus actualizaciones vía `module.hot.accept()` y limpiar en `module.hot.dispose()`.
+**Solución:**
+- Agregar al final de `HistoryChart.js`:
+```js
+if (typeof module !== "undefined" && module.hot) {
+  module.hot.dispose(() => { cleanupHistoryChart(); });
+  module.hot.accept(() => { /* Se re-inicializa en el próximo ciclo del router */ });
+}
+```
+- Asegurarse de que `cleanupHistoryChart()` aborta peticiones en vuelo y destruye la instancia del chart.
+
+---
+*Última actualización: 2026-05-23*

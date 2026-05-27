@@ -4,7 +4,7 @@ import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatUsd } from "../utils/formatters";
-import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal } from "./AddExchangeModal";
+import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 
@@ -84,11 +84,11 @@ const FormView = () => `
         <button id="coin-selector-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar moneda">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
-              <img src="${selectedCoin.image || selectedCoin.thumb}" alt="${selectedCoin.name}" class="w-5 h-5 rounded-full" />
+              <img src="${selectedCoin?.image || selectedCoin?.thumb || ''}" alt="${selectedCoin?.name ?? ''}" class="w-5 h-5 rounded-full" />
             </div>
             <div class="flex flex-col items-start">
-              <span class="font-bold text-white">${selectedCoin.name}</span>
-              <span class="text-xs text-slate-400 font-medium">${selectedCoin.symbol.toUpperCase()}</span>
+              <span class="font-bold text-white">${selectedCoin?.name ?? ''}</span>
+              <span class="text-xs text-slate-400 font-medium">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
             </div>
           </div>
           <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors">
@@ -102,9 +102,9 @@ const FormView = () => `
         <div class="space-y-2">
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantity</label>
           <div class="relative">
-            <input id="quantity-input" type="number" min="0" placeholder="0.00" step="any" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
+            <input id="quantity-input" type="text" inputmode="decimal" placeholder="0.00" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-              <span class="text-xs font-bold text-slate-400">${selectedCoin.symbol.toUpperCase()}</span>
+              <span class="text-xs font-bold text-slate-400">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
             </div>
           </div>
         </div>
@@ -118,7 +118,7 @@ const FormView = () => `
             <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
               <span class="text-slate-400 font-medium">$</span>
             </div>
-            <input id="price-input" type="number" min="0" value="${price}" step="any" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            <input id="price-input" type="text" inputmode="decimal" placeholder="0.00" value="${price}" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
           </div>
         </div>
       </div>
@@ -155,7 +155,7 @@ const FormView = () => `
             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
               <span class="text-slate-400 font-medium text-sm">$</span>
             </div>
-            <input id="fees-input" type="number" min="0" value="${fees}" placeholder="0.00" step="any" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
+            <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
           </div>
         </div>
       </div>
@@ -421,6 +421,47 @@ const wireFormView = () => {
   const notesTextarea = document.getElementById("notes-textarea");
   const totalDisplay = document.getElementById("total-display");
 
+  const sanitizeInput = (inputEl) => {
+    let val = inputEl.value;
+    const start = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+
+    // Permitir solo números y separadores decimales/miles
+    val = val.replace(/[^0-9.,]/g, "");
+
+    // Resolver ambigüedad si se usan tanto comas como puntos (miles vs decimal)
+    if (val.includes(",") && val.includes(".")) {
+      const firstComma = val.indexOf(",");
+      const firstPoint = val.indexOf(".");
+      if (firstComma < firstPoint) {
+        // Formato americano (1,234.56): la coma es miles, la removemos
+        val = val.replace(/,/g, "");
+      } else {
+        // Formato europeo (1.234,56): el punto es miles, lo removemos
+        val = val.replace(/\./g, "");
+      }
+    }
+
+    // Normalizar comas restantes a puntos (como separador decimal)
+    val = val.replace(/,/g, ".");
+
+    // Conservar solo el primer punto decimal y remover los duplicados subsiguientes
+    const firstPointIndex = val.indexOf(".");
+    if (firstPointIndex !== -1) {
+      val = val.substring(0, firstPointIndex + 1) + 
+            val.substring(firstPointIndex + 1).replace(/\./g, "");
+    }
+
+    inputEl.value = val;
+
+    // Restaurar posición del cursor para evitar que salte al final al editar
+    if (inputEl === document.activeElement && start !== null && end !== null) {
+      inputEl.setSelectionRange(start, end);
+    }
+
+    return val;
+  };
+
   const updateTotal = () => {
     const q = parseFloat(quantity) || 0;
     const p = parseFloat(price) || 0;
@@ -428,19 +469,19 @@ const wireFormView = () => {
     totalDisplay.textContent = formatUsd(q * p + f);
   };
 
-  qtyInput?.addEventListener("input", (e) => {
-    quantity = e.target.value;
+  qtyInput?.addEventListener("input", () => {
+    quantity = sanitizeInput(qtyInput);
     updateTotal();
   });
-  priceInput?.addEventListener("input", (e) => {
-    price = e.target.value;
+  priceInput?.addEventListener("input", () => {
+    price = sanitizeInput(priceInput);
     updateTotal();
   });
   dateInput?.addEventListener("input", (e) => {
     date = e.target.value;
   });
-  feesInput?.addEventListener("input", (e) => {
-    fees = e.target.value;
+  feesInput?.addEventListener("input", () => {
+    fees = sanitizeInput(feesInput);
     updateTotal();
   });
   notesTextarea?.addEventListener("input", (e) => {
@@ -449,7 +490,11 @@ const wireFormView = () => {
 
   // Submit
   document.getElementById("submit-transaction-btn")?.addEventListener("click", () => {
-    if (!quantity || !price || !selectedCoin) {
+    const parsedQty = parseFloat(quantity);
+    const parsedPrice = parseFloat(price);
+    const parsedFees = parseFloat(fees) || 0;
+
+    if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
       // Basic validation visual feedback
       const btn = document.getElementById("submit-transaction-btn");
       btn.classList.add("!bg-red-500", "!text-white");
@@ -458,19 +503,19 @@ const wireFormView = () => {
     }
 
     const holding = {
-      coinId: selectedCoin.id,
-      name: selectedCoin.name,
-      symbol: selectedCoin.symbol,
-      logoUrl: selectedCoin.image || selectedCoin.thumb,
-      balance: parseFloat(quantity),
-      price: parseFloat(price),
+      coinId: selectedCoin?.id ?? '',
+      name: selectedCoin?.name ?? '',
+      symbol: selectedCoin?.symbol ?? '',
+      logoUrl: selectedCoin?.image || selectedCoin?.thumb || '',
+      balance: parsedQty,
+      price: parsedPrice,
       source: selectedExchange 
         ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name) 
         : 'Wallet',
       sourceIcon: 'wallet',
       type: activeTab,
       date: date,
-      fees: parseFloat(fees) || 0,
+      fees: parsedFees,
       notes: notes
     };
 
@@ -545,24 +590,23 @@ const wireExchangeView = () => {
 
 // ─── Public Init ───────────────────────────────────────────────────
 
-/**
- * Wires up the "Add Funds" button to open the modal.
- * Must be called after the DOM containing AddAssetModal() has been rendered.
- */
+/** @type {((e: KeyboardEvent) => void) | null} */
+let _keydownHandler = null;
+
+/** @type {((e: MouseEvent) => void) | null} */
+let _astBackdropHandler = null;
+
 const initAddAssetModal = async () => {
-  // The "Add Funds" button has id="add-funds"
-  const addFundsBtn = document.getElementById("add-funds");
-  if (addFundsBtn) {
-    addFundsBtn.addEventListener("click", openModal);
-  }
+  cleanupAddAssetModal();
 
   // Close on backdrop click
-  document.getElementById("add-asset-modal")?.addEventListener("click", (e) => {
+  _astBackdropHandler = (e) => {
     if (e.target.id === "add-asset-modal") closeModal();
-  });
+  };
+  document.getElementById("add-asset-modal")?.addEventListener("click", _astBackdropHandler);
 
   // Close or go back on Escape
-  document.addEventListener("keydown", (e) => {
+  _keydownHandler = (e) => {
     if (e.key !== "Escape") return;
 
     // Check if sub-modal (AddExchangeModal) is open
@@ -579,11 +623,26 @@ const initAddAssetModal = async () => {
     } else {
       closeModal();
     }
-  });
+  };
+
+  document.addEventListener("keydown", _keydownHandler);
 
   // Init Add Exchange modal (Escape key + backdrop)
   initAddExchangeModal();
 };
 
-export { initAddAssetModal, openModal as openAddAssetModal };
+const cleanupAddAssetModal = () => {
+  if (_keydownHandler) {
+    document.removeEventListener("keydown", _keydownHandler);
+    _keydownHandler = null;
+  }
+  if (_astBackdropHandler) {
+    const modal = document.getElementById("add-asset-modal");
+    if (modal) modal.removeEventListener("click", _astBackdropHandler);
+    _astBackdropHandler = null;
+  }
+  cleanupAddExchangeModal();
+};
+
+export { initAddAssetModal, cleanupAddAssetModal, openModal as openAddAssetModal };
 export default AddAssetModal;

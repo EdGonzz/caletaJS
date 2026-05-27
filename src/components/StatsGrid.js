@@ -82,7 +82,7 @@ const renderCards = (holdings = []) => {
             <div>
               <div class="flex items-center gap-2">
                 <span class="text-lg font-bold text-white">${topMover.name}</span>
-                <span class="text-xs text-slate-400">${topMover.symbol.toUpperCase()}</span>
+                <span class="text-xs text-slate-400">${(topMover.symbol ?? '').toUpperCase()}</span>
               </div>
               <span class="${topMover.change24h >= 0 ? 'text-primary' : 'text-accent-red'} text-sm font-bold">
                 ${formatPercent(topMover.change24h)}
@@ -96,6 +96,9 @@ const renderCards = (holdings = []) => {
   return cards.map((card) => StatCard(card)).join("");
 };
 
+/** @type {((e: Event) => void) | null} */
+let _pricesHandler = null;
+
 /**
  * Initializes the stats grid by listening to price updates.
  */
@@ -103,10 +106,27 @@ export const initStatsGrid = () => {
   const container = document.getElementById("stats-grid-container");
   if (!container) return;
 
-  window.addEventListener('prices-updated', (e) => {
+  // Remover listener previo si existe para evitar acumulación
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+  }
+
+  _pricesHandler = (e) => {
     const { holdings } = e.detail;
     container.innerHTML = renderCards(holdings);
-  });
+  };
+
+  window.addEventListener('prices-updated', _pricesHandler);
+};
+
+/**
+ * Limpia el listener de eventos para prevenir memory leaks en SPA navigation.
+ */
+export const cleanupStatsGrid = () => {
+  if (_pricesHandler) {
+    window.removeEventListener('prices-updated', _pricesHandler);
+    _pricesHandler = null;
+  }
 };
 
 export default StatsGrid;
