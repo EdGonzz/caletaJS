@@ -1,19 +1,31 @@
-const path = require("path");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const Dotenv = require("dotenv-webpack");
+import path from "path";
+import { fileURLToPath } from "url";
+import HtmlWebpackPlugin from "html-webpack-plugin";
+import Dotenv from "dotenv-webpack";
+import MiniCssExtractPlugin from "mini-css-extract-plugin";
+import CopyWebpackPlugin from "copy-webpack-plugin";
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const isProduction = process.env.NODE_ENV === "production" || process.argv.includes("--mode production");
+
+export default {
   entry: "./src/index.js",
   output: {
     path: path.resolve(__dirname, "dist"),
-    filename: "bundle.js",
+    filename: isProduction ? "bundle.[contenthash].js" : "bundle.js",
     clean: true,
   },
+  devtool: isProduction ? "source-map" : "eval-source-map",
   devServer: {
     allowedHosts: [
-      '.localhost'
+      ".localhost",
+      "localhost"
     ],
     port: process.env.PORT || 8080,
+    hot: true,
+    open: false,
   },
   resolve: {
     extensions: [".js"]
@@ -25,12 +37,15 @@ module.exports = {
         exclude: /node_modules/,
         use: {
           loader: "babel-loader"
+        },
+        resolve: {
+          fullySpecified: false,
         }
       },
       {
         test: /\.css$/,
         use: [
-          "style-loader",
+          isProduction ? MiniCssExtractPlugin.loader : "style-loader",
           "css-loader",
           "postcss-loader"
         ]
@@ -47,6 +62,24 @@ module.exports = {
       template: "./public/index.html",
       filename: "index.html",
     }),
-    new Dotenv()
-  ]
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: "public/robots.txt", to: "robots.txt" },
+        { from: "public/sitemap.xml", to: "sitemap.xml" },
+      ],
+    }),
+    new Dotenv(),
+    ...(isProduction ? [new MiniCssExtractPlugin({
+      filename: "styles.[contenthash].css",
+    })] : [])
+  ],
+  optimization: {
+    minimize: isProduction,
+  },
+  stats: "errors-warnings",
+  performance: {
+    hints: isProduction ? "warning" : false,
+    maxEntrypointSize: 512000,
+    maxAssetSize: 512000,
+  },
 }
