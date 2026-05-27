@@ -83,6 +83,8 @@ const ActionToolbar = () => {
 }
 
 export const initActionToolbar = () => {
+  cleanupActionToolbar();
+
   // Add Wallet
   const addWalletBtn = document.getElementById("add-wallet");
   if (addWalletBtn) {
@@ -120,13 +122,14 @@ export const initActionToolbar = () => {
     });
 
     // Cerrar al hacer click fuera
-    document.addEventListener("click", (e) => {
-      if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+    _clickDropdownHandler = (e) => {
+      if (dropdownBtn && dropdownMenu && !dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
         dropdownMenu.classList.add("hidden");
         dropdownBtn.setAttribute("aria-expanded", "false");
         dropdownChevron?.classList.remove("rotate-180");
       }
-    });
+    };
+    document.addEventListener("click", _clickDropdownHandler);
   }
 
   // Filter Buttons (desktop + dropdown)
@@ -150,7 +153,7 @@ export const initActionToolbar = () => {
   });
 
   // Scroll fade indicator
-  const scrollContainer = document.querySelector('.scroll-fade-container');
+  const scrollContainer = document.querySelector('#action-toolbar-wrapper .scroll-fade-container');
   if (scrollContainer && !_scrollFadeHandler) {
     _scrollFadeHandler = () => {
       const isEnd = scrollContainer.scrollWidth - scrollContainer.scrollLeft <= scrollContainer.clientWidth + 5;
@@ -163,12 +166,18 @@ export const initActionToolbar = () => {
 
 /** @type {(() => void) | null} */
 let _scrollFadeHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _clickDropdownHandler = null;
 
 export const cleanupActionToolbar = () => {
   if (_scrollFadeHandler) {
-    const scrollContainer = document.querySelector('.scroll-fade-container');
+    const scrollContainer = document.querySelector('#action-toolbar-wrapper .scroll-fade-container');
     if (scrollContainer) scrollContainer.removeEventListener('scroll', _scrollFadeHandler);
     _scrollFadeHandler = null;
+  }
+  if (_clickDropdownHandler) {
+    document.removeEventListener("click", _clickDropdownHandler);
+    _clickDropdownHandler = null;
   }
 };
 

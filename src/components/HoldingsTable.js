@@ -188,11 +188,15 @@ let _filterHandler = null;
 let _holdingsHandler = null;
 /** @type {(() => void) | null} */
 let _refreshHandler = null;
+/** @type {(() => void) | null} */
+let _scrollFadeHandler = null;
 
 /**
  * Wires up dynamic data, pagination, and real-time updates.
  */
 export const initHoldingsTable = () => {
+  cleanupHoldingsTable();
+
   const table = document.getElementById("holdings-table");
   const tbody = document.getElementById("holdings-tbody");
   const paginationEl = document.getElementById("holdings-pagination");
@@ -202,14 +206,6 @@ export const initHoldingsTable = () => {
   const pageSize = Number(table.dataset.pageSize);
   let currentData = [];
   let activeFilter = currentFilter; // Default source
-
-  // Remover listeners previos para evitar acumulación
-  if (_filterHandler) {
-    window.removeEventListener('caleta-filter-changed', _filterHandler);
-  }
-  if (_holdingsHandler) {
-    window.removeEventListener('holdings-updated', _holdingsHandler);
-  }
 
   _filterHandler = (e) => {
     activeFilter = e.detail.source;
@@ -263,8 +259,7 @@ export const initHoldingsTable = () => {
     });
   };
 
-  /** @type {(() => void) | null} */
-  let _scrollFadeHandler = null;
+
   const bindScrollFade = () => {
     const wrapper = document.getElementById("holdings-scroll-wrapper");
     if (!wrapper) return;
@@ -382,6 +377,11 @@ export const cleanupHoldingsTable = () => {
     const btn = document.getElementById("refresh-prices-btn");
     if (btn) btn.removeEventListener("click", _refreshHandler);
     _refreshHandler = null;
+  }
+  if (_scrollFadeHandler) {
+    const wrapper = document.getElementById("holdings-scroll-wrapper");
+    if (wrapper) wrapper.removeEventListener("scroll", _scrollFadeHandler);
+    _scrollFadeHandler = null;
   }
 };
 

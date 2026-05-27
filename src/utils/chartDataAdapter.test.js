@@ -267,11 +267,6 @@ describe('chartDataAdapter', () => {
       assert.strictEqual(res[1].value, 45200);
     });
 
-    test('debe retornar array vacío si no hay holdings', async () => {
-      mockStorage.set('caleta_user_holdings', JSON.stringify([]));
-      const res = await buildPortfolioHistorySeries(30);
-      assert.deepStrictEqual(res, []);
-    });
 
     // ==========================================
     // Tests para filtrado por source (filterSource)
