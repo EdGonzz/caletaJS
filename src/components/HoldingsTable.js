@@ -93,7 +93,7 @@ const EmptyState = () => `
         </div>
         <button 
           id="empty-state-add-btn"
-          class="inline-flex items-center px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold rounded-lg border border-primary/20 transition-all focus:outline-none"
+          class="inline-flex items-center px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold rounded-lg border border-primary/20 transition-all btn-press"
         >
           <svg class="w-4 h-4 mr-2"><use href="${sprite}#plus" /></svg>
           Add First Asset
@@ -116,7 +116,7 @@ const HoldingsTable = () => {
         </button>
           <button
             id="search-btn"
-            class="text-slate-400 transition-colors hover:text-white group focus:outline-none"
+            class="text-slate-400 transition-colors hover:text-white group"
             aria-label="Search"
           >
             <svg class="w-5 h-5" aria-hidden="true">
@@ -133,7 +133,7 @@ const HoldingsTable = () => {
           </button>
           <button
             id="refresh-prices-btn"
-            class="text-slate-400 transition-colors hover:text-white group focus:outline-none"
+            class="text-slate-400 transition-colors hover:text-white group"
             aria-label="Refresh prices"
           >
             <svg class="w-5 h-5 transition-transform group-active:rotate-180 duration-500" aria-hidden="true">
@@ -144,7 +144,7 @@ const HoldingsTable = () => {
       </div>
 
       <!-- Scrollable table wrapper -->
-      <div class="custom-scrollbar overflow-x-auto min-h-[300px]">
+      <div id="holdings-scroll-wrapper" class="scroll-fade-container custom-scrollbar overflow-x-auto min-h-[200px]">
         <table
           class="w-full border-collapse text-left"
           aria-label="Asset holdings list"
@@ -222,7 +222,7 @@ export const initHoldingsTable = () => {
     if (currentData.length === 0) {
       tbody.innerHTML = EmptyState();
       paginationEl.innerHTML = '';
-      
+
       // Wire up the empty state button
       document.getElementById("empty-state-add-btn")?.addEventListener("click", () => {
         document.getElementById("add-funds")?.click();
@@ -232,7 +232,7 @@ export const initHoldingsTable = () => {
 
     const totalPages = Math.ceil(currentData.length / pageSize);
     const start = (page - 1) * pageSize;
-    
+
     tbody.innerHTML = currentData
       .slice(start, start + pageSize)
       .map((asset) => AssetRow(asset))
@@ -250,6 +250,7 @@ export const initHoldingsTable = () => {
     table.dataset.currentPage = String(page);
 
     bindPaginationEvents();
+    bindScrollFade();
   };
 
   const bindPaginationEvents = () => {
@@ -260,6 +261,25 @@ export const initHoldingsTable = () => {
         if (!btn.disabled && page !== currentPage) updateDisplay(page);
       });
     });
+  };
+
+  /** @type {(() => void) | null} */
+  let _scrollFadeHandler = null;
+  const bindScrollFade = () => {
+    const wrapper = document.getElementById("holdings-scroll-wrapper");
+    if (!wrapper) return;
+
+    if (_scrollFadeHandler) {
+      wrapper.removeEventListener("scroll", _scrollFadeHandler);
+    }
+
+    _scrollFadeHandler = () => {
+      const isEnd = wrapper.scrollWidth - wrapper.scrollLeft <= wrapper.clientWidth + 5;
+      wrapper.classList.toggle('scroll-end', isEnd);
+    };
+
+    wrapper.addEventListener("scroll", _scrollFadeHandler, { passive: true });
+    _scrollFadeHandler(); // initial check
   };
 
   const fetchPricesAndUpdate = async () => {
