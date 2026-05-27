@@ -39,7 +39,7 @@ const About = () => {
             <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/30 flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <div class="bg-slate-700/50 p-1.5 rounded-lg">
-                  <svg class="w-5 h-5 text-primary" aria-hidden="true"><use href="${sprite}#coin" /></svg>
+                  <svg class="w-5 h-5 text-primary" aria-hidden="true"><use href="${sprite}#wallet" /></svg>
                 </div>
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos del Mercado</span>
               </div>
@@ -51,7 +51,7 @@ const About = () => {
             <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/30 flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <div class="bg-slate-700/50 p-1.5 rounded-lg">
-                  <svg class="w-5 h-5 text-primary" aria-hidden="true"><use href="${sprite}#code" /></svg>
+                  <svg class="w-5 h-5 text-primary" aria-hidden="true"><use href="${sprite}#layout-dashboard" /></svg>
                 </div>
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stack</span>
               </div>
@@ -63,7 +63,7 @@ const About = () => {
             <div class="bg-slate-800/40 p-5 rounded-xl border border-slate-700/30 flex flex-col gap-2">
               <div class="flex items-center gap-2">
                 <div class="bg-slate-700/50 p-1.5 rounded-lg">
-                  <svg class="w-5 h-5 text-primary" aria-hidden="true"><use href="${sprite}#shield" /></svg>
+                  <svg class="w-5 h-5 text-primary" aria-hidden="true"><use href="${sprite}#circle-check" /></svg>
                 </div>
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Privacidad</span>
               </div>

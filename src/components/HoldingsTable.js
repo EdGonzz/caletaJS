@@ -113,7 +113,6 @@ const HoldingsTable = () => {
       <div class="flex items-center justify-between border-b border-slate-700/50 px-6 py-5">
         <h3 class="text-lg font-bold text-white">Holdings</h3>
         <div class="flex gap-2">
-        </button>
           <button
             id="search-btn"
             class="text-slate-400 transition-colors hover:text-white group"
