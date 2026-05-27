@@ -46,14 +46,14 @@ const CoinPicker = (coins, selectedCoinId, isLoading = false) => `
   <div id="coin-picker-view" class="flex flex-col h-full">
     <header class="flex items-center justify-between px-6 py-4 border-b border-slate-700/50">
       <div class="flex items-center gap-3">
-        <button id="coin-back-btn" class="text-slate-400 hover:text-white transition-colors flex items-center group focus:outline-none" aria-label="Volver al formulario">
+        <button id="coin-back-btn" class="text-slate-400 hover:text-white transition-colors flex items-center group" aria-label="Volver al formulario">
           <svg class="w-6 h-6 mr-1">
             <use href="${sprite}#arrow-left"></use>
           </svg>
         </button>
         <h2 class="text-xl font-bold tracking-tight text-white">Select Coin</h2>
       </div>
-      <button id="coin-close-btn" class="text-slate-500 hover:text-slate-300 transition-colors rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-700/50 focus:outline-none" aria-label="Cerrar modal">
+      <button id="coin-close-btn" class="text-slate-500 hover:text-slate-300 transition-colors rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-700/50" aria-label="Cerrar modal">
         <svg class="w-6 h-6">
           <use href="${sprite}#close"></use>
         </svg>

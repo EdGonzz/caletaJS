@@ -59,7 +59,7 @@ const ExchangeResultRow = (exchange, isSaved = false) => {
             Guardado
           </button>`
     : `<button
-            class="save-exchange-btn flex min-w-[76px] items-center justify-center rounded-lg h-9 px-4 bg-primary hover:brightness-110 text-slate-900 text-sm font-bold transition-all shadow-lg shadow-primary/10 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            class="save-exchange-btn flex min-w-[76px] items-center justify-center rounded-lg h-9 px-4 bg-primary hover:brightness-110 text-slate-900 text-sm font-bold transition-all shadow-lg shadow-primary/10 btn-press"
             aria-label="Guardar ${escapeHTML(exchange.name)} como caleta"
             data-exchange-id="${escapeHTML(exchange.id)}"
             data-exchange-name="${escapeHTML(exchange.name)}"
@@ -102,11 +102,11 @@ const ExchangeResultRow = (exchange, isSaved = false) => {
           aria-label="Descripción corta de esta caleta"
         />
         <button
-          class="desc-confirm-btn flex items-center justify-center rounded-lg h-8 px-3 bg-primary hover:brightness-110 text-slate-900 text-xs font-bold transition-all focus:outline-none shrink-0"
+          class="desc-confirm-btn flex items-center justify-center rounded-lg h-8 px-3 bg-primary hover:brightness-110 text-slate-900 text-xs font-bold transition-all shrink-0 btn-press"
           aria-label="Confirmar y guardar caleta"
         >✓</button>
         <button
-          class="desc-cancel-btn flex items-center justify-center rounded-lg h-8 px-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold transition-all focus:outline-none shrink-0"
+          class="desc-cancel-btn flex items-center justify-center rounded-lg h-8 px-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-bold transition-all shrink-0 btn-press"
           aria-label="Cancelar"
         >✕</button>
       </div>
@@ -165,7 +165,7 @@ const AddExchangeModalContent = () => `
       <div class="flex items-center gap-3">
         <button
           id="add-exchange-back-btn"
-          class="flex items-center justify-center p-2 rounded-full hover:bg-slate-700 transition-colors text-slate-400 hover:text-white focus:outline-none"
+          class="flex items-center justify-center p-2 rounded-full hover:bg-slate-700 transition-colors text-slate-400 hover:text-white"
           aria-label="Volver"
         >
           <svg class="w-5 h-5"><use href="${sprite}#arrow-left"></use></svg>
@@ -174,7 +174,7 @@ const AddExchangeModalContent = () => `
       </div>
       <button
         id="add-exchange-close-btn"
-        class="flex items-center justify-center rounded-lg h-9 w-9 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors focus:outline-none"
+        class="flex items-center justify-center rounded-lg h-9 w-9 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
         aria-label="Cerrar modal"
       >
         <svg class="w-5 h-5"><use href="${sprite}#close"></use></svg>
@@ -200,7 +200,7 @@ const AddExchangeModalContent = () => `
         />
         <button
           id="add-exchange-search-btn"
-          class="shrink-0 px-4 text-sm font-semibold text-slate-900 bg-primary hover:brightness-110 transition-all focus:outline-none"
+          class="shrink-0 px-4 text-sm font-semibold text-slate-900 bg-primary hover:brightness-110 transition-all"
           aria-label="Ejecutar búsqueda"
         >
           Buscar

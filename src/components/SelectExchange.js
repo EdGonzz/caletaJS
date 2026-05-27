@@ -103,7 +103,7 @@ const SelectExchange = (selectedId = "") => {
       <div class="flex items-center gap-3">
         <button
           id="exchange-back-btn"
-          class="text-slate-400 hover:text-white transition-colors flex items-center group focus:outline-none"
+          class="text-slate-400 hover:text-white transition-colors flex items-center group"
           aria-label="Volver al formulario"
         >
           <svg class="w-6 h-6 mr-1">
