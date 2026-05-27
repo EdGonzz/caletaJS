@@ -151,14 +151,25 @@ export const initActionToolbar = () => {
 
   // Scroll fade indicator
   const scrollContainer = document.querySelector('.scroll-fade-container');
-  if (scrollContainer) {
-    const updateScrollFade = () => {
+  if (scrollContainer && !_scrollFadeHandler) {
+    _scrollFadeHandler = () => {
       const isEnd = scrollContainer.scrollWidth - scrollContainer.scrollLeft <= scrollContainer.clientWidth + 5;
       scrollContainer.classList.toggle('scroll-end', isEnd);
     };
-    scrollContainer.addEventListener('scroll', updateScrollFade, { passive: true });
-    updateScrollFade();
+    scrollContainer.addEventListener('scroll', _scrollFadeHandler, { passive: true });
+    _scrollFadeHandler();
   }
 }
+
+/** @type {(() => void) | null} */
+let _scrollFadeHandler = null;
+
+export const cleanupActionToolbar = () => {
+  if (_scrollFadeHandler) {
+    const scrollContainer = document.querySelector('.scroll-fade-container');
+    if (scrollContainer) scrollContainer.removeEventListener('scroll', _scrollFadeHandler);
+    _scrollFadeHandler = null;
+  }
+};
 
 export default ActionToolbar;
