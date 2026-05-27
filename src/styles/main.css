@@ -1,17 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap')
+layer(base);
+
 @import "tailwindcss";
 
 @theme {
-  /* Colores Personalizados */
-  --color-primary: #9079ff;
-  --color-primary-glow: #0bd570;
+  /* ── Paleta de colores unificada ── */
+  /* Primario (verde neón - CTAs, estados activos, elementos financieros) */
+  --color-primary: #0bd570;
+  --color-primary-light: #34e089;
+  --color-primary-dark: #08b35c;
+
+  /* Acento secundario (púrpura - badges informativos, iconos decorativos) */
+  --color-accent-purple: #9079ff;
+  --color-accent-purple-light: #b3a4ff;
+
+  /* Estados semánticos */
   --color-accent-red: #ef4444;
-  --color-background-dark: #120f23;
-  --color-background-darker: #020617;
+  --color-accent-red-dark: #dc2626;
+
+  /* Tokens de superficie semánticos */
+  --color-surface: #0f172a;             /* body bg (slate-900) */
+  --color-surface-elevated: #1e293b;     /* cards, glass-panel base */
+  --color-surface-overlay: #151e32;      /* modals */
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+
+  /* Tokens de texto semánticos */
+  --color-text-primary: #f8fafc;         /* títulos, valores importantes */
+  --color-text-secondary: #cbd5e1;       /* texto cuerpo */
+  --color-text-muted: #64748b;           /* texto secundario, placeholders */
+  --color-text-accent: #0bd570;          /* texto acentuado */
+
+  /* Bordes */
+  --color-border-default: rgba(51, 65, 85, 0.5);
+  --color-border-elevated: rgba(71, 85, 105, 0.4);
+  --color-border-glow: rgba(11, 213, 112, 0.2);
+
+  /* Backward-compat aliases */
+  --color-primary-glow: #0bd570;
   --color-card-dark: #1e293b;
   --color-background-light: #f6f5f8;
 
   /* Tipografías */
-  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono",
     "Courier New", monospace;
 
@@ -23,14 +54,21 @@
   /* Sombras Especiales */
   --shadow-neon: 0 0 15px rgba(11, 213, 112, 0.4), 0 0 30px rgba(11, 213, 112, 0.1);
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --shadow-primary: 0 0 20px rgba(11, 213, 112, 0.15);
 }
 
+/* ── Fuentes base ── */
 body {
-  font-family: "Inter", sans-serif;
-  background-color: #0f172a;
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
   background-image: radial-gradient(at 0% 0%, rgba(11, 213, 112, 0.08) 0px, transparent 50%),
     radial-gradient(at 100% 100%, rgba(15, 23, 42, 1) 0px, transparent 50%);
   background-attachment: fixed;
+}
+
+/* ── Tipografía display para headings ── */
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
 }
 
 .glass-panel {
@@ -52,6 +90,12 @@ body {
   text-shadow: 0 0 10px rgba(11, 213, 112, 0.5);
 }
 
+/* ── Scrollbars (WebKit + Firefox) ── */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0f172a;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   height: 6px;
   width: 6px;
@@ -66,6 +110,27 @@ body {
   border-radius: 4px;
 }
 
+/* ── Indicador visual de scroll horizontal (fade a la derecha) ── */
+.scroll-fade-container {
+  position: relative;
+}
+
+.scroll-fade-container::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  background: linear-gradient(to right, transparent, rgba(15, 23, 42, 0.95));
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.scroll-fade-container.scroll-end::after {
+  opacity: 0;
+}
+
 .path-anim {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
@@ -78,7 +143,7 @@ body {
   }
 }
 
-/* ── Skeleton Shimmer (SelectExchange loading) ── */
+/* ── Skeleton Shimmer ── */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -88,6 +153,16 @@ body {
   background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite linear;
+}
+
+/* ── Pulse dot animation (live indicator) ── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 /* ── Modal slide-up entrance ── */
@@ -104,4 +179,75 @@ body {
 
 .modal-enter {
   animation: modal-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ── Accesibilidad: Skip Link ── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  z-index: 1000;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: #020617;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-decoration: none;
+  border-radius: 0 0 0.5rem 0;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* ── Accesibilidad: Focus Visible global ── */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Quitar outline para interacción con mouse, mantener para teclado */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Accesibilidad: Screen Reader Only ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Estados interactivos unificados ── */
+.btn-press {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn-hover-glow:hover:not(:disabled) {
+  box-shadow: var(--shadow-primary);
+}
+
+/* ── Accesibilidad: Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

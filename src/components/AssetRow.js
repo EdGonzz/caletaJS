@@ -20,6 +20,8 @@ import { formatUsd, formatBalance, formatPercent } from "../utils/formatters";
 
 /**
  * Returns the markup for the 24h change badge.
+ * Uses color + icon + aria-label to differentiate positive/negative/neutral states.
+ * Colors chosen to meet WCAG AA 4.5:1 contrast ratio on dark backgrounds.
  * @param {number} change
  * @returns {string}
  */
@@ -28,7 +30,7 @@ const changeBadge = (change) => {
 
   if (Math.abs(change) < 0.05) {
     return `
-      <div class="inline-flex items-center gap-1 rounded bg-slate-700/30 px-2 py-0.5 text-xs font-bold text-slate-400">
+      <div class="inline-flex items-center gap-1 rounded bg-slate-700/30 px-2 py-0.5 text-xs font-bold text-slate-400 border border-slate-600/30" aria-label="Sin cambio: ${absChange}%" role="status">
         <svg class="h-4 w-4" aria-hidden="true">
           <use href="${sprite}#minus"></use>
         </svg>
@@ -38,7 +40,7 @@ const changeBadge = (change) => {
 
   if (change > 0) {
     return `
-      <div class="text-primary bg-primary/10 inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold">
+      <div class="text-primary-glow bg-primary-glow/10 inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold border border-primary-glow/20" aria-label="Subió ${absChange}%" role="status">
         <svg class="h-4 w-4" aria-hidden="true">
           <use href="${sprite}#arrow-upward"></use>
         </svg>
@@ -47,7 +49,7 @@ const changeBadge = (change) => {
   }
 
   return `
-    <div class="text-accent-red bg-accent-red/10 inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold">
+    <div class="text-red-400 bg-red-400/10 inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-bold border border-red-400/20" aria-label="Bajó ${absChange}%" role="status">
       <svg class="h-4 w-4" aria-hidden="true">
         <use href="${sprite}#arrow-downward"></use>
       </svg>
@@ -88,7 +90,7 @@ const renderSource = (asset) => {
   // Exchange-view: single source badge
   if (source) {
     const iconHtml = sourceImage
-      ? `<img src="${sourceImage}" alt="${source}" class="h-4 w-4 rounded-sm object-contain">`
+      ? `<img src="${sourceImage}" alt="${source}" class="h-4 w-4 rounded-sm object-contain" width="16" height="16" loading="lazy">`
       : `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#${sourceIcon}"></use></svg>`;
 
     return `
@@ -108,7 +110,7 @@ const renderSource = (asset) => {
 
   const badges = visible.map(s => {
     const iconHtml = s.image
-      ? `<img src="${s.image}" alt="${s.name}" class="h-3.5 w-3.5 rounded-sm object-contain">`
+      ? `<img src="${s.image}" alt="${s.name}" class="h-3.5 w-3.5 rounded-sm object-contain" width="14" height="14" loading="lazy">`
       : `<svg class="h-3.5 w-3.5" aria-hidden="true"><use href="${sprite}#wallet"></use></svg>`;
 
     return `
@@ -156,6 +158,8 @@ const AssetRow = (asset) => {
             src="${logoUrl}"
             alt="${name} logo"
             class="h-8 w-8 rounded-full object-cover"
+            width="32"
+            height="32"
             loading="lazy"
           />
           <div>

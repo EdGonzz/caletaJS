@@ -24,7 +24,7 @@ const ExchangeRow = (ex, isSelected) => {
     : "border-slate-700 bg-slate-800/40 hover:border-slate-500";
 
   const avatar = ex.image
-    ? `<img src="${ex.image}" alt="${ex.name}" class="w-6 h-6 object-contain rounded-full" />`
+    ? `<img src="${ex.image}" alt="${ex.name}" class="w-6 h-6 object-contain rounded-full" width="24" height="24" loading="lazy" />`
     : `<div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-white">${(typeof ex === 'string' ? ex : ex.name).charAt(0).toUpperCase()}</div>`;
 
   return `

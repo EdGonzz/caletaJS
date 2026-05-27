@@ -37,7 +37,7 @@ const router = async () => {
 
   const render = (routes[path] ? routes[path] : routes["/404"]);
 
-  header.innerHTML = Header();
+  header.innerHTML = Header(path);
   root.innerHTML = await render(params);
 
   // Wire up interactive components after the DOM is populated

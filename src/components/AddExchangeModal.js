@@ -33,7 +33,7 @@ let isDefaultList = false;
 const ExchangeResultRow = (exchange, isSaved = false) => {
   const logo = exchange.image
     ? `<div class="h-12 w-12 rounded-xl border border-slate-700 bg-slate-800 shrink-0 overflow-hidden flex items-center justify-center">
-         <img src="${escapeHTML(exchange.image)}" alt="${escapeHTML(exchange.name)}" class="h-full w-full object-contain" loading="lazy" />
+         <img src="${escapeHTML(exchange.image)}" alt="${escapeHTML(exchange.name)}" class="h-full w-full object-contain" width="48" height="48" loading="lazy" />
        </div>`
     : `<div class="h-12 w-12 rounded-xl border border-slate-700 bg-slate-800 shrink-0 flex items-center justify-center">
          <span class="text-lg font-bold text-white">${escapeHTML(exchange.name.charAt(0).toUpperCase())}</span>
@@ -227,7 +227,7 @@ const AddExchangeModalContent = () => `
     <div class="p-6 border-t border-slate-700/50 bg-slate-900/30 shrink-0">
       <p class="text-center text-xs text-slate-500">
         ¿No encuentras tu exchange? Asegúrate de que el nombre coincida con el directorio de
-        <a href="https://www.coingecko.com/en/exchanges" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">CoinGecko</a>.
+        <a href="https://www.coingecko.com/en/exchanges" target="_blank" rel="noopener noreferrer nofollow" class="text-primary hover:underline">CoinGecko</a>.
       </p>
     </div>
   </div>

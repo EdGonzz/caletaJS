@@ -84,7 +84,7 @@ const FormView = () => `
         <button id="coin-selector-btn" class="w-full flex items-center justify-between px-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar moneda">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full flex items-center justify-center shadow-sm">
-              <img src="${selectedCoin?.image || selectedCoin?.thumb || ''}" alt="${selectedCoin?.name ?? ''}" class="w-5 h-5 rounded-full" />
+              <img src="${selectedCoin?.image || selectedCoin?.thumb || ''}" alt="${selectedCoin?.name ?? ''}" class="w-5 h-5 rounded-full" width="20" height="20" loading="lazy" />
             </div>
             <div class="flex flex-col items-start">
               <span class="font-bold text-white">${selectedCoin?.name ?? ''}</span>
@@ -138,7 +138,7 @@ const FormView = () => `
           <button id="exchange-selector-btn" class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group focus:outline-none" aria-label="Seleccionar exchange">
             ${selectedExchange
     ? selectedExchange.image
-      ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.image}" />`
+      ? `<img alt="${selectedExchange.name}" class="w-5 h-5 mr-3 rounded-full opacity-90" src="${selectedExchange.image}" width="20" height="20" loading="lazy" />`
       : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${(typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name).charAt(0).toUpperCase()}</div>`
     : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
   }
@@ -177,6 +177,11 @@ const FormView = () => `
           <span class="text-xs text-slate-400 font-medium">Total Spent</span>
           <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${formatUsd((parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0))}</span>
         </div>
+      </div>
+
+      <!-- Error message (announced by screen readers) -->
+      <div id="form-error" class="hidden px-4 py-3 mb-4 bg-red-400/10 border border-red-400/30 rounded-xl" role="alert">
+        <p id="form-error-text" class="text-red-400 text-sm font-medium"></p>
       </div>
 
       <!-- Submit -->
@@ -494,11 +499,17 @@ const wireFormView = () => {
     const parsedPrice = parseFloat(price);
     const parsedFees = parseFloat(fees) || 0;
 
+    // Ocultar error previo
+    const errorEl = document.getElementById("form-error");
+    const errorText = document.getElementById("form-error-text");
+    if (errorEl) errorEl.classList.add("hidden");
+
     if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
-      // Basic validation visual feedback
-      const btn = document.getElementById("submit-transaction-btn");
-      btn.classList.add("!bg-red-500", "!text-white");
-      setTimeout(() => btn.classList.remove("!bg-red-500", "!text-white"), 1000);
+      // Anunciar error para screen readers via role="alert"
+      if (errorEl && errorText) {
+        errorText.textContent = "Por favor completa los campos obligatorios: cantidad, precio y moneda.";
+        errorEl.classList.remove("hidden");
+      }
       return;
     }
 

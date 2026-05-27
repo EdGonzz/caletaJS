@@ -46,7 +46,7 @@ const Pagination = ({ currentPage, totalPages, totalItems, pageSize }) => {
         <button
           class="flex size-8 items-center justify-center rounded bg-slate-800 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Go to previous page"
-          ${isPrevDisabled ? "disabled" : ""}
+          ${isPrevDisabled ? 'disabled aria-disabled="true"' : ""}
           data-page="${currentPage - 1}"
         >
           <svg class="h-4 w-4" aria-hidden="true">
@@ -59,7 +59,7 @@ const Pagination = ({ currentPage, totalPages, totalItems, pageSize }) => {
         <button
           class="flex size-8 items-center justify-center rounded bg-slate-800 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Go to next page"
-          ${isNextDisabled ? "disabled" : ""}
+          ${isNextDisabled ? 'disabled aria-disabled="true"' : ""}
           data-page="${currentPage + 1}"
         >
           <svg class="h-4 w-4" aria-hidden="true">

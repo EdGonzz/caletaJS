@@ -18,7 +18,7 @@ const CoinOption = (coin, isSelected) => `
   >
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm overflow-hidden bg-slate-800">
-        <img src="${coin.image || coin.thumb}" alt="${coin.name}" class="w-7 h-7 object-contain" />
+        <img src="${coin.image || coin.thumb}" alt="${coin.name}" class="w-7 h-7 object-contain" width="28" height="28" loading="lazy" />
       </div>
       <div class="text-left">
         <span class="font-bold text-white text-sm">${coin.name}</span>

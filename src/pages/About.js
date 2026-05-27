@@ -1,6 +1,6 @@
 const About = () => {
   return `
-    <main class="container mx-auto px-4 py-8 max-w-2xl">
+    <div class="container mx-auto px-4 py-8 max-w-2xl">
       <article class="glass-panel rounded-2xl p-8 border border-slate-700/50 space-y-6">
         <header class="text-center space-y-2">
           <h1 class="text-3xl font-extrabold text-white tracking-tight">Acerca de CaletaJS</h1>
@@ -25,13 +25,13 @@ const About = () => {
             <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/30 flex flex-col gap-1.5">
               <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Gráficos Financieros</span>
               <p class="text-slate-200 text-sm font-medium">
-                Desarrollado con <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline" aria-label="Visitar sitio de Lightweight Charts de TradingView">Lightweight Charts de TradingView</a>.
+                Desarrollado con <a href="https://www.tradingview.com/lightweight-charts/" target="_blank" rel="noopener noreferrer nofollow" class="text-primary hover:underline" aria-label="Visitar sitio de Lightweight Charts de TradingView">Lightweight Charts de TradingView</a>.
               </p>
             </div>
             <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-700/30 flex flex-col gap-1.5">
               <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Datos del Mercado</span>
               <p class="text-slate-200 text-sm font-medium">
-                Precios e información proveídos por la API pública de <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline" aria-label="Visitar sitio web oficial de CoinGecko">CoinGecko</a>.
+                Precios e información proveídos por la API pública de <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer nofollow" class="text-primary hover:underline" aria-label="Visitar sitio web oficial de CoinGecko">CoinGecko</a>.
               </p>
             </div>
           </div>
@@ -41,7 +41,7 @@ const About = () => {
           <p>© ${new Date().getFullYear()} CaletaJS. Creado con JavaScript Vanilla y Tailwind CSS v4.</p>
         </footer>
       </article>
-    </main>
+    </div>
   `;
 };
 
