@@ -1,3 +1,5 @@
+import { escapeHTML } from "../utils/helpers";
+
 /**
  * Página de error crítico — se muestra cuando el router falla inesperadamente.
  * @param {Error|unknown} [err]
@@ -24,7 +26,7 @@ const ErrorPage = (err) => {
         Hubo un error inesperado al cargar esta página. Intenta recargar o regresa al inicio.
       </p>
       ${detail ? `
-        <pre class="mb-6 text-left text-xs text-rose-300/70 bg-rose-500/5 border border-rose-500/15 rounded-lg p-4 max-w-md w-full overflow-x-auto">${detail}</pre>
+        <pre class="mb-6 text-left text-xs text-rose-300/70 bg-rose-500/5 border border-rose-500/15 rounded-lg p-4 max-w-md w-full overflow-x-auto">${escapeHTML(detail)}</pre>
       ` : ''}
       <div class="flex gap-3">
         <button

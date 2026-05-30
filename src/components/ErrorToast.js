@@ -5,6 +5,7 @@
  */
 
 import { ErrorType } from '../utils/errors.js';
+import { escapeHTML } from '../utils/helpers';
 
 /** @type {HTMLElement | null} */
 let _container = null;
@@ -113,7 +114,7 @@ export const showToast = (message, variant = 'error', duration = 5000) => {
       line-height: 1.4;
       flex: 1;
       margin: 0;
-    ">${message}</p>
+    ">${escapeHTML(message)}</p>
     <button
       aria-label="Cerrar notificación"
       style="
