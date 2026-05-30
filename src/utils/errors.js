@@ -110,7 +110,7 @@ export const apiFetch = async (url, options = {}) => {
     return await response.json();
   } catch (err) {
     // Si el stream se canceló durante el parse, reclasificar como ABORT (no PARSE)
-    if (err?.name === 'AbortError' || err instanceof DOMException) {
+    if (err?.name === 'AbortError') {
       throw new ApiError(ErrorType.ABORT, `Request aborted: ${err?.message ?? ''}`);
     }
     throw new ApiError(ErrorType.PARSE, `Failed to parse JSON: ${err?.message ?? ''}`);
