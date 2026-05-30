@@ -237,6 +237,9 @@ export const initHistoryChart = async () => {
           return;
         }
 
+        // Remover el overlay de carga si existe
+        container.querySelector('.chart-loading-overlay')?.remove();
+
         if (_series && _chart && newData.length > 0) {
           // Restaurar el chart si estaba en estado de error o loading
           if (!container.querySelector('canvas')) {
@@ -317,6 +320,20 @@ export const cleanupHistoryChart = (isNavigation = false) => {
  * @param {HTMLElement} container
  */
 const showLoadingState = (container) => {
+  const existingCanvas = container.querySelector('canvas');
+  if (existingCanvas) {
+    if (container.querySelector('.chart-loading-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'chart-loading-overlay absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900/60 backdrop-blur-[2px] rounded-xl z-10';
+    overlay.innerHTML = `
+      <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" role="status" aria-label="Loading historical data"></div>
+      <span class="text-xs text-slate-400 font-medium">Cargando...</span>
+    `;
+    container.appendChild(overlay);
+    return;
+  }
+
   container.innerHTML = `
     <div class="flex flex-col items-center justify-center gap-3 py-12">
       <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" role="status" aria-label="Loading historical data"></div>
