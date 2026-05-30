@@ -40,7 +40,7 @@ const renderCards = (holdings = [], usingCachedPrices = false) => {
       icon: "wallet",
       extra: `
         <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-          <div class="${usingCachedPrices ? 'bg-amber-500' : 'bg-primary'} h-full w-full rounded-full shadow-[0_0_10px_${usingCachedPrices ? '#f59e0b' : '#0bd570'}]"></div>
+          <div class="${usingCachedPrices ? 'bg-amber-500 shadow-[0_0_10px_#f59e0b]' : 'bg-primary shadow-[0_0_10px_#0bd570]'} h-full w-full rounded-full"></div>
         </div>
       `,
     },
