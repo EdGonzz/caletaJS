@@ -126,6 +126,59 @@ sequenceDiagram
     Note over HC: Previene memory leaks
 ```
 
+### 7. Manejo de Errores — Flujo Tipado con ApiError
+
+```mermaid
+sequenceDiagram
+    participant API as CoinGecko API
+    participant AF as apiFetch (errors.js)
+    participant UTIL as getCoinHistory / getCoin
+    participant COMP as Componente UI
+    participant UI as ErrorToast / ErrorPage
+
+    API-->>AF: Error de red / HTTP 429 / 5xx
+    AF->>AF: Clasifica → new ApiError(type, msg, status)
+    AF-->>UTIL: throw ApiError
+    UTIL-->>COMP: Propaga ApiError tipado
+
+    alt ABORT (cancelación)
+        COMP->>COMP: Ignora silenciosamente
+    else NETWORK / SERVER / PARSE
+        COMP->>COMP: showErrorState() con botón Reintentar
+        COMP->>UI: Mensaje contextual + icono
+    else RATE_LIMIT (HTTP 429)
+        COMP->>COMP: showErrorState() sin botón
+        COMP->>UI: "Espera unos segundos..."
+    else Error de Precios (HoldingsTable)
+        COMP->>COMP: Fallback a precios cacheados
+        COMP->>UI: showWarning() + badge "Caché"
+    else Error Crítico (Router)
+        COMP->>UI: ErrorPage con botón Recargar
+    end
+```
+
+### 8. Boundary Global del Router (Try-Catch)
+
+```mermaid
+sequenceDiagram
+    participant Router as routes.js
+    participant EP as ErrorPage
+
+    Router->>Router: getHash() → resolveRoutes()
+    Router->>Router: render(params)
+
+    alt Éxito
+        Router->>Router: init*() components
+    else Error en renderizado
+        Router->>EP: ErrorPage(err)
+        EP->>EP: initErrorPage() — bind de botones
+        EP-->>Router: Página de error renderizada
+        alt ErrorPage también falla
+            Router->>Router: HTML inline de emergencia
+        end
+    end
+```
+
 ## Gestión del Estado
 
 No existe un "Store" global (como Redux o Zustand). El estado se divide en dos categorías:
@@ -146,24 +199,35 @@ Se guarda utilizando el wrapper `storage.js` sobre `localStorage` nativo.
 
 Los datos remotos (CoinGecko) se solicitan a través de los helpers en `src/utils/` (`getCoin.js`, `getExchange.js`, `getCoinHistory.js`).
 
-Las funciones están estructuradas para atrapar errores y retornar estados consistentes o *defaults* vacíos si el fetch falla, garantizando que los inicializadores puedan continuar y renderizar esqueletos o mensajes de error sin romper la aplicación.
+### Capa de Errores Centralizada
+
+Todas las llamadas a la API pasan por `apiFetch()` (`src/utils/errors.js`), que actúa como wrapper sobre `fetch()` y **siempre lanza `ApiError` tipado** en caso de fallo. Esto reemplaza el patrón anterior de `try/catch` con `console.error` + retorno de defaults vacíos.
+
+El `ApiError` clasifica cada fallo en uno de 6 tipos (`NETWORK`, `RATE_LIMIT`, `NOT_FOUND`, `SERVER`, `PARSE`, `ABORT`), permitiendo que cada componente decida cómo responder:
+
+- **`ABORT`:** Ignorado silenciosamente (cancelación intencional vía `AbortController`)
+- **`RATE_LIMIT`:** Mensaje de espera sin botón de reintento
+- **`NETWORK` / `SERVER` / `PARSE`:** Estado de error con botón "Reintentar"
+- **`NOT_FOUND`:** Mensaje descriptivo sin acción de recuperación
+
+Los helpers de dominio (`getCoin`, `getCoinHistory`, `getExchange`) propagan el `ApiError` hacia los componentes, que son responsables de la presentación del error al usuario mediante `ErrorToast`, estados de error inline, o `ErrorPage` (para fallos críticos del router).
 
 ### Endpoints de CoinGecko Utilizados
 
-| Endpoint | Utilidad | Propósito | Frecuencia |
-|---|---|---|---|
-| `/search?query=` | `getCoin.js` | Búsqueda de monedas en AddAssetModal | On-demand (debounced 300ms) |
-| `/exchanges` | `getExchange.js` | Lista de exchanges disponibles | On-demand (al abrir modal) |
-| `/coins/markets?ids=` | `HoldingsTable.js` | Precios actuales + change24h + sparkline | Al cargar `/` y al refresh manual |
-| `/coins/{id}/market_chart` | `getCoinHistory.js` | Historial de precios para HistoryChart | Al cargar `/` y al cambiar período |
+| Endpoint | Utilidad | Propósito | Frecuencia | Error Handling |
+|---|---|---|---|---|
+| `/search?query=` | `getCoin.js` | Búsqueda de monedas en AddAssetModal | On-demand (debounced 300ms) | `CoinPicker`: mensaje contextual + botón Reintentar |
+| `/exchanges` | `getExchange.js` | Lista de exchanges disponibles | On-demand (al abrir modal) | `ApiError` propagado al caller |
+| `/coins/markets?ids=` | `HoldingsTable.js` | Precios actuales + change24h + sparkline | Al cargar `/` y al refresh manual | Fallback a precios cacheados + toast warning + badge "Caché" |
+| `/coins/{id}/market_chart` | `getCoinHistory.js` | Historial de precios para HistoryChart | Al cargar `/` y al cambiar período | `HistoryChart`: estado de error tipado + botón Reintentar |
 
 ### Patrón de Comunicación entre Componentes
 
 ```
 HoldingsTable (productor)
     │
-    ├── CustomEvent: 'prices-updated' → { detail: { holdings } }
-    │       └── StatsGrid (consumidor) — re-renderiza tarjetas
+    ├── CustomEvent: 'prices-updated' → { detail: { holdings, usingCachedPrices } }
+    │       └── StatsGrid (consumidor) — re-renderiza tarjetas (con badge "Caché" si aplica)
     │
     └── CustomEvent: 'caleta-filter-changed' → { detail: { source } }
             └── HoldingsTable (auto-consumidor) — re-filtra datos
@@ -171,15 +235,21 @@ HoldingsTable (productor)
 HistoryChart (productor y consumidor propio)
     ├── Lee localStorage vía chartDataAdapter.getAggregatedHoldings()
     ├── Llama /market_chart por cada coinId
-    └── AbortController cancela peticiones anteriores al cambiar período
+    ├── AbortController cancela peticiones anteriores al cambiar período
+    └── ApiError → showErrorState() con mensaje tipado + botón Reintentar
 
 AllocationDonut (consumidor pasivo)
     ├── Lee localStorage vía chartDataAdapter.buildAllocationData()
     └── Sin llamadas API — usa precios almacenados en holdings
+
+ErrorToast (consumidor global)
+    ├── showError() / showWarning() / showSuccess() / showInfo()
+    ├── Monta toasts en #app-error-toast (z-index: 9999)
+    └── Auto-dismiss con animación + botón de cierre manual
 ```
 
 ---
-*Última actualización: 2026-05-23*
+*Última actualización: 2026-05-30*
 
 ### 7. HMR — Hot Module Replacement (Vanilla JS)
 ```mermaid
