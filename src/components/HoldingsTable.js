@@ -290,7 +290,7 @@ export const initHoldingsTable = () => {
       currentData = [];
       updateDisplay(1);
       // Still notify StatsGrid so it shows zeros
-      window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: [] } }));
+      window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: [], usingCachedPrices: false } }));
       return;
     }
 
