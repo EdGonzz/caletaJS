@@ -2,6 +2,7 @@ import sprite from "../assets/sprite.svg";
 import { SelectLoading } from "./SelectExchange";
 import { searchCoins } from "../utils/getCoin";
 import { debounce } from "../utils/helpers";
+import { ApiError, ErrorType, getErrorMessage } from "../utils/errors.js";
 
 /**
  * Renders a single coin row.
@@ -108,13 +109,65 @@ const initCoinPicker = ({ onBack, onClose, onSelect, onCoinsUpdate, currentCoins
       onCoinsUpdate(newCoins);
 
       if (coinList) {
-        coinList.innerHTML = newCoins
-          .map((c) => CoinOption(c, c.id === selectedCoinId))
-          .join("");
+        if (newCoins.length === 0) {
+          coinList.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-10 text-center">
+              <svg class="w-8 h-8 text-slate-600 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <p class="text-xs text-slate-400 font-medium">No se encontraron resultados para <strong class="text-slate-300">&quot;${query}&quot;</strong></p>
+            </div>
+          `;
+        } else {
+          coinList.innerHTML = newCoins
+            .map((c) => CoinOption(c, c.id === selectedCoinId))
+            .join("");
+        }
       }
-    } catch {
+    } catch (err) {
       if (coinList) {
-        coinList.innerHTML = '<div class="text-center p-4 text-rose-400">Error fetching coins.</div>';
+        const isRateLimit = err instanceof ApiError && err.type === ErrorType.RATE_LIMIT;
+        const isNetwork = err instanceof ApiError && err.type === ErrorType.NETWORK;
+        const message = err instanceof ApiError ? getErrorMessage(err.type) : 'Error al buscar monedas.';
+
+        coinList.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-10 text-center gap-3">
+            <div class="rounded-full bg-rose-500/10 p-3 border border-rose-500/20">
+              <svg class="w-6 h-6 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                ${isNetwork
+                  ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>'
+                  : isRateLimit
+                  ? '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'
+                  : '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'
+                }
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-white mb-0.5">${isRateLimit ? 'Demasiadas peticiones' : isNetwork ? 'Sin conexión' : 'Error de búsqueda'}</p>
+              <p class="text-xs text-slate-400">${message}</p>
+            </div>
+            ${!isRateLimit ? `
+              <button
+                id="coin-search-retry-btn"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-lg border border-primary/20 transition-all btn-press"
+                aria-label="Reintentar búsqueda"
+              >
+                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+                  <polyline points="23 4 23 10 17 10"/>
+                  <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+                Reintentar
+              </button>
+            ` : ''}
+          </div>
+        `;
+
+        // Bind retry
+        document.getElementById('coin-search-retry-btn')?.addEventListener('click', () => {
+          if (coinList) coinList.innerHTML = SelectLoading(10);
+          searchInAPI(query);
+        });
       }
     } finally {
       isLoading = false;

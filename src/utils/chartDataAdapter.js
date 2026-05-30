@@ -1,6 +1,11 @@
+/**
+ * @fileoverview Adapta datos de la API a los formatos requeridos por los gráficos.
+ */
+
 import { getHoldings } from './holdingsStorage.js';
 import { getCoinHistory } from './getCoinHistory.js';
 import { DEFAULT_SOURCE } from './sources.js';
+import { ApiError, ErrorType } from './errors.js';
 
 /**
  * Agrega holdings crudos por coinId, sumando balances cross-exchange.
@@ -24,7 +29,7 @@ const aggregateForHistory = (holdings = []) => {
         coinId: h.coinId,
         name: h.name ?? h.coinId,
         symbol: h.symbol ?? '',
-        balance: initialBalance
+        balance: initialBalance,
       });
     }
   }
@@ -37,11 +42,13 @@ const aggregateForHistory = (holdings = []) => {
  * Para cada día: portfolioValue[día] = Σ(balance_coin × price_coin[día])
  *
  * Realiza 1 llamada API por coinId único.
+ * Lanza ApiError si alguna petición falla con un error no-ABORT.
  *
- * @param {number} days - Período en días (1, 7, 30, 90, 365)
- * @param {AbortSignal} [signal] - Señal para abortar peticiones en vuelo
+ * @param {number} [days=30] - Período en días (1, 7, 30, 90, 365)
+ * @param {AbortSignal|null} [signal] - Señal para abortar peticiones en vuelo
  * @param {string} [filterSource] - Filter by source (DEFAULT_SOURCE = "Caletas" = all)
  * @returns {Promise<{ time: string|number, value: number }[]>}
+ * @throws {ApiError} en caso de error de red, rate-limit o servidor
  */
 export const buildPortfolioHistorySeries = async (days = 30, signal = null, filterSource = DEFAULT_SOURCE) => {
   const rawHoldings = getHoldings();
@@ -68,9 +75,23 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
     if (!current || date < current) startDateByCoin.set(h.coinId, date);
   }
 
-  const histories = await Promise.all(
-    aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
-  );
+  // Obtener historial de precios para cada coin.
+  // Propagar errores reales (red, rate-limit, servidor) al caller (HistoryChart).
+  // Los errores ABORT son cancelaciones intencionales → retornar [] silenciosamente.
+  let histories;
+  try {
+    histories = await Promise.all(
+      aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
+    );
+  } catch (err) {
+    // Cancelación intencional → retornar vacío sin error visible
+    if (err instanceof ApiError && err.type === ErrorType.ABORT) return [];
+    if (err?.name === 'AbortError') return [];
+
+    // Error real de API → propagar para que HistoryChart muestre estado de error
+    throw err;
+  }
+
 
   /** @type {Map<string, number>} */
   const portfolioByDate = new Map();
@@ -128,7 +149,7 @@ export const buildAllocationData = (processedHoldings = []) => {
     .map(({ id, name, symbol, value }) => ({
       id, name, symbol,
       value: value ?? 0,
-      pct: ((value ?? 0) / totalValue) * 100
+      pct: ((value ?? 0) / totalValue) * 100,
     }))
     .sort((a, b) => b.value - a.value);
 };
