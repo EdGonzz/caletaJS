@@ -28,7 +28,7 @@ const ErrorPage = (err) => {
       ` : ''}
       <div class="flex gap-3">
         <button
-          onclick="window.location.reload()"
+          id="error-page-reload-btn"
           class="inline-flex items-center gap-2 rounded-lg bg-slate-700/60 hover:bg-slate-700 px-5 py-2.5 text-sm font-semibold text-white transition-colors border border-slate-600/50 btn-press"
           aria-label="Recargar la página"
         >
@@ -52,6 +52,12 @@ const ErrorPage = (err) => {
       </div>
     </div>
   `;
+};
+
+export const initErrorPage = () => {
+  document.getElementById("error-page-reload-btn")?.addEventListener("click", () => {
+    window.location.reload();
+  });
 };
 
 export default ErrorPage;

@@ -126,8 +126,6 @@ export const showToast = (message, variant = 'error', duration = 5000) => {
         line-height: 1;
         transition: color 0.15s;
       "
-      onmouseover="this.style.color='#94a3b8'"
-      onmouseout="this.style.color='#64748b'"
     >
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
         <line x1="18" y1="6" x2="6" y2="18"/>
@@ -142,7 +140,16 @@ export const showToast = (message, variant = 'error', duration = 5000) => {
     toast.addEventListener('animationend', () => toast.remove(), { once: true });
   };
 
-  toast.querySelector('button')?.addEventListener('click', dismiss);
+  const closeBtn = toast.querySelector('button');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', dismiss);
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.color = '#94a3b8';
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.color = '#64748b';
+    });
+  }
 
   container.appendChild(toast);
 

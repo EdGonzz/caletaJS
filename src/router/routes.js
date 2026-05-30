@@ -3,7 +3,7 @@ import Home from "../pages/Home";
 import About from "../pages/About";
 import CoinDetails from "../pages/CoinDetails";
 import Error404 from "../pages/Error404";
-import ErrorPage from "../pages/ErrorPage";
+import ErrorPage, { initErrorPage } from "../pages/ErrorPage";
 import { initHoldingsTable, cleanupHoldingsTable } from "../components/HoldingsTable";
 import { initAddAssetModal, cleanupAddAssetModal } from "../components/AddAssetModal";
 import { initStatsGrid, cleanupStatsGrid } from "../components/StatsGrid";
@@ -66,18 +66,21 @@ const router = async () => {
     // Mostrar página de error crítico en lugar de dejar la app en blanco
     try {
       root.innerHTML = ErrorPage(err);
+      initErrorPage();
       header.innerHTML = "";
     } catch (renderErr) {
-      // Fallback de último recurso si incluso ErrorPage falla
       root.innerHTML = `
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;color:#ef4444;font-family:sans-serif;text-align:center;padding:2rem;">
           <h1 style="font-size:2rem;font-weight:bold;margin-bottom:0.5rem;">Error crítico</h1>
           <p style="color:#94a3b8;margin-bottom:1.5rem;">No se pudo cargar la aplicación.</p>
-          <button onclick="window.location.reload()" style="padding:0.5rem 1.25rem;background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:0.5rem;cursor:pointer;font-size:0.875rem;">
+          <button id="router-critical-reload-btn" style="padding:0.5rem 1.25rem;background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:0.5rem;cursor:pointer;font-size:0.875rem;">
             Recargar
           </button>
         </div>
       `;
+      document.getElementById("router-critical-reload-btn")?.addEventListener("click", () => {
+        window.location.reload();
+      });
     }
   }
 };

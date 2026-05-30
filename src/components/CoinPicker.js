@@ -1,7 +1,7 @@
 import sprite from "../assets/sprite.svg";
 import { SelectLoading } from "./SelectExchange";
 import { searchCoins } from "../utils/getCoin";
-import { debounce } from "../utils/helpers";
+import { debounce, escapeHTML } from "../utils/helpers";
 import { ApiError, ErrorType, getErrorMessage } from "../utils/errors.js";
 
 /**
@@ -116,7 +116,7 @@ const initCoinPicker = ({ onBack, onClose, onSelect, onCoinsUpdate, currentCoins
                 <circle cx="11" cy="11" r="8"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <p class="text-xs text-slate-400 font-medium">No se encontraron resultados para <strong class="text-slate-300">&quot;${query}&quot;</strong></p>
+              <p class="text-xs text-slate-400 font-medium">No se encontraron resultados para <strong class="text-slate-300">&quot;${escapeHTML(query)}&quot;</strong></p>
             </div>
           `;
         } else {
