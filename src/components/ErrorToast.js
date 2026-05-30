@@ -136,7 +136,10 @@ export const showToast = (message, variant = 'error', duration = 5000) => {
   `;
 
   /** Dismiss con animación */
+  let dismissed = false;
   const dismiss = () => {
+    if (dismissed) return;
+    dismissed = true;
     toast.classList.add('toast-dismissing');
     toast.addEventListener('animationend', () => toast.remove(), { once: true });
   };
