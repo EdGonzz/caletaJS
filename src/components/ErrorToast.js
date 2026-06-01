@@ -85,6 +85,20 @@ export const showToast = (message, variant = 'error', duration = 5000) => {
   const container = getContainer();
   if (!container) return;
 
+  // Evitar duplicados idénticos visibles en pantalla
+  const existingToasts = container.querySelectorAll('.toast-item p');
+  for (const p of existingToasts) {
+    if (p.textContent === message) {
+      return;
+    }
+  }
+
+  // Limitar a un máximo de 3 toasts concurrentes
+  const activeToasts = container.querySelectorAll('.toast-item');
+  if (activeToasts.length >= 3) {
+    activeToasts[0].remove();
+  }
+
   const styles = getVariantStyles(variant);
 
   const toast = document.createElement('div');

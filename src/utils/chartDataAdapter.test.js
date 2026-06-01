@@ -127,8 +127,10 @@ describe('chartDataAdapter', () => {
         return { ok: true, json: async () => ({ prices: [] }) };
       };
 
-      const res = await buildPortfolioHistorySeries(30, controller.signal);
-      assert.deepStrictEqual(res, []);
+      await assert.rejects(
+        buildPortfolioHistorySeries(30, controller.signal),
+        /AbortError|Request aborted/
+      );
       assert.ok(receivedSignal !== null, 'El signal debe haberse propagado al fetch');
     });
 

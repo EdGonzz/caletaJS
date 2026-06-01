@@ -326,6 +326,8 @@ export const initHoldingsTable = () => {
           // Recalculate value with stored price if API fails for this specific coin
           return { ...asset, value: asset.balance * asset.price };
         });
+      } else {
+        throw new ApiError(ErrorType.PARSE, "La respuesta de la API no es un listado válido.");
       }
     } catch (err) {
       usingCachedPrices = true;

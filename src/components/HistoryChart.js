@@ -367,6 +367,7 @@ const showEmptyState = (container) => {
  * @param {number} [days] - Días del período actual para el retry
  */
 const showErrorState = (container, errorType, days) => {
+  cleanupHistoryChart(false);
   const message = getErrorMessage(errorType);
   const isRateLimit = errorType === ErrorType.RATE_LIMIT;
 

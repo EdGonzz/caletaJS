@@ -76,21 +76,10 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
   }
 
   // Obtener historial de precios para cada coin.
-  // Propagar errores reales (red, rate-limit, servidor) al caller (HistoryChart).
-  // Los errores ABORT son cancelaciones intencionales → retornar [] silenciosamente.
-  let histories;
-  try {
-    histories = await Promise.all(
-      aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
-    );
-  } catch (err) {
-    // Cancelación intencional → retornar vacío sin error visible
-    if (err instanceof ApiError && err.type === ErrorType.ABORT) return [];
-    if (err?.name === 'AbortError') return [];
-
-    // Error real de API → propagar para que HistoryChart muestre estado de error
-    throw err;
-  }
+  // Propaga errores (incluyendo cancelaciones ABORT y errores reales) al caller (HistoryChart).
+  const histories = await Promise.all(
+    aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
+  );
 
 
   /** @type {Map<string, number>} */
