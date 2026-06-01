@@ -3,6 +3,7 @@ import { addSource, getSource } from '../utils/sources';
 import sprite from '../assets/sprite.svg';
 import SkeletonRow from '../utils/skeletonRow';
 import { debounce, escapeHTML } from '../utils/helpers';
+import { ApiError, ErrorType, getErrorMessage } from '../utils/errors.js';
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,9 @@ let searchState = 'idle';
 
 /** @type {boolean} Indica si los resultados son la lista por defecto (no una búsqueda) */
 let isDefaultList = false;
+
+/** @type {string} Mensaje de error contextual para mostrar en ErrorState */
+let searchErrorMessage = 'Verifica tu conexión e intenta de nuevo.';
 
 
 /**
@@ -129,13 +133,14 @@ const EmptyState = (term) => `
 
 /**
  * Estado de error al hacer la búsqueda.
+ * @param {string} [message] - Mensaje descriptivo para el usuario.
  * @returns {string}
  */
-const ErrorState = () => `
+const ErrorState = (message = 'Verifica tu conexión e intenta de nuevo.') => `
   <div class="flex flex-col items-center justify-center py-12 text-center">
     <svg class="w-12 h-12 text-rose-500/60 mb-4"><use href="${sprite}#circle-x"></use></svg>
     <p class="text-slate-300 font-medium mb-1">Error al conectar con la API</p>
-    <p class="text-slate-500 text-sm">Verifica tu conexión e intenta de nuevo.</p>
+    <p class="text-slate-500 text-sm">${escapeHTML(message)}</p>
   </div>
 `;
 
@@ -279,7 +284,7 @@ const renderResults = (term = '') => {
 
   if (searchState === 'error') {
     label?.classList.add('hidden');
-    container.innerHTML = ErrorState();
+    container.innerHTML = ErrorState(searchErrorMessage);
     return;
   }
 
@@ -367,6 +372,7 @@ const loadDefaultExchanges = async () => {
     const data = await getExchange();
 
     if (!data || !Array.isArray(data)) {
+      searchErrorMessage = 'La API devolvió una respuesta inesperada.';
       searchState = 'error';
       renderResults();
       return;
@@ -375,7 +381,13 @@ const loadDefaultExchanges = async () => {
     searchResults = data;
     searchState = 'results';
     renderResults();
-  } catch {
+  } catch (err) {
+    // Ignorar aborts silenciosamente (navegación entre páginas)
+    if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
+
+    searchErrorMessage = err instanceof ApiError
+      ? getErrorMessage(err.type)
+      : 'Algo salió mal. Intenta de nuevo.';
     searchState = 'error';
     renderResults();
   }
@@ -397,6 +409,7 @@ const searchExchanges = async (term) => {
     const data = await getExchange();
 
     if (!data || !Array.isArray(data)) {
+      searchErrorMessage = 'La API devolvió una respuesta inesperada.';
       searchState = 'error';
       renderResults(trimmed);
       return;
@@ -414,7 +427,13 @@ const searchExchanges = async (term) => {
     }
 
     renderResults(trimmed);
-  } catch {
+  } catch (err) {
+    // Ignorar aborts silenciosamente (debounce cancela requests previos)
+    if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
+
+    searchErrorMessage = err instanceof ApiError
+      ? getErrorMessage(err.type)
+      : 'Algo salió mal. Intenta de nuevo.';
     searchState = 'error';
     renderResults(trimmed);
   }
@@ -440,6 +459,7 @@ const closeAddExchangeModal = () => {
   // Reset state
   searchResults = [];
   searchState = 'idle';
+  searchErrorMessage = 'Verifica tu conexión e intenta de nuevo.';
 };
 
 /**
@@ -455,6 +475,7 @@ const openAddExchangeModal = ({ onBack, onSave } = {}) => {
   searchResults = [];
   searchState = 'idle';
   isDefaultList = false;
+  searchErrorMessage = 'Verifica tu conexión e intenta de nuevo.';
 
   const inner = document.getElementById('add-exchange-modal-inner-wrapper');
   if (inner) inner.innerHTML = AddExchangeModalContent();

@@ -240,17 +240,17 @@ export const initHistoryChart = async () => {
         // Remover el overlay de carga si existe
         container.querySelector('.chart-loading-overlay')?.remove();
 
-        if (_series && _chart && newData.length > 0) {
-          // Restaurar el chart si estaba en estado de error o loading
-          if (!container.querySelector('canvas')) {
-            // El chart fue destruido (estado de error) — re-inicializar
+        if (newData.length > 0) {
+          if (_series && _chart) {
+            // Chart vivo: actualizar datos directamente
+            _series.setData(newData);
+            _chart.timeScale().fitContent();
+          } else {
+            // Chart destruido (estado de error previo) — re-inicializar
             initHistoryChart();
-            return;
           }
-          _series.setData(newData);
-          _chart.timeScale().fitContent();
         } else {
-          // Revertir UI al botón previamente activo si no hay datos nuevos
+          // Sin datos: revertir UI al botón previamente activo
           buttons.forEach((b, bi) => {
             const isBFirst = bi === 0;
             const isBLast = bi === buttons.length - 1;
