@@ -261,6 +261,7 @@ export const initHistoryChart = async () => {
           });
           // Revertir _currentDays al valor del botón previamente activo
           _currentDays = Number(prevActiveButton.dataset.days);
+          if (_chart) { _chart.remove(); _chart = null; _series = null; }
           if (container) showEmptyState(container);
         }
       });
