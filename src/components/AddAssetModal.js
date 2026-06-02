@@ -7,6 +7,7 @@ import { now, formatUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
+import { showWarning } from "./ErrorToast.js";
 
 let coins = new Map();
 
@@ -415,6 +416,8 @@ const wireFormView = () => {
         const priceInput = document.getElementById("price-input");
         if (priceInput) priceInput.value = price;
         updateTotal();
+    } else {
+        showWarning("No se pudo obtener el precio de mercado actual.");
     }
   });
 

@@ -14,7 +14,7 @@ const renderSkeletons = () => {
   return labels.map(title => StatCard({ title, skeleton: true })).join("");
 };
 
-const renderCards = (holdings = []) => {
+const renderCards = (holdings = [], usingCachedPrices = false) => {
   const totalBalance = holdings.reduce((acc, curr) => acc + curr.value, 0);
 
   const totalChange24h = totalBalance > 0
@@ -33,12 +33,14 @@ const renderCards = (holdings = []) => {
     {
       title: "Total Balance",
       value: formatUsd(totalBalance),
-      description: holdings.length > 0 ? `Across ${holdings.length} unique coin${holdings.length !== 1 ? 's' : ''}` : "No assets added",
+      description: holdings.length > 0
+        ? `Across ${holdings.length} unique coin${holdings.length !== 1 ? 's' : ''}${usingCachedPrices ? ' <span class="text-amber-500 font-semibold" style="color: #f59e0b;">(Caché)</span>' : ''}`
+        : "No assets added",
       iconLabel: "Wallet",
       icon: "wallet",
       extra: `
         <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
-          <div class="bg-primary h-full w-full rounded-full shadow-[0_0_10px_#0bd570]"></div>
+          <div class="${usingCachedPrices ? 'bg-amber-500 shadow-[0_0_10px_#f59e0b]' : 'bg-primary shadow-[0_0_10px_#0bd570]'} h-full w-full rounded-full"></div>
         </div>
       `,
     },
@@ -104,8 +106,8 @@ export const initStatsGrid = () => {
   }
 
   _statsHandler = (e) => {
-    const { holdings } = e.detail;
-    container.innerHTML = renderCards(holdings);
+    const { holdings, usingCachedPrices } = e.detail;
+    container.innerHTML = renderCards(holdings, usingCachedPrices);
   };
 
   window.addEventListener('prices-updated', _statsHandler);

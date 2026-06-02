@@ -1,3 +1,9 @@
+/**
+ * @fileoverview Utilidades para obtener datos de monedas desde la API de CoinGecko.
+ */
+
+import { apiFetch, ApiError, ErrorType } from './errors.js';
+
 const API_KEY = process.env.API_KEY;
 const API_URL = process.env.API_URL;
 
@@ -31,42 +37,51 @@ const API_URL = process.env.API_URL;
  * @property {string}      last_updated                       - Última actualización en ISO 8601
  */
 
-const options = {
+/** @type {RequestInit} */
+const baseOptions = {
   method: 'GET',
   headers: {
     'x-cg-demo-api-key': API_KEY,
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 };
 
 /**
  * Busca monedas de forma global.
  * @param {string} query
  * @returns {Promise<{coins: Array}>}
+ * @throws {ApiError} si hay un error de red, rate-limit o servidor
  */
 export const searchCoins = async (query) => {
-  try {
-    const response = await fetch(`${API_URL}/search?query=${query}`, options);
-    if (!response.ok) throw new Error(`Search API Error: ${response.status}`);
-    return await response.json();
-  } catch (error) {
-    console.error('Error searching coins:', error);
+  const data = await apiFetch(
+    `${API_URL}/search?query=${encodeURIComponent(query)}`,
+    baseOptions,
+  );
+
+  if (!data || typeof data !== 'object' || !Array.isArray(data.coins)) {
     return { coins: [] };
   }
+
+  return data;
 };
 
 /**
  * Obtiene el top de monedas por market cap.
- * @param {number} limit
+ * @param {number} [limit=10]
  * @returns {Promise<Coin[]>}
  */
 export const getTopCoins = async (limit = 10) => {
   try {
-    const response = await fetch(`${API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1`, options);
-    if (!response.ok) throw new Error(`Markets API Error: ${response.status}`);
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching top coins:', error);
+    const data = await apiFetch(
+      `${API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1`,
+      baseOptions,
+    );
+
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    if (err instanceof ApiError && err.type !== ErrorType.ABORT) {
+      console.error('getTopCoins:', err.message);
+    }
     return [];
   }
 };
@@ -78,13 +93,18 @@ export const getTopCoins = async (limit = 10) => {
  */
 const getCoin = async (id) => {
   if (!id) return null;
+
   try {
-    const response = await fetch(`${API_URL}/coins/markets?vs_currency=usd&ids=${id}`, options);
-    if (!response.ok) throw new Error(`Coin Detail API Error: ${response.status}`);
-    const data = await response.json();
-    return data[0] || null;
-  } catch (error) {
-    console.error('Error fetching coin detail:', error);
+    const data = await apiFetch(
+      `${API_URL}/coins/markets?vs_currency=usd&ids=${encodeURIComponent(id)}`,
+      baseOptions,
+    );
+
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  } catch (err) {
+    if (err instanceof ApiError && err.type !== ErrorType.ABORT) {
+      console.error(`getCoin(${id}):`, err.message);
+    }
     return null;
   }
 };

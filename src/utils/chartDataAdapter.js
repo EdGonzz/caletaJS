@@ -1,6 +1,11 @@
+/**
+ * @fileoverview Adapta datos de la API a los formatos requeridos por los gráficos.
+ */
+
 import { getHoldings } from './holdingsStorage.js';
 import { getCoinHistory } from './getCoinHistory.js';
 import { DEFAULT_SOURCE } from './sources.js';
+import { ApiError, ErrorType } from './errors.js';
 
 /**
  * Agrega holdings crudos por coinId, sumando balances cross-exchange.
@@ -24,7 +29,7 @@ const aggregateForHistory = (holdings = []) => {
         coinId: h.coinId,
         name: h.name ?? h.coinId,
         symbol: h.symbol ?? '',
-        balance: initialBalance
+        balance: initialBalance,
       });
     }
   }
@@ -37,11 +42,15 @@ const aggregateForHistory = (holdings = []) => {
  * Para cada día: portfolioValue[día] = Σ(balance_coin × price_coin[día])
  *
  * Realiza 1 llamada API por coinId único.
+ * Usa Promise.allSettled para resiliencia parcial: si una coin falla (ej. 404),
+ * el chart se renderiza con las coins restantes. Solo lanza ApiError si TODAS
+ * las coins fallan, propagando el error más severo. Los ABORT se propagan siempre.
  *
- * @param {number} days - Período en días (1, 7, 30, 90, 365)
- * @param {AbortSignal} [signal] - Señal para abortar peticiones en vuelo
+ * @param {number} [days=30] - Período en días (1, 7, 30, 90, 365)
+ * @param {AbortSignal|null} [signal] - Señal para abortar peticiones en vuelo
  * @param {string} [filterSource] - Filter by source (DEFAULT_SOURCE = "Caletas" = all)
  * @returns {Promise<{ time: string|number, value: number }[]>}
+ * @throws {ApiError} si todas las coins fallan o si se produce un ABORT
  */
 export const buildPortfolioHistorySeries = async (days = 30, signal = null, filterSource = DEFAULT_SOURCE) => {
   const rawHoldings = getHoldings();
@@ -68,9 +77,49 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
     if (!current || date < current) startDateByCoin.set(h.coinId, date);
   }
 
-  const histories = await Promise.all(
+  // Obtener historial de precios para cada coin con resiliencia parcial.
+  // Promise.allSettled garantiza que un 404 de una coin oscura no cancele el chart entero.
+  const settled = await Promise.allSettled(
     aggregated.map(({ coinId }) => getCoinHistory(coinId, days, signal))
   );
+
+  // Clasificación de prioridad de errores (mayor número = más severo)
+  /** @type {Record<string, number>} */
+  const ERROR_PRIORITY = {
+    [ErrorType.ABORT]: 100,
+    [ErrorType.RATE_LIMIT]: 50,
+    [ErrorType.SERVER]: 40,
+    [ErrorType.NETWORK]: 30,
+    [ErrorType.PARSE]: 20,
+    [ErrorType.NOT_FOUND]: 10,
+    [ErrorType.UNKNOWN]: 5,
+  };
+
+  /** @type {ApiError[]} */
+  const failures = [];
+
+  /** @type {Array<{ time: string|number, value: number }[]>} */
+  const histories = settled.map((result, i) => {
+    if (result.status === 'fulfilled') return result.value;
+
+    const err = result.reason;
+
+    // ABORT: propagar inmediatamente — es una cancelación intencional
+    if (err instanceof ApiError && err.type === ErrorType.ABORT) throw err;
+
+    failures.push(err instanceof ApiError ? err : new ApiError(ErrorType.UNKNOWN, String(err)));
+    return []; // coin fallida contribuye con [] (no suma al portafolio)
+  });
+
+  // Si TODAS las coins fallaron, lanzar el error más severo
+  if (failures.length === aggregated.length) {
+    const worst = failures.reduce((prev, cur) => {
+      const prevPri = ERROR_PRIORITY[prev.type] ?? 0;
+      const curPri = ERROR_PRIORITY[cur.type] ?? 0;
+      return curPri > prevPri ? cur : prev;
+    });
+    throw worst;
+  }
 
   /** @type {Map<string, number>} */
   const portfolioByDate = new Map();
@@ -128,7 +177,7 @@ export const buildAllocationData = (processedHoldings = []) => {
     .map(({ id, name, symbol, value }) => ({
       id, name, symbol,
       value: value ?? 0,
-      pct: ((value ?? 0) / totalValue) * 100
+      pct: ((value ?? 0) / totalValue) * 100,
     }))
     .sort((a, b) => b.value - a.value);
 };

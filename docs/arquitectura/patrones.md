@@ -182,5 +182,88 @@ Para operaciones de búsqueda frecuente (e.g. buscar una moneda por ID tras sele
 
 *Ver ADR:* `docs/decisions/015-optimizacion-lookup-monedas-map.md`
 
+## 12. Clasificación y Propagación de Errores de API (ApiError + apiFetch)
+
+### ¿Qué es y cómo funciona?
+
+En lugar de que cada utility maneje errores de forma aislada con `console.error` + retorno de defaults vacíos, se centraliza la clasificación en una capa dedicada (`src/utils/errors.js`) que **siempre lanza `ApiError` tipado**. Los componentes son responsables de traducir cada tipo de error a una experiencia de usuario adecuada.
+
+```javascript
+// Capa de clasificación (errors.js) — SIEMPRE lanza, nunca silencia
+import { apiFetch, ApiError, ErrorType } from '../utils/errors.js';
+
+// Capa de dominio (getCoinHistory.js) — propaga el error
+export const getCoinHistory = async (coinId, days, signal) => {
+  const data = await apiFetch(url, { signal }); // throws ApiError
+  return data.prices.map(/* ... */);
+};
+
+// Capa de presentación (HistoryChart.js) — decide cómo mostrar
+try {
+  data = await buildPortfolioHistorySeries(days, signal);
+} catch (err) {
+  if (err instanceof ApiError && err.type === ErrorType.ABORT) return; // ignorar
+  showErrorState(container, err.type); // mensaje contextual + botón Reintentar
+}
+```
+
+La clasificación cubre 6 categorías:
+
+| ErrorType | Causa | UI de usuario |
+|---|---|---|
+| `NETWORK` | Sin conexión / CORS | Mensaje + botón Reintentar |
+| `RATE_LIMIT` | HTTP 429 | Mensaje de espera, sin reintento |
+| `NOT_FOUND` | HTTP 404 | Mensaje descriptivo |
+| `SERVER` | HTTP 5xx | Mensaje + botón Reintentar |
+| `PARSE` | JSON malformado | Mensaje genérico |
+| `ABORT` | `AbortController.abort()` | Ignorado silenciosamente |
+
+### Sistema de Notificaciones (ErrorToast)
+
+Para errores no bloqueantes (precios cacheados, advertencias), se usa un sistema de toasts con 4 variantes visuales:
+
+```javascript
+import { showError, showWarning, showSuccess } from './components/ErrorToast.js';
+
+showError('Error al cargar el gráfico.', 6000);
+showWarning('Mostrando precios del último guardado.', 7000);
+showSuccess('Moneda agregada correctamente.', 3000);
+```
+
+**Características técnicas:**
+- Contenedor fijo `#app-error-toast` (`position: fixed; z-index: 9999`)
+- Animaciones CSS `toast-in` (0.28s) / `toast-out` (0.22s) con `cubic-bezier`
+- Protección contra doble dismiss (`dismissed` flag en closure)
+- Sanitización XSS con `escapeHTML()` en todos los mensajes
+- Accesibilidad: `role="alert"`, botón de cierre con `aria-label`
+
+### Boundary Global del Router
+
+Try-catch alrededor de todo el flujo de renderizado en `routes.js`:
+
+```
+getHash() → resolveRoutes() → render(params) → init*()
+         ↓ catch
+    ErrorPage(err) → botón Recargar / Inicio
+         ↓ catch (fallback final)
+    HTML inline de emergencia
+```
+
+### Trade-offs
+
+✅ **Pros:**
+- La app nunca queda en blanco: siempre hay feedback ante cualquier fallo
+- El usuario puede reintentar operaciones sin recargar la página
+- Los mensajes son contextuales (no genéricos) y accionables
+- Separación clara de responsabilidades: clasificación → dominio → presentación
+- El sistema de toasts es extensible (añadir variante = 1 case en `getVariantStyles()`)
+
+⚠️ **Cons:**
+- Cada componente pasa de 2 estados (loading/data) a 3 (loading/data/error), aumentando la complejidad
+- `apiFetch` rompe el contrato de `fetch()` — siempre lanza en error en lugar de retornar `!response.ok`
+- Requiere disciplina para mantener la consistencia en todos los componentes que consumen APIs
+
+*Ver ADR:* `docs/decisions/019-sistema-manejo-errores.md`
+
 ---
-*Última actualización: 2026-05-13*
+*Última actualización: 2026-05-30*

@@ -1,6 +1,11 @@
+/**
+ * @fileoverview HistoryChart — Gráfico de historial de portafolio con manejo robusto de errores.
+ */
+
 import { createChart, AreaSeries } from "lightweight-charts";
 import { buildPortfolioHistorySeries } from "../utils/chartDataAdapter.js";
 import { currentFilter } from "./ActionToolbar.js";
+import { ApiError, ErrorType, getErrorMessage } from "../utils/errors.js";
 import sprite from "../assets/sprite.svg";
 
 const HistoryChart = () => {
@@ -40,7 +45,7 @@ const HistoryChart = () => {
         </div>
       </div>
       <div id="history-chart-container" class="relative flex-1 w-full min-h-55 flex items-center justify-center">
-        <!-- Renderizado dinámico o estados de carga/vacío -->
+        <!-- Renderizado dinámico o estados de carga/vacío/error -->
       </div>
     </div>
   `;
@@ -91,7 +96,22 @@ export const initHistoryChart = async () => {
   showLoadingState(container);
 
   // Cargar datos iniciales (período seleccionado actual y filtro activo)
-  const data = await buildPortfolioHistorySeries(_currentDays, _abortController.signal, currentFilter);
+  let data;
+  try {
+    data = await buildPortfolioHistorySeries(_currentDays, _abortController.signal, currentFilter);
+  } catch (err) {
+    // Guard: si la petición fue cancelada, no hacer nada (stale request)
+    if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
+    if (err?.name === 'AbortError') return;
+
+    // Guard: si el request es stale, ignorar
+    if (currentRequest !== _requestId) return;
+
+    // Error real de API → mostrar estado de error con mensaje personalizado
+    if (!document.body.contains(container)) return;
+    showErrorState(container, err instanceof ApiError ? err.type : ErrorType.UNKNOWN, _currentDays);
+    return;
+  }
 
   // Guard: invalidar si el request es stale o el contenedor fue removido
   if (currentRequest !== _requestId || !document.body.contains(container)) {
@@ -164,7 +184,7 @@ export const initHistoryChart = async () => {
 
       btn.addEventListener("click", async (e) => {
         const days = Number(e.currentTarget.dataset.days);
-        _currentDays = days; // Guardar el día seleccionado
+        _currentDays = days;
 
         // Guardar referencia al botón anteriormente activo para fallback
         const prevActiveButton = Array.from(buttons).find((b) => b.getAttribute("aria-pressed") === "true") || btn;
@@ -186,18 +206,60 @@ export const initHistoryChart = async () => {
         }
         _abortController = new AbortController();
 
+        // Mostrar feedback de carga:
+        // Si el chart está vivo (canvas presente) → overlay semitransparente sobre el chart.
+        // Si no hay canvas (estado error/empty) → resetear referencias zombie y dejar
+        // que initHistoryChart() reconstruya el DOM al recibir los datos.
+        if (container.querySelector('canvas')) {
+          showLoadingState(container);
+        } else {
+          // Nullear referencias para que la rama de re-init funcione correctamente
+          if (_chart) { _chart.remove(); _chart = null; }
+          _series = null;
+        }
+
         // Fetch nuevos datos y actualizar serie
-        const newData = await buildPortfolioHistorySeries(days, _abortController.signal, currentFilter);
+        let newData;
+        try {
+          newData = await buildPortfolioHistorySeries(days, _abortController.signal, currentFilter);
+        } catch (err) {
+          if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
+          if (err?.name === 'AbortError') return;
+          if (periodRequest !== _requestId) return;
+
+          // Error real → mostrar en el contenedor y revertir botón
+          if (container) showErrorState(container, err instanceof ApiError ? err.type : ErrorType.UNKNOWN, days);
+          // Revertir UI al botón previamente activo
+          buttons.forEach((b, bi) => {
+            const isBFirst = bi === 0;
+            const isBLast = bi === buttons.length - 1;
+            const bRadius = isBFirst ? 'rounded-l-full' : isBLast ? 'rounded-r-full' : '';
+            const bActive = b === prevActiveButton;
+            b.className = `${bActive ? "bg-primary/20 text-primary font-semibold" : "text-slate-400 hover:bg-slate-700/50 hover:text-white"} ${bRadius} px-3 py-1 text-xs transition-all btn-press`;
+            b.setAttribute("aria-pressed", bActive ? "true" : "false");
+          });
+          _currentDays = Number(prevActiveButton.dataset.days);
+          return;
+        }
 
         if (periodRequest !== _requestId || _abortController.signal.aborted) {
           return;
         }
 
-        if (_series && _chart && newData.length > 0) {
-          _series.setData(newData);
-          _chart.timeScale().fitContent();
+        // Remover el overlay de carga si existe
+        container.querySelector('.chart-loading-overlay')?.remove();
+
+        if (newData.length > 0) {
+          if (_series && _chart) {
+            // Chart vivo: actualizar datos directamente
+            _series.setData(newData);
+            _chart.timeScale().fitContent();
+          } else {
+            // Chart destruido (estado de error previo) — re-inicializar
+            initHistoryChart();
+          }
         } else {
-          // Revertir UI al botón previamente activo si no hay datos nuevos
+          // Sin datos: revertir UI al botón previamente activo
           buttons.forEach((b, bi) => {
             const isBFirst = bi === 0;
             const isBLast = bi === buttons.length - 1;
@@ -208,6 +270,8 @@ export const initHistoryChart = async () => {
           });
           // Revertir _currentDays al valor del botón previamente activo
           _currentDays = Number(prevActiveButton.dataset.days);
+          if (_chart) { _chart.remove(); _chart = null; _series = null; }
+          if (container) showEmptyState(container);
         }
       });
     });
@@ -266,6 +330,20 @@ export const cleanupHistoryChart = (isNavigation = false) => {
  * @param {HTMLElement} container
  */
 const showLoadingState = (container) => {
+  const existingCanvas = container.querySelector('canvas');
+  if (existingCanvas) {
+    if (container.querySelector('.chart-loading-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'chart-loading-overlay absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-900/60 backdrop-blur-[2px] rounded-xl z-10';
+    overlay.innerHTML = `
+      <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" role="status" aria-label="Loading historical data"></div>
+      <span class="text-xs text-slate-400 font-medium">Cargando...</span>
+    `;
+    container.appendChild(overlay);
+    return;
+  }
+
   container.innerHTML = `
     <div class="flex flex-col items-center justify-center gap-3 py-12">
       <div class="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" role="status" aria-label="Loading historical data"></div>
@@ -275,7 +353,7 @@ const showLoadingState = (container) => {
 };
 
 /**
- * Muestra un estado vacío o de error en el contenedor.
+ * Muestra el estado vacío (portfolio sin assets o sin datos para el período).
  * @param {HTMLElement} container
  */
 const showEmptyState = (container) => {
@@ -290,6 +368,55 @@ const showEmptyState = (container) => {
       </p>
     </div>
   `;
+};
+
+/**
+ * Muestra el estado de error con mensaje personalizado y botón de retry.
+ * @param {HTMLElement} container
+ * @param {string} errorType - Valor de ErrorType
+ * @param {number} [days] - Días del período actual para el retry
+ */
+const showErrorState = (container, errorType, days) => {
+  cleanupHistoryChart(false);
+  const message = getErrorMessage(errorType);
+  const isRateLimit = errorType === ErrorType.RATE_LIMIT;
+
+  container.innerHTML = `
+    <div class="flex flex-col items-center justify-center text-center p-6 py-10 max-w-sm mx-auto">
+      <div class="relative mb-4">
+        <div class="absolute inset-0 bg-rose-500/10 blur-xl rounded-full"></div>
+        <div class="relative rounded-full bg-slate-800/70 p-4 border border-rose-500/20">
+          <svg class="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+      </div>
+      <h4 class="text-sm font-semibold text-white mb-1">Error al cargar historial</h4>
+      <p class="text-xs text-slate-400 leading-relaxed mb-4">${message}</p>
+      ${!isRateLimit ? `
+        <button
+          id="history-retry-btn"
+          class="inline-flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold rounded-lg border border-primary/20 transition-all btn-press"
+          aria-label="Reintentar carga del historial"
+        >
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+          Reintentar
+        </button>
+      ` : `
+        <p class="text-xs text-amber-400/80 font-medium">Espera unos segundos antes de reintentar.</p>
+      `}
+    </div>
+  `;
+
+  // Bind retry button
+  document.getElementById('history-retry-btn')?.addEventListener('click', () => {
+    initHistoryChart();
+  });
 };
 
 export default HistoryChart;

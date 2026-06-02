@@ -4,6 +4,8 @@ import { getHoldings } from "../utils/holdingsStorage";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import sprite from "../assets/sprite.svg";
 import { currentFilter } from "./ActionToolbar";
+import { apiFetch, ApiError, ErrorType, getErrorMessage } from "../utils/errors.js";
+import { showWarning } from "./ErrorToast.js";
 
 const PAGE_SIZE = 4;
 
@@ -278,35 +280,37 @@ export const initHoldingsTable = () => {
 
   const fetchPricesAndUpdate = async () => {
     const rawHoldings = getHoldings();
-    const filteredHoldings = activeFilter === 'Caletas' 
-      ? rawHoldings 
+    const filteredHoldings = activeFilter === 'Caletas'
+      ? rawHoldings
       : rawHoldings.filter(h => h.source === activeFilter);
-      
+
     let data = aggregateHoldings(filteredHoldings, activeFilter);
 
     if (data.length === 0) {
       currentData = [];
       updateDisplay(1);
       // Still notify StatsGrid so it shows zeros
-      window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: [] } }));
+      window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: [], usingCachedPrices: false } }));
       return;
     }
 
     const coinIds = [...new Set(data.map(h => h.id))].join(',');
-    
+
+    /** @type {boolean} */
+    let usingCachedPrices = false;
+
     try {
       const url = `${process.env.API_URL}/coins/markets?vs_currency=usd&ids=${coinIds}&sparkline=true`;
-      const options = {
-        headers: { 
+      const fetchOptions = {
+        headers: {
           'Content-Type': 'application/json',
           'x-cg-demo-api-key': process.env.API_KEY || ''
         }
       };
 
-      const response = await fetch(url, options);
-      if (response.ok) {
-        const markets = await response.json();
-        
+      const markets = await apiFetch(url, fetchOptions);
+
+      if (Array.isArray(markets)) {
         data = data.map(asset => {
           const market = markets.find(m => m.id === asset.id);
           if (market) {
@@ -315,26 +319,42 @@ export const initHoldingsTable = () => {
               price: market.current_price,
               change24h: market.price_change_percentage_24h,
               value: asset.balance * market.current_price,
-              sparkColor: market.price_change_percentage_24h >= 0 ? "#0bd570" : "#ef4444"
+              sparkColor: market.price_change_percentage_24h >= 0 ? "#0bd570" : "#ef4444",
               // In a more advanced version, we would parse market.sparkline_in_7d.price to SVG path
             };
           }
           // Recalculate value with stored price if API fails for this specific coin
           return { ...asset, value: asset.balance * asset.price };
         });
+      } else {
+        throw new ApiError(ErrorType.PARSE, "La respuesta de la API no es un listado válido.");
       }
-    } catch (e) {
-      console.error("HoldingsTable: Failed to fetch real-time prices:", e);
+    } catch (err) {
+      usingCachedPrices = true;
+
       // Fallback: calculate value using the last known price
-      data = data.map(a => ({...a, value: a.balance * a.price}));
+      data = data.map(a => ({ ...a, value: a.balance * a.price }));
+
+      if (err instanceof ApiError && err.type !== ErrorType.ABORT) {
+        const userMsg = err.type === ErrorType.RATE_LIMIT
+          ? 'Límite de peticiones alcanzado. Mostrando precios del último guardado.'
+          : `${getErrorMessage(err.type)} Mostrando precios del último guardado.`;
+        showWarning(userMsg, 7000);
+        console.warn('HoldingsTable: precio en caché —', err.message);
+      }
     }
 
     currentData = data;
-    
-    // Dispatch event for StatsGrid
-    window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: currentData } }));
-    
+
+    // Dispatch event for StatsGrid — include cached flag
+    window.dispatchEvent(new CustomEvent('prices-updated', {
+      detail: { holdings: currentData, usingCachedPrices }
+    }));
+
     updateDisplay(Number(table.dataset.currentPage) || 1);
+
+    // Mostrar/ocultar badge de precios cacheados en el header de la tabla
+    _updateCachedBadge(usingCachedPrices);
   };
 
   // Initial Load
@@ -360,9 +380,53 @@ export const initHoldingsTable = () => {
   window.addEventListener('holdings-updated', _holdingsHandler);
 };
 
+
 /**
- * Limpia los listeners de eventos para prevenir memory leaks en SPA navigation.
+ * Muestra u oculta el badge de "precios cacheados" en el header de la tabla.
+ * @param {boolean} isStale
  */
+const _updateCachedBadge = (isStale) => {
+  const existing = document.getElementById('holdings-cached-badge');
+  const headerDiv = document.querySelector('#holdings-table')?.closest('section')?.querySelector('.flex.items-center.justify-between');
+  if (!headerDiv) return;
+
+  if (isStale && !existing) {
+    const badge = document.createElement('span');
+    badge.id = 'holdings-cached-badge';
+    badge.setAttribute('role', 'status');
+    badge.setAttribute('aria-label', 'Precios desactualizados');
+    badge.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: #f59e0b;
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    `;
+    badge.innerHTML = `
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      Caché
+    `;
+    // Insertar antes del grupo de botones de acción
+    const btnGroup = headerDiv.querySelector('.flex.gap-2');
+    if (btnGroup) {
+      headerDiv.insertBefore(badge, btnGroup);
+    } else {
+      headerDiv.appendChild(badge);
+    }
+  } else if (!isStale && existing) {
+    existing.remove();
+  }
+};
+
 export const cleanupHoldingsTable = () => {
   if (_filterHandler) {
     window.removeEventListener('caleta-filter-changed', _filterHandler);
@@ -385,3 +449,4 @@ export const cleanupHoldingsTable = () => {
 };
 
 export default HoldingsTable;
+
