@@ -375,6 +375,82 @@ describe('chartDataAdapter', () => {
       assert.deepStrictEqual(res, [],
         'Debe retornar vacío si el balance neto es 0 después de ventas');
     });
+
+    // ==========================================
+    // Tests de resiliencia parcial (Promise.allSettled)
+    // ==========================================
+
+    test('debe renderizar chart parcial si una coin falla con NOT_FOUND (404)', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy' },
+        { coinId: 'obscure-coin', name: 'ObscureCoin', symbol: 'obs', balance: 100, type: 'buy' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        if (url.includes('bitcoin')) {
+          return { ok: true, json: async () => ({ prices: [[1704067200000, 40000]] }) };
+        }
+        // obscure-coin retorna 404
+        return { ok: false, status: 404, statusText: 'Not Found' };
+      };
+
+      // No debe lanzar — debe renderizar solo bitcoin
+      const res = await buildPortfolioHistorySeries(30);
+
+      assert.strictEqual(res.length, 1);
+      assert.strictEqual(res[0].value, 40000, 'Debe calcular solo con bitcoin (obscure-coin ignorada)');
+    });
+
+    test('debe lanzar el error más severo si TODAS las coins fallan', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy' },
+        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', balance: 1, type: 'buy' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      globalThis.fetch = async (url) => {
+        // bitcoin → 429 (RATE_LIMIT), ethereum → 404 (NOT_FOUND)
+        if (url.includes('bitcoin')) return { ok: false, status: 429, statusText: 'Too Many Requests' };
+        return { ok: false, status: 404, statusText: 'Not Found' };
+      };
+
+      await assert.rejects(
+        buildPortfolioHistorySeries(30),
+        (err) => {
+          assert.strictEqual(err.name, 'ApiError', 'Debe lanzar ApiError');
+          assert.strictEqual(err.type, 'RATE_LIMIT', 'RATE_LIMIT tiene mayor prioridad que NOT_FOUND');
+          return true;
+        }
+      );
+    });
+
+    test('debe propagar ABORT inmediatamente incluso si solo una coin lo lanza', async () => {
+      const holdings = [
+        { coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', balance: 1, type: 'buy' },
+        { coinId: 'ethereum', name: 'Ethereum', symbol: 'eth', balance: 1, type: 'buy' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(holdings));
+
+      const controller = new AbortController();
+
+      globalThis.fetch = async (url, opts) => {
+        if (url.includes('bitcoin') && opts?.signal?.aborted) {
+          const err = new Error('AbortError');
+          err.name = 'AbortError';
+          throw err;
+        }
+        return { ok: true, json: async () => ({ prices: [[1704067200000, 40000]] }) };
+      };
+
+      controller.abort();
+
+      await assert.rejects(
+        buildPortfolioHistorySeries(30, controller.signal),
+        /AbortError|Request aborted/
+      );
+    });
   });
 });
+
 
