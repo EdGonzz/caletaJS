@@ -126,6 +126,10 @@ const initCoinPicker = ({ onBack, onClose, onSelect, onCoinsUpdate, currentCoins
         }
       }
     } catch (err) {
+      // Ignorar cancelaciones silenciosamente (patrón consistente con otros componentes)
+      if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
+
+      if (coinList) {
       if (coinList) {
         const isRateLimit = err instanceof ApiError && err.type === ErrorType.RATE_LIMIT;
         const isNetwork = err instanceof ApiError && err.type === ErrorType.NETWORK;
