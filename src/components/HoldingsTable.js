@@ -132,15 +132,6 @@ const HoldingsTable = () => {
               <use href="${sprite}#filter-2" />
             </svg>
           </button>
-          <button
-            id="refresh-prices-btn"
-            class="text-slate-400 transition-colors hover:text-white group"
-            aria-label="Refresh prices"
-          >
-            <svg class="w-5 h-5 transition-transform group-active:rotate-180 duration-500" aria-hidden="true">
-              <use href="${sprite}#refresh" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -187,8 +178,8 @@ const HoldingsTable = () => {
 let _filterHandler = null;
 /** @type {((e: Event) => void) | null} */
 let _holdingsHandler = null;
-/** @type {(() => void) | null} */
-let _refreshHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _refreshRequestedHandler = null;
 /** @type {(() => void) | null} */
 let _scrollFadeHandler = null;
 
@@ -278,7 +269,11 @@ export const initHoldingsTable = () => {
     _scrollFadeHandler(); // initial check
   };
 
-  const fetchPricesAndUpdate = async () => {
+  /**
+   * Obtiene precios actualizados del API y refresca la tabla.
+   * @param {boolean} [isManual=false] - Si el refresco fue iniciado manualmente por el usuario.
+   */
+  const fetchPricesAndUpdate = async (isManual = false) => {
     const rawHoldings = getHoldings();
     const filteredHoldings = activeFilter === 'Caletas'
       ? rawHoldings
@@ -289,8 +284,10 @@ export const initHoldingsTable = () => {
     if (data.length === 0) {
       currentData = [];
       updateDisplay(1);
-      // Still notify StatsGrid so it shows zeros
-      window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: [], usingCachedPrices: false } }));
+      // Notificar a StatsGrid y a ActionToolbar (con isManual)
+      window.dispatchEvent(new CustomEvent('prices-updated', {
+        detail: { holdings: [], usingCachedPrices: false, isManual }
+      }));
       return;
     }
 
@@ -342,13 +339,18 @@ export const initHoldingsTable = () => {
         showWarning(userMsg, 7000);
         console.warn('HoldingsTable: precio en caché —', err.message);
       }
+
+      // Notificar a ActionToolbar del fallo
+      window.dispatchEvent(new CustomEvent('prices-update-failed', {
+        detail: { isManual }
+      }));
     }
 
     currentData = data;
 
-    // Dispatch event for StatsGrid — include cached flag
+    // Dispatch event para StatsGrid y ActionToolbar — incluye flags de caché y manual
     window.dispatchEvent(new CustomEvent('prices-updated', {
-      detail: { holdings: currentData, usingCachedPrices }
+      detail: { holdings: currentData, usingCachedPrices, isManual }
     }));
 
     updateDisplay(Number(table.dataset.currentPage) || 1);
@@ -357,25 +359,19 @@ export const initHoldingsTable = () => {
     _updateCachedBadge(usingCachedPrices);
   };
 
-  // Initial Load
-  fetchPricesAndUpdate();
+  // Initial Load (no es manual — no penaliza cooldown)
+  fetchPricesAndUpdate(false);
 
-  // Manual Refresh Button
-  const refreshBtn = document.getElementById("refresh-prices-btn");
-  if (refreshBtn) {
-    _refreshHandler = () => {
-      const btn = document.getElementById("refresh-prices-btn");
-      btn?.querySelector('svg')?.classList.add("animate-spin");
-      fetchPricesAndUpdate().finally(() => {
-        setTimeout(() => btn?.querySelector('svg')?.classList.remove("animate-spin"), 500);
-      });
-    };
-    refreshBtn.addEventListener("click", _refreshHandler);
-  }
+  // Escuchar petición de refresco desde ActionToolbar
+  _refreshRequestedHandler = (e) => {
+    const isManual = /** @type {CustomEvent} */(e).detail?.manual ?? false;
+    fetchPricesAndUpdate(isManual);
+  };
+  window.addEventListener('request-prices-refresh', _refreshRequestedHandler);
 
   // Listen for new transactions
   _holdingsHandler = () => {
-    fetchPricesAndUpdate();
+    fetchPricesAndUpdate(false);
   };
   window.addEventListener('holdings-updated', _holdingsHandler);
 };
@@ -436,10 +432,9 @@ export const cleanupHoldingsTable = () => {
     window.removeEventListener('holdings-updated', _holdingsHandler);
     _holdingsHandler = null;
   }
-  if (_refreshHandler) {
-    const btn = document.getElementById("refresh-prices-btn");
-    if (btn) btn.removeEventListener("click", _refreshHandler);
-    _refreshHandler = null;
+  if (_refreshRequestedHandler) {
+    window.removeEventListener('request-prices-refresh', _refreshRequestedHandler);
+    _refreshRequestedHandler = null;
   }
   if (_scrollFadeHandler) {
     const wrapper = document.getElementById("holdings-scroll-wrapper");

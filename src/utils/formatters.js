@@ -25,6 +25,29 @@ export const formatBalance = (n) =>
 export const formatPercent = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 
 /**
+ * Formatea segundos transcurridos a un string relativo amigable en español.
+ * Utiliza `Intl.RelativeTimeFormat` para internacionalización nativa.
+ *
+ * @param {number} elapsedSeconds - Segundos transcurridos desde el último evento.
+ * @returns {string} Texto relativo (ej. "ahora mismo", "hace 2 minutos").
+ */
+export const formatRelativeTime = (elapsedSeconds) => {
+  const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto', style: 'long' });
+
+  if (elapsedSeconds < 5) return 'ahora mismo';
+  if (elapsedSeconds < 60) return rtf.format(-Math.floor(elapsedSeconds), 'second');
+
+  const minutes = Math.floor(elapsedSeconds / 60);
+  if (minutes < 60) return rtf.format(-minutes, 'minute');
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return rtf.format(-hours, 'hour');
+
+  const days = Math.floor(hours / 24);
+  return rtf.format(-days, 'day');
+};
+
+/**
  * Returns the current local date and time formatted for an HTML <input type="datetime-local">.
  * Format: YYYY-MM-DDThh:mm
  *

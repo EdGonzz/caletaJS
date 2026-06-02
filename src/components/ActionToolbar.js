@@ -2,9 +2,27 @@ import Button from "./Button";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { openAddExchangeModal } from "./AddExchangeModal";
 import { openAddAssetModal } from "./AddAssetModal";
+import { formatRelativeTime } from "../utils/formatters";
 import sprite from "../assets/sprite.svg";
 
 export let currentFilter = DEFAULT_SOURCE;
+
+// ─── Cooldown Config ─────────────────────────────────────────────────────────
+/** Niveles de cooldown en segundos (se escala con cada refresh manual). */
+const COOLDOWNS = [60, 120, 300, 600];
+
+/** @type {number} Nivel de cooldown actual (0–3). */
+let _cooldownLevel = 0;
+/** @type {number | null} Unix timestamp (segundos) del fin del cooldown activo. */
+let _cooldownEndTime = null;
+/** @type {number} Unix timestamp (segundos) del último fetch exitoso. */
+let _lastFetchTimestamp = 0;
+/** @type {ReturnType<typeof setInterval> | null} ID del intervalo de tick. */
+let _tickInterval = null;
+/** @type {boolean} Guard para evitar peticiones concurrentes. */
+let _isFetching = false;
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 const ActionToolbar = () => {
   const sources = getSource();
@@ -74,13 +92,162 @@ const ActionToolbar = () => {
           </div>
         </div>
 
-        ${Button("add-funds", "plus", "Add Funds", "btn-hover-glow bg-primary text-slate-900 font-bold hover:brightness-110 px-3 py-1")}
+        <!-- Right group: indicator + refresh + add funds -->
+        <div class="flex items-center gap-3 shrink-0">
+          <!-- Indicador "last update" — visible solo en sm+ -->
+          <span
+            id="last-update-indicator"
+            aria-live="polite"
+            aria-atomic="true"
+            class="text-xs text-slate-400 hidden sm:inline"
+          ></span>
+
+          <!-- Botón de refresco con cooldown -->
+          <button
+            id="refresh-prices-btn"
+            aria-label="Refresh prices"
+            class="btn-press flex items-center justify-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700 hover:border-slate-500 rounded-lg text-slate-300 text-sm font-medium transition-all"
+          >
+            <svg id="refresh-btn-icon" class="w-4 h-4 text-slate-400 transition-transform" aria-hidden="true">
+              <use href="${sprite}#refresh" />
+            </svg>
+            <span class="btn-label">Refresh</span>
+            <span class="cooldown-text hidden text-slate-400 tabular-nums"></span>
+          </button>
+
+          ${Button("add-funds", "plus", "Add Funds", "btn-hover-glow bg-primary text-slate-900 font-bold hover:brightness-110 px-3 py-1")}
+        </div>
       </section>
     </div>
   `;
 
   return view;
-}
+};
+
+// ─── Button State Machine ─────────────────────────────────────────────────────
+
+/**
+ * Actualiza el estado visual del botón de refresco.
+ * @param {'idle' | 'loading' | 'cooldown' | 'error'} state
+ * @param {number} [remaining] - Segundos restantes (solo en estado 'cooldown').
+ */
+const _setButtonState = (state, remaining = 0) => {
+  const btn = document.getElementById('refresh-prices-btn');
+  if (!btn) return;
+
+  const icon = btn.querySelector('#refresh-btn-icon');
+  const label = btn.querySelector('.btn-label');
+  const cooldownText = btn.querySelector('.cooldown-text');
+
+  // Reset clases del botón
+  btn.classList.remove(
+    'border-red-500/50', 'hover:border-red-500/70', 'text-red-400',
+    'opacity-60', 'cursor-not-allowed'
+  );
+
+  switch (state) {
+    case 'idle':
+      btn.disabled = false;
+      btn.setAttribute('aria-label', 'Refresh prices');
+      icon?.classList.remove('animate-spin', 'hidden');
+      label?.classList.remove('hidden');
+      label && (label.textContent = 'Refresh');
+      cooldownText?.classList.add('hidden');
+      break;
+
+    case 'loading':
+      btn.disabled = true;
+      btn.setAttribute('aria-label', 'Refreshing prices, please wait');
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+      icon?.classList.add('animate-spin');
+      icon?.classList.remove('hidden');
+      label?.classList.remove('hidden');
+      label && (label.textContent = 'Updating...');
+      cooldownText?.classList.add('hidden');
+      break;
+
+    case 'cooldown': {
+      btn.disabled = true;
+      btn.setAttribute('aria-label', `Refresh available in ${remaining} seconds`);
+      btn.classList.add('opacity-60', 'cursor-not-allowed');
+      icon?.classList.remove('animate-spin');
+      icon?.classList.add('hidden');
+      label?.classList.add('hidden');
+      cooldownText?.classList.remove('hidden');
+      cooldownText && (cooldownText.textContent = `Wait ${remaining}s`);
+      break;
+    }
+
+    case 'error':
+      btn.disabled = false;
+      btn.setAttribute('aria-label', 'Refresh failed. Click to retry');
+      btn.classList.add('border-red-500/50', 'hover:border-red-500/70', 'text-red-400');
+      icon?.classList.remove('animate-spin', 'hidden');
+      label?.classList.remove('hidden');
+      label && (label.textContent = 'Failed');
+      cooldownText?.classList.add('hidden');
+      break;
+  }
+};
+
+// ─── Tick Interval ────────────────────────────────────────────────────────────
+
+/** Actualiza el indicador de última actualización y controla fin de cooldown. */
+const _updateTimestampDisplay = () => {
+  const indicator = document.getElementById('last-update-indicator');
+  const now = Math.floor(Date.now() / 1000);
+
+  // 1. Actualizar indicador de última carga
+  if (indicator && _lastFetchTimestamp > 0) {
+    const elapsed = now - _lastFetchTimestamp;
+    indicator.textContent = `Updated ${formatRelativeTime(elapsed)}`;
+  }
+
+  // 2. Controlar finalización del Cooldown
+  if (!_isFetching && _cooldownEndTime !== null) {
+    const remaining = _cooldownEndTime - now;
+    if (remaining > 0) {
+      _setButtonState('cooldown', remaining);
+    } else {
+      _cooldownEndTime = null;
+      _setButtonState('idle');
+    }
+  }
+
+  // 3. Decremento de nivel de Cooldown por inactividad prolongada
+  if (_cooldownLevel > 0 && _lastFetchTimestamp > 0) {
+    const inactiveFor = now - _lastFetchTimestamp;
+    const currentCooldown = COOLDOWNS[_cooldownLevel] ?? 600;
+    if (inactiveFor > currentCooldown * 2) {
+      _cooldownLevel = 0;
+    }
+  }
+};
+
+const _startTickInterval = () => {
+  if (_tickInterval !== null) clearInterval(_tickInterval);
+  _tickInterval = setInterval(_updateTimestampDisplay, 1000);
+};
+
+const _stopTickInterval = () => {
+  if (_tickInterval !== null) {
+    clearInterval(_tickInterval);
+    _tickInterval = null;
+  }
+};
+
+// ─── Event Handlers (module-level refs for cleanup) ───────────────────────────
+
+/** @type {((e: Event) => void) | null} */
+let _scrollFadeHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _clickDropdownHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _pricesUpdatedHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _pricesFailedHandler = null;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
 
 export const initActionToolbar = () => {
   cleanupActionToolbar();
@@ -90,7 +257,7 @@ export const initActionToolbar = () => {
   if (addWalletBtn) {
     addWalletBtn.addEventListener("click", () => {
       openAddExchangeModal({
-        onSave: (exchange) => {
+        onSave: () => {
           const wrapper = document.getElementById("action-toolbar-wrapper");
           if (wrapper) {
             wrapper.outerHTML = ActionToolbar();
@@ -121,9 +288,8 @@ export const initActionToolbar = () => {
       dropdownChevron?.classList.toggle("rotate-180", !isOpen);
     });
 
-    // Cerrar al hacer click fuera
     _clickDropdownHandler = (e) => {
-      if (dropdownBtn && dropdownMenu && !dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+      if (dropdownBtn && dropdownMenu && !dropdownBtn.contains(/** @type {Node} */(e.target)) && !dropdownMenu.contains(/** @type {Node} */(e.target))) {
         dropdownMenu.classList.add("hidden");
         dropdownBtn.setAttribute("aria-expanded", "false");
         dropdownChevron?.classList.remove("rotate-180");
@@ -135,9 +301,9 @@ export const initActionToolbar = () => {
   // Filter Buttons (desktop + dropdown)
   document.querySelectorAll('.action-filter-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const filter = e.currentTarget.dataset.filter;
+      const filter = /** @type {HTMLButtonElement} */(e.currentTarget).dataset.filter;
       if (currentFilter !== filter) {
-        currentFilter = filter;
+        currentFilter = filter ?? currentFilter;
         window.dispatchEvent(new CustomEvent('caleta-filter-changed', { detail: { source: currentFilter } }));
         const wrapper = document.getElementById("action-toolbar-wrapper");
         if (wrapper) {
@@ -145,7 +311,6 @@ export const initActionToolbar = () => {
           initActionToolbar();
         }
       }
-      // Cerrar dropdown si está abierto
       dropdownMenu?.classList.add("hidden");
       dropdownBtn?.setAttribute("aria-expanded", "false");
       dropdownChevron?.classList.remove("rotate-180");
@@ -162,14 +327,70 @@ export const initActionToolbar = () => {
     scrollContainer.addEventListener('scroll', _scrollFadeHandler, { passive: true });
     _scrollFadeHandler();
   }
-}
 
-/** @type {(() => void) | null} */
-let _scrollFadeHandler = null;
-/** @type {((e: Event) => void) | null} */
-let _clickDropdownHandler = null;
+  // ── Refresh Button ──────────────────────────────────────────────────────────
+  const refreshBtn = document.getElementById('refresh-prices-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      if (_isFetching || _cooldownEndTime !== null) return;
+
+      _isFetching = true;
+      _setButtonState('loading');
+      window.dispatchEvent(new CustomEvent('request-prices-refresh', { detail: { manual: true } }));
+    });
+  }
+
+  // ── Listen for prices-updated ───────────────────────────────────────────────
+  _pricesUpdatedHandler = (e) => {
+    const { isManual = false } = /** @type {CustomEvent} */(e).detail ?? {};
+
+    _lastFetchTimestamp = Math.floor(Date.now() / 1000);
+    _isFetching = false;
+
+    if (isManual) {
+      // Escalar cooldown
+      const cooldownDuration = COOLDOWNS[_cooldownLevel] ?? 600;
+      _cooldownLevel = Math.min(_cooldownLevel + 1, COOLDOWNS.length - 1);
+      _cooldownEndTime = _lastFetchTimestamp + cooldownDuration;
+      _setButtonState('cooldown', cooldownDuration);
+    } else {
+      // Refresh automático/inicial — no penaliza cooldown
+      _setButtonState('idle');
+    }
+
+    // Actualizar indicador inmediatamente
+    _updateTimestampDisplay();
+  };
+  window.addEventListener('prices-updated', _pricesUpdatedHandler);
+
+  // ── Listen for prices-update-failed ────────────────────────────────────────
+  _pricesFailedHandler = (e) => {
+    const { isManual = false } = /** @type {CustomEvent} */(e).detail ?? {};
+    _isFetching = false;
+
+    if (isManual) {
+      _setButtonState('error');
+      // Volver a idle tras 1.5s — no penaliza cooldown
+      setTimeout(() => {
+        if (!_isFetching && _cooldownEndTime === null) {
+          _setButtonState('idle');
+        }
+      }, 1500);
+    } else {
+      _setButtonState('idle');
+    }
+  };
+  window.addEventListener('prices-update-failed', _pricesFailedHandler);
+
+  // Arrancar tick interval para el indicador de tiempo
+  _startTickInterval();
+};
+
+// ─── Cleanup ──────────────────────────────────────────────────────────────────
 
 export const cleanupActionToolbar = () => {
+  _stopTickInterval();
+
   if (_scrollFadeHandler) {
     const scrollContainer = document.querySelector('#action-toolbar-wrapper .scroll-fade-container');
     if (scrollContainer) scrollContainer.removeEventListener('scroll', _scrollFadeHandler);
@@ -178,6 +399,14 @@ export const cleanupActionToolbar = () => {
   if (_clickDropdownHandler) {
     document.removeEventListener("click", _clickDropdownHandler);
     _clickDropdownHandler = null;
+  }
+  if (_pricesUpdatedHandler) {
+    window.removeEventListener('prices-updated', _pricesUpdatedHandler);
+    _pricesUpdatedHandler = null;
+  }
+  if (_pricesFailedHandler) {
+    window.removeEventListener('prices-update-failed', _pricesFailedHandler);
+    _pricesFailedHandler = null;
   }
 };
 
