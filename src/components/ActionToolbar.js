@@ -214,7 +214,11 @@ const _updateTimestampDisplay = () => {
     }
   }
 
-  // 3. Decremento de nivel de Cooldown por inactividad prolongada
+  // 3. Decremento de nivel de Cooldown por inactividad prolongada.
+  // Nota: se usa COOLDOWNS[_cooldownLevel] (nivel ya incrementado) como umbral,
+  // lo que hace el decay más lento de forma intencional (anti-abuse progresivo).
+  // Ej: tras el primer refresh manual, el nivel sube de 0 → 1, por lo que el
+  // umbral de decay es COOLDOWNS[1]*2 = 240s en lugar de COOLDOWNS[0]*2 = 120s.
   if (_cooldownLevel > 0 && _lastFetchTimestamp > 0) {
     const inactiveFor = now - _lastFetchTimestamp;
     const currentCooldown = COOLDOWNS[_cooldownLevel] ?? 600;
@@ -390,6 +394,15 @@ export const initActionToolbar = () => {
 
 export const cleanupActionToolbar = () => {
   _stopTickInterval();
+
+  // Resetear estado volátil para evitar que persista entre navegaciones SPA.
+  // _isFetching es el más crítico: si un fetch manual estaba en vuelo cuando el
+  // usuario navegó (y HoldingsTable también fue limpiado), el evento 'prices-updated'
+  // nunca llegaría y el botón quedaría bloqueado hasta el próximo fetch automático.
+  _isFetching = false;
+  _cooldownEndTime = null;
+  _lastFetchTimestamp = 0;
+  _cooldownLevel = 0;
 
   if (_scrollFadeHandler) {
     const scrollContainer = document.querySelector('#action-toolbar-wrapper .scroll-fade-container');

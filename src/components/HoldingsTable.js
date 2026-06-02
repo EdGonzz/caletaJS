@@ -295,6 +295,8 @@ export const initHoldingsTable = () => {
 
     /** @type {boolean} */
     let usingCachedPrices = false;
+    /** @type {boolean} Bandera que previene emitir 'prices-updated' si el fetch falló. */
+    let fetchFailed = false;
 
     try {
       const url = `${process.env.API_URL}/coins/markets?vs_currency=usd&ids=${coinIds}&sparkline=true`;
@@ -327,6 +329,7 @@ export const initHoldingsTable = () => {
         throw new ApiError(ErrorType.PARSE, "La respuesta de la API no es un listado válido.");
       }
     } catch (err) {
+      fetchFailed = true;
       usingCachedPrices = true;
 
       // Fallback: calculate value using the last known price
@@ -340,23 +343,26 @@ export const initHoldingsTable = () => {
         console.warn('HoldingsTable: precio en caché —', err.message);
       }
 
-      // Notificar a ActionToolbar del fallo
+      // Notificar a ActionToolbar del fallo — no escala cooldown ni bloquea el botón
       window.dispatchEvent(new CustomEvent('prices-update-failed', {
         detail: { isManual }
       }));
     }
 
+    // Actualizar estado interno y UI en ambos paths (éxito y fallback con caché)
     currentData = data;
-
-    // Dispatch event para StatsGrid y ActionToolbar — incluye flags de caché y manual
-    window.dispatchEvent(new CustomEvent('prices-updated', {
-      detail: { holdings: currentData, usingCachedPrices, isManual }
-    }));
-
     updateDisplay(Number(table.dataset.currentPage) || 1);
 
     // Mostrar/ocultar badge de precios cacheados en el header de la tabla
     _updateCachedBadge(usingCachedPrices);
+
+    // Solo emitir 'prices-updated' si el fetch fue exitoso.
+    // Evita sobreescribir el estado 'error' del botón y penalizar el cooldown en caso de fallo.
+    if (!fetchFailed) {
+      window.dispatchEvent(new CustomEvent('prices-updated', {
+        detail: { holdings: currentData, usingCachedPrices, isManual }
+      }));
+    }
   };
 
   // Initial Load (no es manual — no penaliza cooldown)
