@@ -214,16 +214,24 @@ const _updateTimestampDisplay = () => {
     }
   }
 
-  // 3. Decremento de nivel de Cooldown por inactividad prolongada.
+  // 3. Decremento progresivo del nivel de Cooldown por inactividad prolongada.
   // Nota: se usa COOLDOWNS[_cooldownLevel] (nivel ya incrementado) como umbral,
   // lo que hace el decay más lento de forma intencional (anti-abuse progresivo).
   // Ej: tras el primer refresh manual, el nivel sube de 0 → 1, por lo que el
   // umbral de decay es COOLDOWNS[1]*2 = 240s en lugar de COOLDOWNS[0]*2 = 120s.
+  // Decrementamos el nivel de cooldown de forma progresiva según la inactividad acumulada.
   if (_cooldownLevel > 0 && _lastFetchTimestamp > 0) {
-    const inactiveFor = now - _lastFetchTimestamp;
-    const currentCooldown = COOLDOWNS[_cooldownLevel] ?? 600;
-    if (inactiveFor > currentCooldown * 2) {
-      _cooldownLevel = 0;
+    let inactiveFor = now - _lastFetchTimestamp;
+    while (_cooldownLevel > 0) {
+      const currentCooldown = COOLDOWNS[_cooldownLevel] ?? 600;
+      const threshold = currentCooldown * 2;
+      if (inactiveFor > threshold) {
+        _cooldownLevel--;
+        _lastFetchTimestamp += threshold;
+        inactiveFor -= threshold;
+      } else {
+        break;
+      }
     }
   }
 };
@@ -346,7 +354,11 @@ export const initActionToolbar = () => {
 
   // ── Listen for prices-updated ───────────────────────────────────────────────
   _pricesUpdatedHandler = (e) => {
-    const { isManual = false } = /** @type {CustomEvent} */(e).detail ?? {};
+    const { isManual = false, fetchFailed = false } = /** @type {CustomEvent} */(e).detail ?? {};
+
+    // Si el fetch falló, 'prices-update-failed' ya manejó el estado del botón.
+    // Solo actualizamos el cooldown y el timestamp en el path exitoso.
+    if (fetchFailed) return;
 
     _lastFetchTimestamp = Math.floor(Date.now() / 1000);
     _isFetching = false;
