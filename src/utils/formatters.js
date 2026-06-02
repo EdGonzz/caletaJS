@@ -25,16 +25,16 @@ export const formatBalance = (n) =>
 export const formatPercent = (n) => `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 
 /**
- * Formatea segundos transcurridos a un string relativo amigable en español.
- * Utiliza `Intl.RelativeTimeFormat` para internacionalización nativa.
+ * Formats elapsed seconds into a human-friendly relative time string (English).
+ * Uses native `Intl.RelativeTimeFormat` for i18n-safe output.
  *
- * @param {number} elapsedSeconds - Segundos transcurridos desde el último evento.
- * @returns {string} Texto relativo (ej. "ahora mismo", "hace 2 minutos").
+ * @param {number} elapsedSeconds - Seconds elapsed since the last event.
+ * @returns {string} Relative string (e.g. "just now", "2 minutes ago").
  */
 export const formatRelativeTime = (elapsedSeconds) => {
-  const rtf = new Intl.RelativeTimeFormat('es', { numeric: 'auto', style: 'long' });
+  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto', style: 'long' });
 
-  if (elapsedSeconds < 5) return 'ahora mismo';
+  if (elapsedSeconds < 5) return 'just now';
   if (elapsedSeconds < 60) return rtf.format(-Math.floor(elapsedSeconds), 'second');
 
   const minutes = Math.floor(elapsedSeconds / 60);
