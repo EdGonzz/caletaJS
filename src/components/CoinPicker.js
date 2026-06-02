@@ -130,7 +130,6 @@ const initCoinPicker = ({ onBack, onClose, onSelect, onCoinsUpdate, currentCoins
       if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
 
       if (coinList) {
-      if (coinList) {
         const isRateLimit = err instanceof ApiError && err.type === ErrorType.RATE_LIMIT;
         const isNetwork = err instanceof ApiError && err.type === ErrorType.NETWORK;
         const message = err instanceof ApiError ? getErrorMessage(err.type) : 'Error al buscar monedas.';
