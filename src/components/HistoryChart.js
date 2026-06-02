@@ -206,8 +206,17 @@ export const initHistoryChart = async () => {
         }
         _abortController = new AbortController();
 
-        // Mostrar loading en el container del chart
-        if (container) showLoadingState(container);
+        // Mostrar feedback de carga:
+        // Si el chart está vivo (canvas presente) → overlay semitransparente sobre el chart.
+        // Si no hay canvas (estado error/empty) → resetear referencias zombie y dejar
+        // que initHistoryChart() reconstruya el DOM al recibir los datos.
+        if (container.querySelector('canvas')) {
+          showLoadingState(container);
+        } else {
+          // Nullear referencias para que la rama de re-init funcione correctamente
+          if (_chart) { _chart.remove(); _chart = null; }
+          _series = null;
+        }
 
         // Fetch nuevos datos y actualizar serie
         let newData;
