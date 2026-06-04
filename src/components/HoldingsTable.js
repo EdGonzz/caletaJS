@@ -295,9 +295,9 @@ export const initHoldingsTable = () => {
       _priceFetchAbortController = null;
       currentData = [];
       updateDisplay(1);
-      // Notificar a StatsGrid y a ActionToolbar (con isManual)
+      // Notificar a StatsGrid y a ActionToolbar (forzamos isManual a false porque no se consumió cuota de la API)
       window.dispatchEvent(new CustomEvent('prices-updated', {
-        detail: { holdings: [], usingCachedPrices: false, isManual }
+        detail: { holdings: [], usingCachedPrices: false, isManual: false }
       }));
       return;
     }
