@@ -132,15 +132,6 @@ const HoldingsTable = () => {
               <use href="${sprite}#filter-2" />
             </svg>
           </button>
-          <button
-            id="refresh-prices-btn"
-            class="text-slate-400 transition-colors hover:text-white group"
-            aria-label="Refresh prices"
-          >
-            <svg class="w-5 h-5 transition-transform group-active:rotate-180 duration-500" aria-hidden="true">
-              <use href="${sprite}#refresh" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -183,12 +174,15 @@ const HoldingsTable = () => {
   return view;
 };
 
+/** @type {AbortController | null} */
+let _priceFetchAbortController = null;
+
 /** @type {((e: Event) => void) | null} */
 let _filterHandler = null;
 /** @type {((e: Event) => void) | null} */
 let _holdingsHandler = null;
-/** @type {(() => void) | null} */
-let _refreshHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _refreshRequestedHandler = null;
 /** @type {(() => void) | null} */
 let _scrollFadeHandler = null;
 
@@ -278,7 +272,18 @@ export const initHoldingsTable = () => {
     _scrollFadeHandler(); // initial check
   };
 
-  const fetchPricesAndUpdate = async () => {
+  /**
+   * Obtiene precios actualizados del API y refresca la tabla.
+   * @param {boolean} [isManual=false] - Si el refresco fue iniciado manualmente por el usuario.
+   */
+  const fetchPricesAndUpdate = async (isManual = false) => {
+    // Si ya hay una petición en curso, cancelarla para evitar condiciones de carrera (concurrency guard)
+    if (_priceFetchAbortController) {
+      _priceFetchAbortController.abort();
+    }
+    _priceFetchAbortController = new AbortController();
+    const signal = _priceFetchAbortController.signal;
+
     const rawHoldings = getHoldings();
     const filteredHoldings = activeFilter === 'Caletas'
       ? rawHoldings
@@ -287,10 +292,13 @@ export const initHoldingsTable = () => {
     let data = aggregateHoldings(filteredHoldings, activeFilter);
 
     if (data.length === 0) {
+      _priceFetchAbortController = null;
       currentData = [];
       updateDisplay(1);
-      // Still notify StatsGrid so it shows zeros
-      window.dispatchEvent(new CustomEvent('prices-updated', { detail: { holdings: [], usingCachedPrices: false } }));
+      // Notificar a StatsGrid y a ActionToolbar (forzamos isManual a false porque no se consumió cuota de la API)
+      window.dispatchEvent(new CustomEvent('prices-updated', {
+        detail: { holdings: [], usingCachedPrices: false, isManual: false }
+      }));
       return;
     }
 
@@ -298,10 +306,15 @@ export const initHoldingsTable = () => {
 
     /** @type {boolean} */
     let usingCachedPrices = false;
+    /** @type {boolean} Indica si el fetch falló — se propaga en el detail del evento
+     *  para que ActionToolbar evite escalar el cooldown sin suprimir el evento para
+     *  StatsGrid y AllocationDonut. */
+    let fetchFailed = false;
 
     try {
       const url = `${process.env.API_URL}/coins/markets?vs_currency=usd&ids=${coinIds}&sparkline=true`;
       const fetchOptions = {
+        signal,
         headers: {
           'Content-Type': 'application/json',
           'x-cg-demo-api-key': process.env.API_KEY || ''
@@ -320,62 +333,72 @@ export const initHoldingsTable = () => {
               change24h: market.price_change_percentage_24h,
               value: asset.balance * market.current_price,
               sparkColor: market.price_change_percentage_24h >= 0 ? "#0bd570" : "#ef4444",
-              // In a more advanced version, we would parse market.sparkline_in_7d.price to SVG path
             };
           }
-          // Recalculate value with stored price if API fails for this specific coin
           return { ...asset, value: asset.balance * asset.price };
         });
       } else {
         throw new ApiError(ErrorType.PARSE, "La respuesta de la API no es un listado válido.");
       }
     } catch (err) {
+      // Si fue cancelada intencionalmente por un fetch más nuevo, salir silenciosamente
+      if (err instanceof ApiError && err.type === ErrorType.ABORT) {
+        return;
+      }
+
+      fetchFailed = true;
       usingCachedPrices = true;
 
       // Fallback: calculate value using the last known price
       data = data.map(a => ({ ...a, value: a.balance * a.price }));
 
-      if (err instanceof ApiError && err.type !== ErrorType.ABORT) {
+      if (err instanceof ApiError) {
         const userMsg = err.type === ErrorType.RATE_LIMIT
           ? 'Límite de peticiones alcanzado. Mostrando precios del último guardado.'
           : `${getErrorMessage(err.type)} Mostrando precios del último guardado.`;
         showWarning(userMsg, 7000);
         console.warn('HoldingsTable: precio en caché —', err.message);
       }
+
+      // Notificar a ActionToolbar del fallo — no escala cooldown ni bloquea el botón
+      window.dispatchEvent(new CustomEvent('prices-update-failed', {
+        detail: { isManual }
+      }));
+    } finally {
+      // Limpiar el abort controller si este fetch sigue siendo el actual
+      if (_priceFetchAbortController?.signal === signal) {
+        _priceFetchAbortController = null;
+      }
     }
 
+    // Actualizar estado interno y UI en ambos paths (éxito y fallback con caché)
     currentData = data;
-
-    // Dispatch event for StatsGrid — include cached flag
-    window.dispatchEvent(new CustomEvent('prices-updated', {
-      detail: { holdings: currentData, usingCachedPrices }
-    }));
-
     updateDisplay(Number(table.dataset.currentPage) || 1);
 
     // Mostrar/ocultar badge de precios cacheados en el header de la tabla
     _updateCachedBadge(usingCachedPrices);
+
+    // Siempre despachar 'prices-updated' — StatsGrid y AllocationDonut dependen de este evento
+    // para renderizar incluso cuando los datos vienen de caché. Se incluye `fetchFailed` en el
+    // detail para que ActionToolbar no escale el cooldown si el fetch falló.
+    window.dispatchEvent(new CustomEvent('prices-updated', {
+      detail: { holdings: currentData, usingCachedPrices, isManual, fetchFailed }
+    }));
   };
 
-  // Initial Load
-  fetchPricesAndUpdate();
+  // Initial Load (no es manual — no penaliza cooldown)
+  fetchPricesAndUpdate(false);
 
-  // Manual Refresh Button
-  const refreshBtn = document.getElementById("refresh-prices-btn");
-  if (refreshBtn) {
-    _refreshHandler = () => {
-      const btn = document.getElementById("refresh-prices-btn");
-      btn?.querySelector('svg')?.classList.add("animate-spin");
-      fetchPricesAndUpdate().finally(() => {
-        setTimeout(() => btn?.querySelector('svg')?.classList.remove("animate-spin"), 500);
-      });
-    };
-    refreshBtn.addEventListener("click", _refreshHandler);
-  }
+  // Escuchar petición de refresco desde ActionToolbar
+  _refreshRequestedHandler = (e) => {
+    const isManual = /** @type {CustomEvent} */(e).detail?.manual ?? false;
+    fetchPricesAndUpdate(isManual);
+  };
+  window.addEventListener('request-prices-refresh', _refreshRequestedHandler);
 
   // Listen for new transactions
   _holdingsHandler = () => {
-    fetchPricesAndUpdate();
+    fetchPricesAndUpdate(false);
   };
   window.addEventListener('holdings-updated', _holdingsHandler);
 };
@@ -436,15 +459,18 @@ export const cleanupHoldingsTable = () => {
     window.removeEventListener('holdings-updated', _holdingsHandler);
     _holdingsHandler = null;
   }
-  if (_refreshHandler) {
-    const btn = document.getElementById("refresh-prices-btn");
-    if (btn) btn.removeEventListener("click", _refreshHandler);
-    _refreshHandler = null;
+  if (_refreshRequestedHandler) {
+    window.removeEventListener('request-prices-refresh', _refreshRequestedHandler);
+    _refreshRequestedHandler = null;
   }
   if (_scrollFadeHandler) {
     const wrapper = document.getElementById("holdings-scroll-wrapper");
     if (wrapper) wrapper.removeEventListener("scroll", _scrollFadeHandler);
     _scrollFadeHandler = null;
+  }
+  if (_priceFetchAbortController) {
+    _priceFetchAbortController.abort();
+    _priceFetchAbortController = null;
   }
 };
 

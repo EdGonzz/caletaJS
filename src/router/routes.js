@@ -48,10 +48,15 @@ const router = async () => {
     header.innerHTML = Header(path);
     root.innerHTML = await render(params);
 
-    // Wire up interactive components after the DOM is populated
-    // Order matters: listeners (StatsGrid, AllocationDonut) must register BEFORE
-    // HoldingsTable dispatches 'prices-updated', which can happen synchronously
-    // when aggregated holdings have zero net balance.
+    // Wire up interactive components after the DOM is populated.
+    // ⚠️  ORDER IS CRITICAL — listeners must register BEFORE HoldingsTable dispatches events:
+    //   - ActionToolbar : registers 'prices-updated' / 'prices-update-failed' handlers
+    //                     (controls button state + cooldown + timestamp indicator)
+    //   - StatsGrid     : registers 'prices-updated' handler (updates portfolio totals)
+    //   - AllocationDonut: registers 'prices-updated' handler (updates donut chart)
+    //   - HoldingsTable : dispatches 'prices-updated' / 'prices-update-failed' on first load,
+    //                     which may happen synchronously when net balance is zero.
+    // Reordering init calls below will silently break the cooldown state machine or stats display.
     if (path === "/") {
       initActionToolbar();
       initStatsGrid();       // Registers prices-updated listener
