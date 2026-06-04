@@ -17,6 +17,8 @@ let _cooldownLevel = 0;
 let _cooldownEndTime = null;
 /** @type {number} Unix timestamp (segundos) del último fetch exitoso. */
 let _lastFetchTimestamp = 0;
+/** @type {number} Unix timestamp (segundos) de referencia para el cálculo de decay de cooldown. */
+let _decayReferenceTimestamp = 0;
 /** @type {ReturnType<typeof setInterval> | null} ID del intervalo de tick. */
 let _tickInterval = null;
 /** @type {boolean} Guard para evitar peticiones concurrentes. */
@@ -220,14 +222,14 @@ const _updateTimestampDisplay = () => {
   // Ej: tras el primer refresh manual, el nivel sube de 0 → 1, por lo que el
   // umbral de decay es COOLDOWNS[1]*2 = 240s en lugar de COOLDOWNS[0]*2 = 120s.
   // Decrementamos el nivel de cooldown de forma progresiva según la inactividad acumulada.
-  if (_cooldownLevel > 0 && _lastFetchTimestamp > 0) {
-    let inactiveFor = now - _lastFetchTimestamp;
+  if (_cooldownLevel > 0 && _decayReferenceTimestamp > 0) {
+    let inactiveFor = now - _decayReferenceTimestamp;
     while (_cooldownLevel > 0) {
       const currentCooldown = COOLDOWNS[_cooldownLevel] ?? 600;
       const threshold = currentCooldown * 2;
       if (inactiveFor > threshold) {
         _cooldownLevel--;
-        _lastFetchTimestamp += threshold;
+        _decayReferenceTimestamp += threshold;
         inactiveFor -= threshold;
       } else {
         break;
@@ -262,7 +264,7 @@ let _pricesFailedHandler = null;
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 export const initActionToolbar = () => {
-  cleanupActionToolbar();
+  cleanupActionToolbar(true);
 
   // Add Wallet
   const addWalletBtn = document.getElementById("add-wallet");
@@ -361,6 +363,7 @@ export const initActionToolbar = () => {
     if (fetchFailed) return;
 
     _lastFetchTimestamp = Math.floor(Date.now() / 1000);
+    _decayReferenceTimestamp = _lastFetchTimestamp;
     _isFetching = false;
 
     if (isManual) {
@@ -400,21 +403,41 @@ export const initActionToolbar = () => {
 
   // Arrancar tick interval para el indicador de tiempo
   _startTickInterval();
+
+  // Restablecer el estado visual del botón de refresco y el indicador inmediatamente
+  if (_isFetching) {
+    _setButtonState('loading');
+  } else if (_cooldownEndTime !== null) {
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = _cooldownEndTime - now;
+    if (remaining > 0) {
+      _setButtonState('cooldown', remaining);
+    } else {
+      _cooldownEndTime = null;
+      _setButtonState('idle');
+    }
+  } else {
+    _setButtonState('idle');
+  }
+  _updateTimestampDisplay();
 };
 
 // ─── Cleanup ──────────────────────────────────────────────────────────────────
 
-export const cleanupActionToolbar = () => {
+export const cleanupActionToolbar = (keepState = false) => {
   _stopTickInterval();
 
   // Resetear estado volátil para evitar que persista entre navegaciones SPA.
   // _isFetching es el más crítico: si un fetch manual estaba en vuelo cuando el
   // usuario navegó (y HoldingsTable también fue limpiado), el evento 'prices-updated'
   // nunca llegaría y el botón quedaría bloqueado hasta el próximo fetch automático.
-  _isFetching = false;
-  _cooldownEndTime = null;
-  _lastFetchTimestamp = 0;
-  _cooldownLevel = 0;
+  if (!keepState) {
+    _isFetching = false;
+    _cooldownEndTime = null;
+    _lastFetchTimestamp = 0;
+    _decayReferenceTimestamp = 0;
+    _cooldownLevel = 0;
+  }
 
   if (_scrollFadeHandler) {
     const scrollContainer = document.querySelector('#action-toolbar-wrapper .scroll-fade-container');
