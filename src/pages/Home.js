@@ -4,7 +4,6 @@ import HistoryChart from "../components/HistoryChart";
 import AllocationDonut from "../components/AllocationDonut";
 import HoldingsTable from "../components/HoldingsTable";
 import AddAssetModal from "../components/AddAssetModal";
-import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 
 const Home = () => {
   const view = `
@@ -23,7 +22,6 @@ const Home = () => {
     </div>
   </div>
   ${AddAssetModal()}
-  ${ConfirmDeleteModal()}
 `;
 
   return view;
