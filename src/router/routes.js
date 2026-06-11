@@ -10,6 +10,7 @@ import { initStatsGrid, cleanupStatsGrid } from "../components/StatsGrid";
 import { initActionToolbar, cleanupActionToolbar } from "../components/ActionToolbar";
 import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
 import { initAllocationDonut, cleanupAllocationDonut } from "../components/AllocationDonut";
+import { initConfirmDeleteModal, cleanupConfirmDeleteModal } from "../components/ConfirmDeleteModal";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -29,6 +30,7 @@ const router = async () => {
   cleanupHoldingsTable();
   cleanupAddAssetModal();
   cleanupActionToolbar();
+  cleanupConfirmDeleteModal();
 
   const header = document.getElementById("header");
   const root = document.getElementById("app");
@@ -63,6 +65,7 @@ const router = async () => {
       initAllocationDonut(); // Registers prices-updated listener
       initHoldingsTable();   // May dispatch prices-updated synchronously
       initAddAssetModal();
+      initConfirmDeleteModal();
       await initHistoryChart(); // Async: chart creation with API fetch
     }
   } catch (err) {
