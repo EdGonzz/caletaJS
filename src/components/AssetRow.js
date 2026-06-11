@@ -134,6 +134,7 @@ const renderSource = (asset) => {
  */
 
 import sprite from "../assets/sprite.svg";
+import { escapeHTML } from "../utils/helpers";
 
 const AssetRow = (asset) => {
   const {
@@ -206,10 +207,10 @@ const AssetRow = (asset) => {
       <td class="px-6 py-4 text-right">
         <button
           class="asset-action-btn rounded p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Acciones para ${name}"
+          aria-label="Acciones para ${escapeHTML(name)}"
           data-state="normal"
-          data-asset-id="${id}"
-          data-asset-name="${name}"
+          data-asset-id="${escapeHTML(id)}"
+          data-asset-name="${escapeHTML(name)}"
         >
           <svg class="h-4 w-4" aria-hidden="true">
             <use href="${sprite}#dots-vertical"></use>
