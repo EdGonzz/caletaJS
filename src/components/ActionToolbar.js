@@ -1,8 +1,11 @@
 import Button from "./Button";
-import { getSource, DEFAULT_SOURCE } from "../utils/sources";
+import { getSource, DEFAULT_SOURCE, deleteSource } from "../utils/sources";
+import { deleteHoldingsBySource } from "../utils/holdingsStorage";
+import { openConfirmDeleteModal } from "./ConfirmDeleteModal";
 import { openAddExchangeModal } from "./AddExchangeModal";
 import { openAddAssetModal } from "./AddAssetModal";
 import { formatRelativeTime } from "../utils/formatters";
+import { escapeHTML } from "../utils/helpers";
 import sprite from "../assets/sprite.svg";
 
 export let currentFilter = DEFAULT_SOURCE;
@@ -41,37 +44,88 @@ const ActionToolbar = () => {
     const name = typeof source === 'string' ? source : source.name;
     const image = typeof source === 'object' ? source.image : null;
     const isActive = name === currentFilter;
-
-    let classes = "hover:border-primary/40 border border-slate-700 bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white px-3 py-1";
-    if (isActive) {
-      classes = "bg-primary text-slate-900 font-bold hover:brightness-110 px-3 py-1 border border-primary";
-    }
+    const isDefault = name === DEFAULT_SOURCE;
 
     const iconHtml = image
-      ? `<img src="${image}" alt="${name}" class="w-5 h-5 rounded-md object-contain ${isActive ? '' : 'opacity-70 group-hover:opacity-100'}" width="20" height="20" loading="lazy">`
+      ? `<img src="${image}" alt="${escapeHTML(name)}" class="w-5 h-5 rounded-md object-contain ${isActive ? '' : 'opacity-70 group-hover:opacity-100'}" width="20" height="20" loading="lazy">`
       : `<svg class="w-4 h-4 ${isActive ? 'text-slate-900' : 'text-slate-400'}"><use href="${sprite}#layout-dashboard" /></svg>`;
 
-    return `
-      <button data-filter="${name}" class="action-filter-btn btn-press group hidden sm:flex items-center justify-center gap-2 rounded-lg transition-all duration-200 ${classes}" aria-pressed="${isActive}">
-        ${iconHtml}
-        <span>${name}</span>
-      </button>
-    `;
+    if (isDefault) {
+      let classes = "hover:border-primary/40 border border-slate-700 bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white px-3 py-1";
+      if (isActive) {
+        classes = "bg-primary text-slate-900 font-bold hover:brightness-110 px-3 py-1 border border-primary";
+      }
+      return `
+        <button data-filter="${name}" class="action-filter-btn btn-press group hidden sm:flex items-center justify-center gap-2 rounded-lg transition-all duration-200 ${classes}" aria-pressed="${isActive}">
+          ${iconHtml}
+          <span>${name}</span>
+        </button>
+      `;
+    } else {
+      let containerClasses = "hover:border-primary/40 border border-slate-700 bg-slate-800/60 text-slate-400 hover:bg-slate-700/60 hover:text-white";
+      let textAndIconColor = "text-slate-400 group-hover/tab:text-white";
+      let btnActionsClasses = "text-slate-400 hover:bg-slate-700/50 hover:text-white";
+      if (isActive) {
+        containerClasses = "bg-primary border-primary text-slate-900 font-bold hover:brightness-110";
+        textAndIconColor = "text-slate-900";
+        btnActionsClasses = "text-slate-900 hover:bg-slate-200/50";
+      }
+
+      return `
+        <div class="group/tab relative hidden sm:flex items-center rounded-lg transition-all duration-200 ${containerClasses}">
+          <button data-filter="${escapeHTML(name)}" class="action-filter-btn btn-press flex items-center gap-2 pl-3 pr-2 py-1 text-sm font-medium rounded-l-lg transition-all ${textAndIconColor}" aria-pressed="${isActive}">
+            ${iconHtml}
+            <span>${escapeHTML(name)}</span>
+          </button>
+          <div class="relative flex items-center pr-1.5 py-1">
+            <button data-wallet-actions="${escapeHTML(name)}" data-state="normal" class="wallet-actions-btn p-1 rounded transition-all ${btnActionsClasses}" aria-label="Acciones de caleta ${escapeHTML(name)}">
+              <svg class="w-3.5 h-3.5" aria-hidden="true"><use href="${sprite}#dots-vertical" /></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }
   }).join('');
 
   // Dropdown mobile
   const dropdownOptions = sources.map(source => {
     const name = typeof source === 'string' ? source : source.name;
     const isActive = name === currentFilter;
-    return `
-      <button
-        data-filter="${name}"
-        class="action-filter-btn btn-press flex w-full items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${isActive ? 'bg-primary/20 text-primary font-bold' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}"
-        aria-pressed="${isActive}"
-        role="menuitem"
-      >${name}</button>
-    `;
+    const isDefault = name === DEFAULT_SOURCE;
+
+    if (isDefault) {
+      return `
+        <button
+          data-filter="${name}"
+          class="action-filter-btn btn-press flex w-full items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${isActive ? 'bg-primary/20 text-primary font-bold' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}"
+          aria-pressed="${isActive}"
+          role="menuitem"
+        >${name}</button>
+      `;
+    } else {
+      return `
+        <div class="flex items-center justify-between w-full px-1 py-0.5" role="none">
+          <button
+            data-filter="${escapeHTML(name)}"
+            class="action-filter-btn btn-press flex-1 flex items-center gap-2 px-2 py-1.5 text-sm rounded-lg transition-all text-left ${isActive ? 'bg-primary/20 text-primary font-bold' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}"
+            aria-pressed="${isActive}"
+            role="menuitem"
+          >
+            ${escapeHTML(name)}
+          </button>
+          <button
+            data-delete-wallet="${escapeHTML(name)}"
+            class="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all btn-press shrink-0"
+            aria-label="Eliminar caleta ${escapeHTML(name)}"
+            role="menuitem"
+          >
+            <svg class="w-4 h-4" aria-hidden="true"><use href="${sprite}#trash"></use></svg>
+          </button>
+        </div>
+      `;
+    }
   }).join('');
+
 
   const view = `
     <div id="action-toolbar-wrapper">
@@ -260,8 +314,15 @@ let _clickDropdownHandler = null;
 let _pricesUpdatedHandler = null;
 /** @type {((e: Event) => void) | null} */
 let _pricesFailedHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _walletActionsClickHandler = null;
+/** @type {((e: MouseEvent) => void) | null} */
+let _globalWalletActionsCloseHandler = null;
+/** @type {((e: Event) => void) | null} */
+let _mobileWalletDeleteHandler = null;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+
 
 export const initActionToolbar = () => {
   cleanupActionToolbar(true);
@@ -311,6 +372,103 @@ export const initActionToolbar = () => {
     };
     document.addEventListener("click", _clickDropdownHandler);
   }
+
+  // ─── Wallet Actions & Deletion Logic ────────────────────────────────────────
+  const resetWalletActionButtons = () => {
+    document.querySelectorAll(".wallet-actions-btn").forEach(btn => {
+      btn.dataset.state = "normal";
+      const container = btn.closest(".group\\/tab");
+      const isActive = container?.classList.contains("bg-primary") ?? false;
+      btn.className = `wallet-actions-btn p-1 rounded transition-all ${isActive ? 'text-slate-900 hover:bg-slate-200/50' : 'text-slate-400 hover:bg-slate-700/50 hover:text-white'}`;
+      btn.innerHTML = `<svg class="w-3.5 h-3.5" aria-hidden="true"><use href="${sprite}#dots-vertical" /></svg>`;
+    });
+  };
+
+  _walletActionsClickHandler = (e) => {
+    e.stopPropagation();
+    const btn = /** @type {HTMLButtonElement} */(e.currentTarget);
+    const walletName = btn.dataset.walletActions;
+    if (!walletName) return;
+
+    const state = btn.dataset.state;
+
+    if (state === "normal") {
+      resetWalletActionButtons();
+
+      btn.dataset.state = "delete";
+      btn.className = "wallet-actions-btn p-1 rounded transition-all text-red-500 hover:bg-red-500/10";
+      btn.innerHTML = `<svg class="w-3.5 h-3.5" aria-hidden="true"><use href="${sprite}#trash" /></svg>`;
+    } else {
+      executeWalletDeletion(walletName);
+    }
+  };
+
+  document.querySelectorAll(".wallet-actions-btn").forEach(btn => {
+    btn.addEventListener("click", _walletActionsClickHandler);
+  });
+
+  // Cerrar menús de acciones de caletas al hacer clic en cualquier parte fuera
+  _globalWalletActionsCloseHandler = (e) => {
+    const target = /** @type {Node} */(e.target);
+    const isClickOnActionButton = target.closest(".wallet-actions-btn") !== null;
+
+    if (!isClickOnActionButton) {
+      resetWalletActionButtons();
+    }
+  };
+  document.addEventListener("click", _globalWalletActionsCloseHandler);
+
+  // Función común para eliminar una caleta
+  const executeWalletDeletion = (name) => {
+    openConfirmDeleteModal({
+      title: `Eliminar Caleta "${escapeHTML(name)}"`,
+      message: `¿Estás seguro de que deseas eliminar la caleta "${escapeHTML(name)}"? Esta acción eliminará todas las transacciones y fondos asociados a ella de forma permanente y no se puede deshacer.`,
+      onConfirm: () => {
+        try {
+          // 1. Eliminar la fuente del listado de sources
+          deleteSource(name);
+
+          // 2. Eliminar todas las transacciones (holdings) asociadas a esta fuente
+          deleteHoldingsBySource(name);
+
+          // 3. Si era el filtro activo, redirigir a DEFAULT_SOURCE
+          if (currentFilter === name) {
+            currentFilter = DEFAULT_SOURCE;
+            window.dispatchEvent(new CustomEvent('caleta-filter-changed', { detail: { source: currentFilter } }));
+          }
+
+          // 5. Notificar que los holdings han sido actualizados para refrescar la tabla, donuts y grids
+          window.dispatchEvent(new CustomEvent('holdings-updated'));
+        } catch (err) {
+          console.error('[executeWalletDeletion]', err);
+          // Mostrar error al usuario sin romper el flujo
+          window.dispatchEvent(new CustomEvent('show-error-toast', { detail: { message: `No se pudo eliminar la caleta "${name}".` } }));
+        } finally {
+          // 4. Volver a renderizar e inicializar el toolbar siempre
+          const wrapper = document.getElementById("action-toolbar-wrapper");
+          if (wrapper) {
+            wrapper.outerHTML = ActionToolbar();
+            initActionToolbar();
+          }
+        }
+      }
+    });
+  };
+
+
+  // Botón de eliminar caleta en Móvil
+  _mobileWalletDeleteHandler = (e) => {
+    e.stopPropagation();
+    const btn = /** @type {HTMLButtonElement} */(e.currentTarget);
+    const walletName = btn.dataset.deleteWallet;
+    if (walletName) {
+      executeWalletDeletion(walletName);
+    }
+  };
+
+  document.querySelectorAll('button[data-delete-wallet]').forEach(btn => {
+    btn.addEventListener("click", _mobileWalletDeleteHandler);
+  });
 
   // Filter Buttons (desktop + dropdown)
   document.querySelectorAll('.action-filter-btn').forEach(btn => {
@@ -456,6 +614,25 @@ export const cleanupActionToolbar = (keepState = false) => {
     window.removeEventListener('prices-update-failed', _pricesFailedHandler);
     _pricesFailedHandler = null;
   }
+
+  // Limpiar listeners de acciones de wallets
+  if (_walletActionsClickHandler) {
+    document.querySelectorAll(".wallet-actions-btn").forEach(btn => {
+      btn.removeEventListener("click", _walletActionsClickHandler);
+    });
+    _walletActionsClickHandler = null;
+  }
+  if (_globalWalletActionsCloseHandler) {
+    document.removeEventListener("click", _globalWalletActionsCloseHandler);
+    _globalWalletActionsCloseHandler = null;
+  }
+  if (_mobileWalletDeleteHandler) {
+    document.querySelectorAll('button[data-delete-wallet]').forEach(btn => {
+      btn.removeEventListener("click", _mobileWalletDeleteHandler);
+    });
+    _mobileWalletDeleteHandler = null;
+  }
+
 };
 
 export default ActionToolbar;
