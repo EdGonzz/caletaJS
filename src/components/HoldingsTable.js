@@ -281,6 +281,31 @@ export const initHoldingsTable = () => {
 
   _filterHandler = (e) => {
     activeFilter = e.detail.source;
+
+    // Issue 3: Reset total del estado de búsqueda al cambiar de wallet.
+    // Evita que el usuario vea resultados filtrados del wallet anterior en el nuevo.
+    if (searchQuery !== '') {
+      searchQuery = '';
+
+      const searchInput = /** @type {HTMLInputElement|null} */ (document.getElementById('holdings-search-input'));
+      const searchBtn = document.getElementById('search-btn');
+      const closeSearchBtn = document.getElementById('close-search-btn');
+
+      if (searchInput && searchBtn && closeSearchBtn) {
+        // Colapsar input
+        searchInput.value = '';
+        searchInput.classList.remove('w-40', 'sm:w-56', 'opacity-100', 'pointer-events-auto', 'pl-9', 'pr-8', 'border-slate-700/30');
+        searchInput.classList.add('w-0', 'opacity-0', 'pointer-events-none', 'border-transparent');
+
+        // Restaurar botón lupa a estado interactivo
+        searchBtn.classList.remove('absolute', 'left-1.5', 'pointer-events-none', 'text-slate-500', 'p-1');
+        searchBtn.classList.add('hover:bg-slate-800/50', 'p-2', 'text-slate-400');
+
+        // Ocultar botón de cierre
+        closeSearchBtn.classList.add('hidden');
+      }
+    }
+
     fetchPricesAndUpdate();
   };
 
@@ -713,7 +738,7 @@ export const initHoldingsTable = () => {
     // para renderizar incluso cuando los datos vienen de caché. Se incluye `fetchFailed` en el
     // detail para que ActionToolbar no escale el cooldown si el fetch falló.
     window.dispatchEvent(new CustomEvent('prices-updated', {
-      detail: { holdings: currentData, usingCachedPrices, isManual, fetchFailed }
+      detail: { holdings: apiData, usingCachedPrices, isManual, fetchFailed }
     }));
   };
 
