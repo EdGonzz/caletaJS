@@ -205,8 +205,11 @@ const AssetRow = (asset) => {
       <!-- Action -->
       <td class="px-6 py-4 text-right">
         <button
-          class="rounded p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="More actions for ${name}"
+          class="asset-action-btn rounded p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Acciones para ${name}"
+          data-state="normal"
+          data-asset-id="${id}"
+          data-asset-name="${name}"
         >
           <svg class="h-4 w-4" aria-hidden="true">
             <use href="${sprite}#dots-vertical"></use>

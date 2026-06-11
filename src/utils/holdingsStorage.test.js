@@ -1,6 +1,7 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import { addHolding, getHoldings, updateHolding, removeHolding } from './holdingsStorage.js';
+import { addHolding, getHoldings, updateHolding, removeHolding, deleteHoldingsBySource, deleteHoldingsByCoin } from './holdingsStorage.js';
+
 
 describe('holdingsStorage', () => {
   let mockStorage = new Map();
@@ -130,4 +131,84 @@ describe('holdingsStorage', () => {
       assert.deepStrictEqual(result, initial);
     });
   });
+
+  describe('deleteHoldingsBySource()', () => {
+    test('should remove all holdings associated with a specific source', () => {
+      const initial = [
+        { id: '1', symbol: 'BTC', source: 'Binance' },
+        { id: '2', symbol: 'ETH', source: 'Kraken' },
+        { id: '3', symbol: 'SOL', source: 'Binance' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      const result = deleteHoldingsBySource('Binance');
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].source, 'Kraken');
+
+      const stored = JSON.parse(mockStorage.get('caleta_user_holdings'));
+      assert.strictEqual(stored.length, 1);
+      assert.strictEqual(stored[0].id, '2');
+    });
+
+    test('should return same list if source not found', () => {
+      const initial = [{ id: '1', symbol: 'BTC', source: 'Binance' }];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      const result = deleteHoldingsBySource('KuCoin');
+      assert.strictEqual(result.length, 1);
+      assert.deepStrictEqual(result, initial);
+    });
+  });
+
+  describe('deleteHoldingsByCoin()', () => {
+    test('should remove all holdings associated with a specific coin ID across all sources', () => {
+      const initial = [
+        { id: '1', coinId: 'bitcoin', source: 'Binance' },
+        { id: '2', coinId: 'ethereum', source: 'Kraken' },
+        { id: '3', coinId: 'bitcoin', source: 'Kraken' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      const result = deleteHoldingsByCoin('bitcoin');
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].coinId, 'ethereum');
+    });
+
+    test('should remove holdings associated with a specific coin ID filtered by a specific source', () => {
+      const initial = [
+        { id: '1', coinId: 'bitcoin', source: 'Binance' },
+        { id: '2', coinId: 'ethereum', source: 'Kraken' },
+        { id: '3', coinId: 'bitcoin', source: 'Kraken' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      const result = deleteHoldingsByCoin('bitcoin', 'Binance');
+      assert.strictEqual(result.length, 2);
+      const hasBinanceBtc = result.some(h => h.coinId === 'bitcoin' && h.source === 'Binance');
+      assert.strictEqual(hasBinanceBtc, false);
+      const hasKrakenBtc = result.some(h => h.coinId === 'bitcoin' && h.source === 'Kraken');
+      assert.strictEqual(hasKrakenBtc, true);
+    });
+
+    // Fix #5: branch sourceFilter === DEFAULT_SOURCE debe eliminar en todas las fuentes
+    test('should remove all holdings for a coin across all sources when sourceFilter is DEFAULT_SOURCE', () => {
+      const initial = [
+        { id: '1', coinId: 'bitcoin', source: 'Binance' },
+        { id: '2', coinId: 'ethereum', source: 'Kraken' },
+        { id: '3', coinId: 'bitcoin', source: 'Kraken' }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      // Importamos DEFAULT_SOURCE indirectamente a través del valor conocido
+      const result = deleteHoldingsByCoin('bitcoin', 'Caletas');
+      // Con sourceFilter === DEFAULT_SOURCE el filtro de fuente se ignora,
+      // eliminando todos los holdings de bitcoin sin importar la fuente.
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].coinId, 'ethereum');
+      const stored = JSON.parse(mockStorage.get('caleta_user_holdings'));
+      assert.strictEqual(stored.length, 1);
+    });
+  });
 });
+
+
