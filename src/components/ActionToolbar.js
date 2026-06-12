@@ -421,7 +421,8 @@ export const initActionToolbar = () => {
   // Función común para eliminar una caleta
   const executeWalletDeletion = (name) => {
     openConfirmDeleteModal({
-      title: `Eliminar Caleta "${name}"`,
+      title: `Eliminar Caleta "${escapeHTML(name)}"`,
+      message: `¿Estás seguro de que deseas eliminar la caleta "${escapeHTML(name)}"? Esta acción eliminará todas las transacciones y fondos asociados a ella de forma permanente y no se puede deshacer.`,
       message: `¿Estás seguro de que deseas eliminar la caleta "${name}"? Esta acción eliminará todas las transacciones y fondos asociados a ella de forma permanente y no se puede deshacer.`,
       onConfirm: () => {
         try {
