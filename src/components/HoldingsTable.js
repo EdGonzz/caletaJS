@@ -306,6 +306,11 @@ export const initHoldingsTable = () => {
       }
     }
 
+    // Issue 2: Resetear la página al cambiar de wallet.
+    // refreshTableData(false) preserva la página actual del dataset; si el nuevo
+    // wallet tiene menos páginas, updateDisplay renderiza un slice vacío.
+    if (table) table.dataset.currentPage = '1';
+
     fetchPricesAndUpdate();
   };
 
