@@ -423,6 +423,7 @@ export const initActionToolbar = () => {
     openConfirmDeleteModal({
       title: `Eliminar Caleta "${escapeHTML(name)}"`,
       message: `¿Estás seguro de que deseas eliminar la caleta "${escapeHTML(name)}"? Esta acción eliminará todas las transacciones y fondos asociados a ella de forma permanente y no se puede deshacer.`,
+      message: `¿Estás seguro de que deseas eliminar la caleta "${name}"? Esta acción eliminará todas las transacciones y fondos asociados a ella de forma permanente y no se puede deshacer.`,
       onConfirm: () => {
         try {
           // 1. Eliminar la fuente del listado de sources

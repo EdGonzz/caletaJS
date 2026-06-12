@@ -281,6 +281,23 @@ export const initHoldingsTable = () => {
 
   _filterHandler = (e) => {
     activeFilter = e.detail.source;
+
+    // Issue 3: Reset total del estado de búsqueda al cambiar de wallet.
+    // Evita que el usuario vea resultados filtrados del wallet anterior en el nuevo.
+    if (searchQuery !== '') {
+      searchQuery = '';
+      collapseSearchUI();
+    }
+
+    // Issue 2: Resetear la página al cambiar de wallet.
+    // refreshTableData(false) preserva la página actual del dataset; si el nuevo
+    // wallet tiene menos páginas, updateDisplay renderiza un slice vacío.
+    if (table) table.dataset.currentPage = '1';
+
+    // Mostrar skeletons de carga mientras se realiza el fetch de precios del nuevo filtro
+    tbody.innerHTML = renderTableSkeletons(pageSize || PAGE_SIZE || 4);
+    paginationEl.innerHTML = '';
+
     fetchPricesAndUpdate();
   };
 
@@ -537,21 +554,7 @@ export const initHoldingsTable = () => {
 
     // Cerrar búsqueda
     _searchCloseHandler = () => {
-      if (!searchInput || !searchBtn || !closeSearchBtn) return;
-
-      // Colapsar input con animación suave
-      searchInput.classList.remove("w-40", "sm:w-56", "opacity-100", "pointer-events-auto", "pl-9", "pr-8", "border-slate-700/30");
-      searchInput.classList.add("w-0", "opacity-0", "pointer-events-none", "border-transparent");
-
-      // Restaurar botón de la lupa a su estado interactivo original
-      searchBtn.classList.remove("absolute", "left-1.5", "pointer-events-none", "text-slate-500", "p-1");
-      searchBtn.classList.add("hover:bg-slate-800/50", "p-2", "text-slate-400");
-
-      // Ocultar botón de cierre (X)
-      closeSearchBtn.classList.add("hidden");
-
-      // Limpiar búsqueda
-      searchInput.value = "";
+      collapseSearchUI();
       if (searchQuery !== "") {
         searchQuery = "";
         refreshTableData(true);
@@ -713,12 +716,16 @@ export const initHoldingsTable = () => {
     // para renderizar incluso cuando los datos vienen de caché. Se incluye `fetchFailed` en el
     // detail para que ActionToolbar no escale el cooldown si el fetch falló.
     window.dispatchEvent(new CustomEvent('prices-updated', {
-      detail: { holdings: currentData, usingCachedPrices, isManual, fetchFailed }
+      detail: { holdings: apiData, usingCachedPrices, isManual, fetchFailed }
     }));
   };
 
   // Inicializar listeners de búsqueda y ordenamiento
   bindSearchAndSortEvents();
+
+  // Mostrar skeletons de carga de forma optimista
+  tbody.innerHTML = renderTableSkeletons(pageSize || PAGE_SIZE || 4);
+  paginationEl.innerHTML = '';
 
   // Initial Load (no es manual — no penaliza cooldown)
   fetchPricesAndUpdate(false);
@@ -782,6 +789,81 @@ const _updateCachedBadge = (isStale) => {
   } else if (!isStale && existing) {
     existing.remove();
   }
+};
+
+/**
+ * Colapsa la interfaz de usuario de la búsqueda y resetea el valor del input.
+ */
+const collapseSearchUI = () => {
+  const searchInput = /** @type {HTMLInputElement|null} */ (document.getElementById('holdings-search-input'));
+  const searchBtn = document.getElementById('search-btn');
+  const closeSearchBtn = document.getElementById('close-search-btn');
+
+  if (searchInput && searchBtn && closeSearchBtn) {
+    searchInput.value = '';
+    searchInput.classList.remove('w-40', 'sm:w-56', 'opacity-100', 'pointer-events-auto', 'pl-9', 'pr-8', 'border-slate-700/30');
+    searchInput.classList.add('w-0', 'opacity-0', 'pointer-events-none', 'border-transparent');
+
+    searchBtn.classList.remove('absolute', 'left-1.5', 'pointer-events-none', 'text-slate-500', 'p-1');
+    searchBtn.classList.add('hover:bg-slate-800/50', 'p-2', 'text-slate-400');
+
+    closeSearchBtn.classList.add('hidden');
+  }
+};
+
+/**
+ * Genera el HTML de una fila de skeleton para simular la carga de datos.
+ * @returns {string}
+ */
+const TableSkeletonRow = () => `
+  <tr class="animate-pulse border-b border-slate-700/10" aria-hidden="true">
+    <!-- Asset (Logo + Name + Symbol) -->
+    <td class="px-6 py-4">
+      <div class="flex items-center gap-3">
+        <div class="skeleton-shimmer h-8 w-8 rounded-full shrink-0"></div>
+        <div class="flex flex-col gap-1.5">
+          <div class="skeleton-shimmer h-4 w-24 rounded"></div>
+          <div class="skeleton-shimmer h-3 w-12 rounded opacity-60"></div>
+        </div>
+      </div>
+    </td>
+    <!-- Price -->
+    <td class="px-6 py-4 text-right">
+      <div class="skeleton-shimmer h-4 w-20 rounded ml-auto"></div>
+    </td>
+    <!-- 24h Change -->
+    <td class="px-6 py-4 text-right">
+      <div class="skeleton-shimmer h-4 w-14 rounded ml-auto"></div>
+    </td>
+    <!-- Holdings -->
+    <td class="px-6 py-4 text-right">
+      <div class="flex flex-col items-end gap-1.5">
+        <div class="skeleton-shimmer h-4 w-20 rounded"></div>
+        <div class="skeleton-shimmer h-3 w-16 rounded opacity-60"></div>
+      </div>
+    </td>
+    <!-- Value -->
+    <td class="px-6 py-4 text-right">
+      <div class="skeleton-shimmer h-4 w-24 rounded ml-auto"></div>
+    </td>
+    <!-- Last 7d (Sparkline) -->
+    <td class="px-6 py-4">
+      <div class="skeleton-shimmer h-8 w-28 rounded mx-auto"></div>
+    </td>
+    <!-- Action -->
+    <td class="px-6 py-4 text-right">
+      <div class="skeleton-shimmer h-8 w-8 rounded-lg ml-auto"></div>
+    </td>
+  </tr>
+`;
+
+/**
+ * Genera el HTML de múltiples filas de skeleton.
+ * @param {number} count - Número de filas a renderizar.
+ * @returns {string}
+ */
+const renderTableSkeletons = (count = 5) => {
+  return Array.from({ length: count }, () => TableSkeletonRow()).join('');
 };
 
 export const cleanupHoldingsTable = () => {

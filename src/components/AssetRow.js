@@ -16,6 +16,8 @@
  * @property {boolean}  isFlat      - True for stablecoin — renders a flat dashed line
  */
 
+import sprite from "../assets/sprite.svg";
+import { escapeHTML } from "../utils/helpers";
 import { formatUsd, formatBalance, formatPercent } from "../utils/formatters";
 
 /**
@@ -63,15 +65,16 @@ const changeBadge = (change) => {
  * @returns {string}
  */
 const sparkline = ({ isFlat, sparkPath, sparkColor, name }) => {
+  const safeName = escapeHTML(name);
   if (isFlat) {
     return `
-      <svg class="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 30" aria-label="${name} 7-day price chart — stable">
+      <svg class="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 30" aria-label="${safeName} 7-day price chart — stable">
         <line x1="0" x2="100" y1="15" y2="15" stroke="#64748b" stroke-dasharray="4 4" stroke-width="2"></line>
       </svg>`;
   }
   return `
-    <svg class="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 30" aria-label="${name} 7-day price chart">
-      <path d="${sparkPath}" fill="none" stroke="${sparkColor}" stroke-width="2"></path>
+    <svg class="h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 30" aria-label="${safeName} 7-day price chart">
+      <path d="${escapeHTML(sparkPath)}" fill="none" stroke="${sparkColor}" stroke-width="2"></path>
     </svg>`;
 };
 
@@ -90,13 +93,13 @@ const renderSource = (asset) => {
   // Exchange-view: single source badge
   if (source) {
     const iconHtml = sourceImage
-      ? `<img src="${sourceImage}" alt="${source}" class="h-4 w-4 rounded-sm object-contain" width="16" height="16" loading="lazy">`
-      : `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#${sourceIcon}"></use></svg>`;
+      ? `<img src="${escapeHTML(sourceImage)}" alt="${escapeHTML(source)}" class="h-4 w-4 rounded-sm object-contain" width="16" height="16" loading="lazy">`
+      : `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#${escapeHTML(sourceIcon)}"></use></svg>`;
 
     return `
       <span class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-700/50 px-2.5 py-1 text-xs font-medium text-slate-300">
         ${iconHtml}
-        ${source}
+        ${escapeHTML(source)}
       </span>`;
   }
 
@@ -110,18 +113,18 @@ const renderSource = (asset) => {
 
   const badges = visible.map(s => {
     const iconHtml = s.image
-      ? `<img src="${s.image}" alt="${s.name}" class="h-3.5 w-3.5 rounded-sm object-contain" width="14" height="14" loading="lazy">`
+      ? `<img src="${escapeHTML(s.image)}" alt="${escapeHTML(s.name)}" class="h-3.5 w-3.5 rounded-sm object-contain" width="14" height="14" loading="lazy">`
       : `<svg class="h-3.5 w-3.5" aria-hidden="true"><use href="${sprite}#wallet"></use></svg>`;
 
     return `
       <span class="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-slate-700/50 px-2 py-0.5 text-xs font-medium text-slate-300">
         ${iconHtml}
-        ${s.name}
+        ${escapeHTML(s.name)}
       </span>`;
   }).join('');
 
   const overflowBadge = overflow > 0
-    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${sources.slice(2).map(s => s.name).join(', ')}">+${overflow}</span>`
+    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${escapeHTML(sources.slice(2).map(s => s.name).join(', '))}">+${overflow}</span>`
     : '';
 
   return `<div class="flex flex-wrap gap-1">${badges}${overflowBadge}</div>`;
@@ -132,8 +135,6 @@ const renderSource = (asset) => {
  * @param {Asset} asset
  * @returns {string}
  */
-
-import sprite from "../assets/sprite.svg";
 
 const AssetRow = (asset) => {
   const {
@@ -149,22 +150,27 @@ const AssetRow = (asset) => {
     value,
   } = asset;
 
+  const safeId = escapeHTML(id);
+  const safeName = escapeHTML(name);
+  const safeSymbol = escapeHTML(symbol);
+  const safeLogoUrl = escapeHTML(logoUrl);
+
   return `
-    <tr class="group transition-colors hover:bg-white/5" id="asset-row-${id}">
+    <tr class="group transition-colors hover:bg-white/5" id="asset-row-${safeId}">
       <!-- Asset -->
       <td class="px-6 py-4">
         <div class="flex items-center gap-3">
           <img
-            src="${logoUrl}"
-            alt="${name} logo"
+            src="${safeLogoUrl}"
+            alt="${safeName} logo"
             class="h-8 w-8 rounded-full object-cover"
             width="32"
             height="32"
             loading="lazy"
           />
           <div>
-            <div class="font-bold text-white">${name}</div>
-            <div class="text-xs text-slate-500">${symbol}</div>
+            <div class="font-bold text-white">${safeName}</div>
+            <div class="text-xs text-slate-500">${safeSymbol}</div>
           </div>
         </div>
       </td>
@@ -175,24 +181,24 @@ const AssetRow = (asset) => {
       </td>
 
       <!-- Price -->
-      <td class="px-6 py-4 text-right font-mono text-slate-300" id="price-${id}">
+      <td class="px-6 py-4 text-right font-mono text-slate-300" id="price-${safeId}">
         ${formatUsd(price)}
       </td>
 
       <!-- 24h % -->
-      <td class="px-6 py-4 text-right" id="change-${id}">
+      <td class="px-6 py-4 text-right" id="change-${safeId}">
         ${changeBadge(change24h)}
       </td>
 
       <!-- Balance -->
       <td class="px-6 py-4 text-right">
         <div class="font-mono text-white">${formatBalance(balance)}</div>
-        <div class="text-xs text-slate-500">${symbol}</div>
+        <div class="text-xs text-slate-500">${safeSymbol}</div>
       </td>
 
       <!-- Value -->
       <td class="px-6 py-4 text-right">
-        <div class="font-mono font-bold text-white" id="value-${id}">${formatUsd(value)}</div>
+        <div class="font-mono font-bold text-white" id="value-${safeId}">${formatUsd(value)}</div>
       </td>
 
       <!-- Last 7d sparkline -->
@@ -206,10 +212,10 @@ const AssetRow = (asset) => {
       <td class="px-6 py-4 text-right">
         <button
           class="asset-action-btn rounded p-1 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-          aria-label="Acciones para ${name}"
+          aria-label="Acciones para ${safeName}"
           data-state="normal"
-          data-asset-id="${id}"
-          data-asset-name="${name}"
+          data-asset-id="${safeId}"
+          data-asset-name="${safeName}"
         >
           <svg class="h-4 w-4" aria-hidden="true">
             <use href="${sprite}#dots-vertical"></use>
