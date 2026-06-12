@@ -124,7 +124,7 @@ const renderSource = (asset) => {
   }).join('');
 
   const overflowBadge = overflow > 0
-    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${escapeHTML(sources.slice(2).map(s => s.name).join(', '))}">${overflow}</span>`
+    ? `<span class="inline-flex items-center rounded-md border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-400" title="${escapeHTML(sources.slice(2).map(s => s.name).join(', '))}">+${overflow}</span>`
     : '';
 
   return `<div class="flex flex-wrap gap-1">${badges}${overflowBadge}</div>`;
