@@ -94,7 +94,7 @@ const renderSource = (asset) => {
   if (source) {
     const iconHtml = sourceImage
       ? `<img src="${escapeHTML(sourceImage)}" alt="${escapeHTML(source)}" class="h-4 w-4 rounded-sm object-contain" width="16" height="16" loading="lazy">`
-      : `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#${sourceIcon}"></use></svg>`;
+      : `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#${escapeHTML(sourceIcon)}"></use></svg>`;
 
     return `
       <span class="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-700/50 px-2.5 py-1 text-xs font-medium text-slate-300">
