@@ -38,6 +38,19 @@ let fees = "";
 let notes = "";
 let showNotes = false;
 
+/**
+ * Calcula y actualiza el total de la transacción en la UI.
+ */
+const updateTotal = () => {
+    const q = parseFloat(quantity) || 0;
+    const p = parseFloat(price) || 0;
+    const f = parseFloat(fees) || 0;
+    const totalDisplay = document.getElementById('total-display');
+    if (totalDisplay) {
+        totalDisplay.textContent = formatUsd(q * p + f);
+    }
+};
+
 // ─── Tab Button ────────────────────────────────────────────────────
 const TabBtn = (value, label) => {
   const active = value === activeTab;
@@ -321,6 +334,20 @@ const openModal = async () => {
       }
   } else {
       selectedCoin = DEFAULT_COIN;
+      // Fetch asíncrono seguro del precio real de Bitcoin
+      getCoin('bitcoin').then(coinData => {
+          // Evitar sobrescribir si el usuario ya cambió a otra moneda en el intermedio
+          if (coinData?.current_price && selectedCoin.id === 'bitcoin') {
+              selectedCoin = coinData;
+              price = coinData.current_price.toString();
+              const priceInput = document.getElementById('price-input');
+              // Solo actualizar si el usuario no ha digitado un valor personalizado aún
+              if (priceInput && (priceInput.value === "0" || priceInput.value === "")) {
+                  priceInput.value = price;
+                  updateTotal();
+              }
+          }
+      });
   }
 
   // Persistencia de Exchange: Cargar el último usado o el primero disponible
@@ -410,13 +437,26 @@ const wireFormView = () => {
 
   // Use Market Price
   document.getElementById("use-market-btn")?.addEventListener("click", async () => {
-    const marketPrice = selectedCoin.current_price;
-    if (marketPrice) {
+    const clickedCoinId = selectedCoin.id;
+    let marketPrice = selectedCoin.current_price;
+
+    // Si el precio es 0 o no disponible, intentar fetch
+    if (!marketPrice) {
+        const fresh = await getCoin(clickedCoinId);
+        // Validar que el usuario no haya cambiado de moneda en el transcurso
+        if (selectedCoin.id === clickedCoinId && fresh?.current_price) {
+            selectedCoin = fresh;
+            marketPrice = fresh.current_price;
+        }
+    }
+
+    // Validar consistencia de la selección antes de pintar en el DOM
+    if (selectedCoin.id === clickedCoinId && marketPrice) {
         price = marketPrice.toString();
         const priceInput = document.getElementById("price-input");
         if (priceInput) priceInput.value = price;
         updateTotal();
-    } else {
+    } else if (selectedCoin.id === clickedCoinId) {
         showWarning("No se pudo obtener el precio de mercado actual.");
     }
   });
@@ -427,7 +467,6 @@ const wireFormView = () => {
   const dateInput = document.getElementById("date-input");
   const feesInput = document.getElementById("fees-input");
   const notesTextarea = document.getElementById("notes-textarea");
-  const totalDisplay = document.getElementById("total-display");
 
   const sanitizeInput = (inputEl) => {
     let val = inputEl.value;
@@ -468,13 +507,6 @@ const wireFormView = () => {
     }
 
     return val;
-  };
-
-  const updateTotal = () => {
-    const q = parseFloat(quantity) || 0;
-    const p = parseFloat(price) || 0;
-    const f = parseFloat(fees) || 0;
-    totalDisplay.textContent = formatUsd(q * p + f);
   };
 
   qtyInput?.addEventListener("input", () => {
