@@ -338,11 +338,11 @@ const openModal = async () => {
       getCoin('bitcoin').then(coinData => {
           // Evitar sobrescribir si el usuario ya cambió a otra moneda en el intermedio
           if (coinData?.current_price && selectedCoin.id === 'bitcoin') {
-              selectedCoin = coinData;
-              price = coinData.current_price.toString();
               const priceInput = document.getElementById('price-input');
               // Solo actualizar si el usuario no ha digitado un valor personalizado aún
               if (priceInput && (priceInput.value === "0" || priceInput.value === "")) {
+                  selectedCoin = coinData;
+                  price = coinData.current_price.toString();
                   priceInput.value = price;
                   updateTotal();
               }
