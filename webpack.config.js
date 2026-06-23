@@ -26,6 +26,27 @@ export default {
     port: process.env.PORT || 8080,
     hot: true,
     open: false,
+    setupMiddlewares: (middlewares, devServer) => {
+      if (!devServer) {
+        throw new Error('webpack-dev-server is not defined');
+      }
+
+      devServer.app.all('/api/proxy', async (req, res) => {
+        const handler = (await import('./api/proxy.js')).default;
+
+        // Add minimal express-like req.query and req.method structure that the vercel function expects
+        const url = new URL(req.url, `http://${req.headers.host}`);
+        req.query = Object.fromEntries(url.searchParams.entries());
+
+        // Since proxy.js uses fetch, it needs absolute URLs or proper mocked res
+        // We'll wrap the express res to be somewhat compatible with what Vercel provides
+
+        await handler(req, res);
+      });
+
+      return middlewares;
+    },
+
   },
   resolve: {
     extensions: [".js"]
