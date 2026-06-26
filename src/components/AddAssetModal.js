@@ -9,7 +9,7 @@ import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 import { showWarning } from "./ErrorToast.js";
 import { PortfolioPicker, initPortfolioPicker } from './PortfolioPicker.js';
-import { getPortfolioCoins, getNetBalance } from '../utils/transactionUtils.js';
+import { getPortfolioCoins, getNetBalance, getAverageCostBasis } from '../utils/transactionUtils.js';
 
 let coins = new Map();
 
@@ -349,7 +349,16 @@ const renderInner = () => {
               image: found.logoUrl,
               current_price: 0, // Sin precio de API en este flujo
             };
-            price = "0";
+            // Heredar cost basis para Transfer, reset para Sell
+            if (activeTab === 'transfer') {
+              const sourceName = selectedExchange
+                ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
+                : 'Wallet';
+              const avgPrice = getAverageCostBasis(found.coinId, sourceName);
+              price = avgPrice > 0 ? avgPrice.toString() : "0";
+            } else {
+              price = "0";
+            }
             currentView = 'form';
             renderInner();
           }
@@ -620,6 +629,20 @@ const wireFormView = () => {
         if (errorEl && errorText) {
           errorText.textContent =
             `Balance insuficiente. Disponible: ${netBalance.toFixed(8)} ${selectedCoin.symbol.toUpperCase()}`;
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+    }
+
+    // Validación de mismo origen y destino en Transfer
+    if (activeTab === 'transfer' && destinationExchange) {
+      const destName = typeof destinationExchange === 'string'
+        ? destinationExchange
+        : destinationExchange.name;
+      if (sourceName === destName) {
+        if (errorEl && errorText) {
+          errorText.textContent = 'La caleta de destino debe ser distinta a la caleta de origen.';
           errorEl.classList.remove('hidden');
         }
         return;
