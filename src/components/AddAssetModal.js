@@ -8,6 +8,8 @@ import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAd
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
 import { showWarning } from "./ErrorToast.js";
+import { PortfolioPicker, initPortfolioPicker } from './PortfolioPicker.js';
+import { getPortfolioCoins, getNetBalance } from '../utils/transactionUtils.js';
 
 let coins = new Map();
 
@@ -27,7 +29,9 @@ let selectedCoin = DEFAULT_COIN;
 /** @type {import('./SelectExchange').Exchange | null} */
 const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
 let selectedExchange = _sources[0] ?? null;
-/** @type {'form'|'exchange'|'coin'} */
+/** @type {import('./SelectExchange').Exchange | null} */
+let destinationExchange = null; // Solo para Transfer
+/** @type {'form'|'exchange'|'destination-exchange'|'coin'} */
 let currentView = "form";
 
 // Persisted Form State
@@ -174,6 +178,28 @@ const FormView = () => `
         </div>
       </div>
 
+      ${activeTab === 'transfer' ? `
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Caleta Destino</label>
+          <button id="destination-exchange-btn"
+                  class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group"
+                  aria-label="Seleccionar caleta de destino">
+            ${destinationExchange
+              ? destinationExchange.image
+                ? `<img alt="${destinationExchange.name}" class="w-5 h-5 mr-3 rounded-full" src="${destinationExchange.image}" width="20" height="20" loading="lazy" />`
+                : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${destinationExchange.name.charAt(0).toUpperCase()}</div>`
+              : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
+            }
+            <span class="text-sm font-medium ${destinationExchange ? 'text-slate-200' : 'text-slate-500'}">
+              ${destinationExchange?.name ?? 'Seleccionar destino'}
+            </span>
+            <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors ml-auto">
+              <use href="${sprite}#chevron-down"></use>
+            </svg>
+          </button>
+        </div>
+      ` : ''}
+
       <!-- Notes toggle -->
       <div class="pt-1">
         <button id="add-notes-btn" class="flex items-center text-xs font-semibold text-slate-400 hover:text-primary transition-colors" aria-label="Agregar notas">
@@ -251,56 +277,84 @@ const renderInner = () => {
   if (currentView === "exchange") {
     inner.innerHTML = SelectExchange(selectedExchange?.id);
     wireExchangeView();
+  } else if (currentView === 'destination-exchange') {
+    inner.innerHTML = SelectExchange(destinationExchange?.id);
+    _wireDestinationExchangeView();
   } else if (currentView === "coin") {
-    // Lazy load coins if empty
-    if (coins.size === 0) {
-      inner.innerHTML = CoinPicker([], selectedCoin.id, true);
-      // Ensure buttons work even during loading
+    // Buy → CoinPicker (API), Sell/Transfer → PortfolioPicker (localStorage)
+    if (activeTab === 'buy') {
+      // Lazy load coins if empty
+      if (coins.size === 0) {
+        inner.innerHTML = CoinPicker([], selectedCoin.id, true);
+        // Ensure buttons work even during loading
+        initCoinPicker({
+            onBack: () => { currentView = "form"; renderInner(); },
+            onClose: closeModal,
+            onSelect: () => {}, // Not selectable while loading
+            onCoinsUpdate: () => {},
+            currentCoins: [],
+            selectedCoinId: selectedCoin.id
+        });
+        getTopCoins().then(newCoins => {
+            coins = new Map(newCoins.map(c => [c.id, c]));
+            renderInner();
+        });
+        return;
+      }
+
+      const coinsArray = Array.from(coins.values());
+      inner.innerHTML = CoinPicker(coinsArray, selectedCoin.id);
       initCoinPicker({
           onBack: () => { currentView = "form"; renderInner(); },
           onClose: closeModal,
-          onSelect: () => {}, // Not selectable while loading
-          onCoinsUpdate: () => {},
-          currentCoins: [],
+          onSelect: async (id) => {
+              // Si la moneda seleccionada viene de búsqueda, podría no tener precio
+              let found = coins.get(id);
+              
+              // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
+              if (!found || !found.current_price) {
+                  const detailedCoin = await getCoin(id);
+                  if (detailedCoin) {
+                      found = detailedCoin;
+                      // Opcionalmente actualizar la lista local para futuras referencias
+                      if (!coins.has(id)) coins.set(id, detailedCoin);
+                  }
+              }
+
+              if (found) {
+                  selectedCoin = found;
+                  price = found.current_price?.toString() || "0";
+                  currentView = "form";
+                  renderInner();
+              }
+          },
+          onCoinsUpdate: (newCoins) => { coins = new Map(newCoins.map(c => [c.id, c])); },
+          currentCoins: coinsArray,
           selectedCoinId: selectedCoin.id
       });
-      getTopCoins().then(newCoins => {
-          coins = new Map(newCoins.map(c => [c.id, c]));
-          renderInner();
-      });
-      return;
-    }
-
-    const coinsArray = Array.from(coins.values());
-    inner.innerHTML = CoinPicker(coinsArray, selectedCoin.id);
-    initCoinPicker({
-        onBack: () => { currentView = "form"; renderInner(); },
+    } else {
+      // Sell / Transfer — PortfolioPicker desde localStorage
+      inner.innerHTML = PortfolioPicker(selectedCoin.id);
+      initPortfolioPicker({
+        onBack: () => { currentView = 'form'; renderInner(); },
         onClose: closeModal,
-        onSelect: async (id) => {
-            // Si la moneda seleccionada viene de búsqueda, podría no tener precio
-            let found = coins.get(id);
-            
-            // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
-            if (!found || !found.current_price) {
-                const detailedCoin = await getCoin(id);
-                if (detailedCoin) {
-                    found = detailedCoin;
-                    // Opcionalmente actualizar la lista local para futuras referencias
-                    if (!coins.has(id)) coins.set(id, detailedCoin);
-                }
-            }
-
-            if (found) {
-                selectedCoin = found;
-                price = found.current_price?.toString() || "0";
-                currentView = "form";
-                renderInner();
-            }
+        onSelect: (coinId) => {
+          const coins = getPortfolioCoins();
+          const found = coins.find((c) => c.coinId === coinId);
+          if (found) {
+            selectedCoin = {
+              id: found.coinId,
+              name: found.name,
+              symbol: found.symbol,
+              image: found.logoUrl,
+              current_price: 0, // Sin precio de API en este flujo
+            };
+            currentView = 'form';
+            renderInner();
+          }
         },
-        onCoinsUpdate: (newCoins) => { coins = new Map(newCoins.map(c => [c.id, c])); },
-        currentCoins: coinsArray,
-        selectedCoinId: selectedCoin.id
-    });
+      });
+    }
   } else {
     inner.innerHTML = FormView();
     wireFormView();
@@ -366,6 +420,7 @@ const openModal = async () => {
   fees = "";
   notes = "";
   showNotes = false;
+  destinationExchange = null;
   renderInner();
 
   const backdrop = document.getElementById("modal-backdrop");
@@ -424,6 +479,12 @@ const wireFormView = () => {
   // Exchange selector → switch to exchange view
   document.getElementById("exchange-selector-btn")?.addEventListener("click", () => {
     currentView = "exchange";
+    renderInner();
+  });
+
+  // Destination Exchange (solo visible en Transfer)
+  document.getElementById('destination-exchange-btn')?.addEventListener('click', () => {
+    currentView = 'destination-exchange';
     renderInner();
   });
 
@@ -540,7 +601,6 @@ const wireFormView = () => {
     if (errorEl) errorEl.classList.add("hidden");
 
     if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
-      // Anunciar error para screen readers via role="alert"
       if (errorEl && errorText) {
         errorText.textContent = "Por favor completa los campos obligatorios: cantidad, precio y moneda.";
         errorEl.classList.remove("hidden");
@@ -548,32 +608,74 @@ const wireFormView = () => {
       return;
     }
 
-    const holding = {
-      coinId: selectedCoin?.id ?? '',
-      name: selectedCoin?.name ?? '',
-      symbol: selectedCoin?.symbol ?? '',
-      logoUrl: selectedCoin?.image || selectedCoin?.thumb || '',
-      balance: parsedQty,
-      price: parsedPrice,
-      source: selectedExchange 
-        ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name) 
-        : 'Wallet',
-      sourceIcon: 'wallet',
-      type: activeTab,
-      date: date,
-      fees: parsedFees,
-      notes: notes
-    };
+    // Validación de overselling (Sell y Transfer)
+    if (activeTab === 'sell' || activeTab === 'transfer') {
+      const netBalance = getNetBalance(selectedCoin.id);
+      if (parsedQty > netBalance) {
+        if (errorEl && errorText) {
+          errorText.textContent =
+            `Balance insuficiente. Disponible: ${netBalance.toFixed(8)} ${selectedCoin.symbol.toUpperCase()}`;
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+    }
 
-    addHolding(holding);
-    
+    // Validación de caleta destino en Transfer
+    if (activeTab === 'transfer' && !destinationExchange) {
+      if (errorEl && errorText) {
+        errorText.textContent = 'Selecciona una caleta de destino para la transferencia.';
+        errorEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    const sourceName = selectedExchange
+      ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
+      : 'Wallet';
+
+    if (activeTab === 'transfer') {
+      // Transfer → 2 entradas atómicas enlazadas por transferId
+      const TRANSFER_ID = crypto.randomUUID();
+      const destName = typeof destinationExchange === 'string'
+        ? destinationExchange
+        : destinationExchange.name;
+
+      // Salida de Caleta A
+      addHolding({
+        coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+        logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+        balance: parsedQty, price: parsedPrice, source: sourceName,
+        sourceIcon: 'wallet', type: 'transfer_out', transferId: TRANSFER_ID,
+        date, fees: parsedFees, notes,
+      });
+
+      // Entrada en Caleta B
+      addHolding({
+        coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+        logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+        balance: parsedQty, price: parsedPrice, source: destName,
+        sourceIcon: 'wallet', type: 'transfer_in', transferId: TRANSFER_ID,
+        date, fees: 0,
+        notes: notes ? `[Recibido desde ${sourceName}] ${notes}` : `Recibido desde ${sourceName}`,
+      });
+    } else {
+      // Buy o Sell normal
+      addHolding({
+        coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+        logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+        balance: parsedQty, price: parsedPrice, source: sourceName,
+        sourceIcon: 'wallet', type: activeTab, date, fees: parsedFees, notes,
+      });
+    }
+
     // Guardar último exchange seleccionado para persistencia
     if (selectedExchange) {
         storage.set('caleta_last_exchange', selectedExchange);
     }
     
     // Notify other components (HoldingsTable, StatsGrid)
-    window.dispatchEvent(new CustomEvent('holdings-updated', { detail: { holding } }));
+    window.dispatchEvent(new CustomEvent('holdings-updated', { detail: {} }));
 
     closeModal();
   });
@@ -630,6 +732,35 @@ const wireExchangeView = () => {
         currentView = "form";
         renderInner();
       },
+    });
+  });
+};
+
+// ─── Wire Destination Exchange View ────────────────────────────
+const _wireDestinationExchangeView = () => {
+  document.getElementById('exchange-back-btn')?.addEventListener('click', () => {
+    currentView = 'form';
+    renderInner();
+  });
+  document.getElementById('exchange-close-btn')?.addEventListener('click', closeModal);
+
+  document.getElementById('exchange-search-input')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.exchange-row').forEach((row) => {
+      row.style.display = row.dataset.exchangeName?.toLowerCase().includes(term) ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.exchange-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.exchangeId;
+      const sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+      const found = sources.find((ex) => (typeof ex === 'string' ? ex : ex.id) === id);
+      if (found) {
+        destinationExchange = found;
+        currentView = 'form';
+        renderInner();
+      }
     });
   });
 };
