@@ -2,7 +2,7 @@
 import { escapeHTML, formatCurrency, formatNumber } from '../utils/helpers.js';
 import { getTransactionsByCoin, getNetBalance, deleteTransaction } from '../utils/transactionUtils.js';
 import { getHoldings } from '../utils/holdingsStorage.js';
-import { openConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
+import ConfirmDeleteModal, { openConfirmDeleteModal, initConfirmDeleteModal, cleanupConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
 import sprite from '../assets/sprite.svg';
 
 /**
@@ -64,6 +64,7 @@ const CoinDetails = (params = {}) => {
         </div>
       </section>
 
+      ${ConfirmDeleteModal()}
       <span id="coin-id-data" data-coin-id="${coinId}" hidden></span>
     </main>
   `;
@@ -74,6 +75,9 @@ export default CoinDetails;
 // ─── Init ──────────────────────────────────────────────────────────
 
 export const initCoinDetails = async () => {
+  cleanupConfirmDeleteModal();
+  initConfirmDeleteModal();
+
   const coinIdEl = document.getElementById('coin-id-data');
   const coinId = coinIdEl?.dataset?.coinId;
   if (!coinId) return;
