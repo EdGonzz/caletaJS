@@ -349,6 +349,7 @@ const renderInner = () => {
               image: found.logoUrl,
               current_price: 0, // Sin precio de API en este flujo
             };
+            price = "0";
             currentView = 'form';
             renderInner();
           }
@@ -608,9 +609,13 @@ const wireFormView = () => {
       return;
     }
 
-    // Validación de overselling (Sell y Transfer)
+    const sourceName = selectedExchange
+      ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
+      : 'Wallet';
+
+    // Validación de overselling (Sell y Transfer) — por-exchange (ADR-025)
     if (activeTab === 'sell' || activeTab === 'transfer') {
-      const netBalance = getNetBalance(selectedCoin.id);
+      const netBalance = getNetBalance(selectedCoin.id, sourceName);
       if (parsedQty > netBalance) {
         if (errorEl && errorText) {
           errorText.textContent =
@@ -629,10 +634,6 @@ const wireFormView = () => {
       }
       return;
     }
-
-    const sourceName = selectedExchange
-      ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
-      : 'Wallet';
 
     if (activeTab === 'transfer') {
       // Transfer → 2 entradas atómicas enlazadas por transferId
