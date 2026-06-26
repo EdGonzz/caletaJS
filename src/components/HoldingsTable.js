@@ -7,6 +7,7 @@ import sprite from "../assets/sprite.svg";
 import { currentFilter } from "./ActionToolbar";
 import { apiFetch, ApiError, ErrorType, getErrorMessage } from "../utils/errors.js";
 import { showWarning } from "./ErrorToast.js";
+import { getBalanceDelta } from '../utils/transactionUtils.js';
 
 const PAGE_SIZE = 4;
 
@@ -63,9 +64,8 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
       });
     }
 
-    // Balance calculation
-    if (tx.type === 'buy' || tx.type === 'transfer') acc[key].balance += tx.balance;
-    if (tx.type === 'sell') acc[key].balance -= tx.balance;
+    // Balance calculation (regla centralizada — ver ADR-028)
+    acc[key].balance += getBalanceDelta(tx);
 
     return acc;
   }, {});
