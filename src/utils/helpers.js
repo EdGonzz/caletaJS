@@ -25,3 +25,11 @@ export const escapeHTML = (str) => {
   };
   return str.replace(/[&<>"']/g, (m) => map[m]);
 };
+
+/** @param {number} n @returns {string} */
+export const formatCurrency = (n) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(n);
+
+/** @param {number} n @param {number} [decimals=8] @returns {string} */
+export const formatNumber = (n, decimals = 8) =>
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: decimals }).format(n);

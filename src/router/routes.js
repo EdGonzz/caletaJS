@@ -1,7 +1,7 @@
 import Header from "../components/Header";
 import Home from "../pages/Home";
 import About from "../pages/About";
-import CoinDetails from "../pages/CoinDetails";
+import CoinDetails, { initCoinDetails } from "../pages/CoinDetails";
 import Error404 from "../pages/Error404";
 import ErrorPage, { initErrorPage } from "../pages/ErrorPage";
 import { initHoldingsTable, cleanupHoldingsTable } from "../components/HoldingsTable";
@@ -67,6 +67,10 @@ const router = async () => {
       initAddAssetModal();
       initConfirmDeleteModal();
       await initHistoryChart(); // Async: chart creation with API fetch
+    }
+
+    if (path.startsWith('/coin/')) {
+      await initCoinDetails();
     }
   } catch (err) {
     console.error("Router: error crítico al renderizar la ruta —", err);

@@ -169,7 +169,11 @@ const AssetRow = (asset) => {
             loading="lazy"
           />
           <div>
-            <div class="font-bold text-white">${safeName}</div>
+            <a href="#/coin/${safeId}"
+               class="font-bold text-white hover:text-violet-400 transition-colors focus:outline-none focus:underline"
+               aria-label="Ver detalle de ${safeName}">
+              ${safeName}
+            </a>
             <div class="text-xs text-slate-500">${safeSymbol}</div>
           </div>
         </div>
