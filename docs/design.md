@@ -176,7 +176,7 @@ window.addEventListener('prices-updated', (e) => {
 Componentes con estado complejo (ej. `AddAssetModal`, `AddExchangeModal`) usan **variables a nivel de módulo**:
 
 ```javascript
-/** @type {'buy'|'sell'|'transfer'} */
+/** @type {'buy'|'sell'|'transfer_out'|'transfer_in'} */
 let activeTab = "buy";
 let selectedCoin = DEFAULT_COIN;
 let searchState = 'idle';

@@ -10,9 +10,11 @@ Guía de referencia para entender el sistema de transacciones de CaletaJS: cómo
 |------|-----------|-------------------|
 | `buy` | Compra de criptomoneda a precio de mercado | `+balance` |
 | `sell` | Venta de criptomoneda | `-balance` |
-| `transfer` | Entrada de activo en una caleta (siempre el destino) | `+balance` |
+| `transfer_out` | Salida de activo de una caleta (origen de transferencia) | `-balance` |
+| `transfer_in` | Entrada de activo a una caleta (destino de transferencia) | `+balance` |
 
-> **Nota:** Una transferencia entre caletas genera **dos** entradas: una `sell` en la caleta origen y una `transfer` en la caleta destino. Ver [ADR-024](../decisions/024-transfer-doble-entrada-atomica.md).
+> **Nota:** Una transferencia entre caletas genera **dos** entradas: una `transfer_out` en la caleta origen y una `transfer_in` en la caleta destino.
+> Si hay **network fee**, la cantidad que llega al destino (`transfer_in.balance`) es menor que la que sale del origen (`transfer_out.balance`). Ver [ADR-024](../decisions/024-transfer-doble-entrada-atomica.md).
 
 ---
 
@@ -23,40 +25,58 @@ Guía de referencia para entender el sistema de transacciones de CaletaJS: cómo
 | Tab | Componente picker | Data source |
 |-----|-------------------|-------------|
 | Buy | `CoinPicker` | API CoinGecko `/search` |
-| Sell | `PortfolioPicker` | `localStorage` (balance > 0) |
-| Transfer | `PortfolioPicker` | `localStorage` (balance > 0) |
+| Sell | `PortfolioPicker` | `localStorage` (balance > 0 en la caleta seleccionada) |
+| Transfer | `PortfolioPicker` | `localStorage` (balance > 0 en la caleta seleccionada) |
 
-El **PortfolioPicker** muestra solo las monedas que el usuario ya posee y su balance disponible. No es posible vender o transferir una moneda que no está en el portafolio.
+El **PortfolioPicker** muestra solo las monedas con balance > 0 **en la caleta específica** que el usuario tiene seleccionada. No es posible vender o transferir una moneda que no está en el portafolio de esa caleta.
 
 ### Campos del formulario
 
 | Campo | Buy | Sell | Transfer |
 |-------|-----|------|----------|
 | Moneda | CoinPicker (API) | PortfolioPicker | PortfolioPicker |
-| Cantidad | ✅ | ✅ | ✅ |
-| Precio por unidad | ✅ (+ botón Market) | ✅ | ✅ |
+| Cantidad | ✅ | ✅ | ✅ ("Cantidad a enviar") |
+| Precio por unidad | ✅ (+ botón Market) | ✅ | ❌ (auto-calculado como cost basis) |
+| Network Fee | ❌ | ❌ | ✅ (opcional, en la moneda) |
+| Destino recibe | ❌ | ❌ | ✅ (read-only: quantity - networkFee) |
 | Fecha y hora | ✅ | ✅ | ✅ |
-| Caleta origen | ✅ | ✅ | ✅ |
-| Caleta destino | ❌ | ❌ | ✅ (obligatorio) |
-| Fees | ✅ | ✅ | ✅ (solo origen) |
+| Caleta/Exchange | ✅ (destino — donde se depositan las monedas) | ✅ (origen — de donde se debitan las monedas) | ✅ (origen — de donde salen las monedas) |
+| Caleta destino | — | — | ✅ (obligatorio, distinta de origen) |
+| Platform Fees (USD) | ✅ | ✅ | ❌ |
 | Notas | ✅ | ✅ | ✅ |
 
 ### Validaciones previas al guardado
 
-1. **Cantidad > 0** y **Precio ≥ 0** (todos los tipos).
+1. **Cantidad > 0** y **Precio ≥ 0** (Buy/Sell). En Transfer el precio se calcula automáticamente.
 2. **Moneda seleccionada** (todos los tipos).
-3. **Balance suficiente** (solo Sell y Transfer):
+3. **Balance suficiente (por-exchange)** — solo Sell y Transfer:
    ```
-   getNetBalance(coinId) >= parsedQty
+   getNetBalance(coinId, selectedExchange.name) >= parsedQty
    ```
-   Si falla: error inline en el formulario, no se guarda nada.
+   Valida contra el balance de la caleta específica, no el global. No puedes vender/transferir desde una caleta que no tiene la moneda, aunque la tengas en otra.
 4. **Caleta destino seleccionada** (solo Transfer): si falta, error inline.
+5. **Caleta destino distinta de origen** (solo Transfer): no se puede transferir a la misma caleta.
+6. **Network fee < cantidad** (solo Transfer): el destino recibiría 0 o negativo.
+
+Si alguna validación falla, se muestra un error inline en el formulario y no se guarda nada.
+
+### Cost basis automático en Transfer
+
+En el tab Transfer, el campo Precio **no se muestra**. El precio se calcula automáticamente como el **costo promedio ponderado** de las compras en la caleta origen:
+
+```
+costBasis = sum(qty_compra * price_compra) / sum(qty_compra)
+```
+
+Este cost basis se usa como `price` en ambas entradas (`transfer_out` y `transfer_in`). Así, el destino hereda el costo real de adquisición.
+
+Si no hay historial de compras (edge case raro), se usa el precio actual de mercado via CoinGecko.
 
 ---
 
 ## Modelo de datos en localStorage
 
-Clave: `caleta_holdings` (array JSON).
+Clave: `caleta_user_holdings` (array JSON).
 
 ```json
 {
@@ -76,16 +96,28 @@ Clave: `caleta_holdings` (array JSON).
 }
 ```
 
-### Ejemplo de transferencia completa
+### Ejemplo de transferencia completa (sin network fee)
 
 Transferir 0.1 BTC de Binance a Ledger genera **dos entradas**:
 
 ```json
 // Entrada 1 — Salida de Binance
-{ "type": "sell", "source": "Binance", "balance": 0.1, "fees": 1.0, "notes": "" }
+{ "type": "transfer_out", "source": "Binance", "balance": 0.1, "price": 30000, "networkFee": 0, "notes": "" }
 
 // Entrada 2 — Llegada a Ledger
-{ "type": "transfer", "source": "Ledger", "balance": 0.1, "fees": 0, "notes": "Recibido desde Binance" }
+{ "type": "transfer_in", "source": "Ledger", "balance": 0.1, "price": 30000, "networkFee": 0, "notes": "Recibido desde Binance" }
+```
+
+### Ejemplo de transferencia con network fee
+
+Transferir 1 BTC de Binance a Ledger con fee de 0.001 BTC:
+
+```json
+// Entrada 1 — Salida de Binance
+{ "type": "transfer_out", "source": "Binance", "balance": 1, "price": 30000, "networkFee": 0.001, "notes": "" }
+
+// Entrada 2 — Llegada a Ledger (recibe 0.999 BTC)
+{ "type": "transfer_in", "source": "Ledger", "balance": 0.999, "price": 30000, "networkFee": 0.001, "notes": "Recibido desde Binance" }
 ```
 
 ---
@@ -96,27 +128,32 @@ Archivo: `src/utils/transactionUtils.js`
 
 | Función | Retorna | Uso |
 |---------|---------|-----|
-| `getAllTransactions()` | `Transaction[]` | Todas las entradas crudas |
 | `getTransactionsByCoin(coinId)` | `Transaction[]` | Filtradas y ordenadas (más reciente primero) |
-| `getNetBalance(coinId)` | `number` | Balance neto: buy+transfer − sell |
-| `getPortfolioCoins()` | `PortfolioCoin[]` | Monedas con balance > 0 para PortfolioPicker |
-| `deleteTransaction(txId)` | `boolean` | Elimina por ID, `true` si encontrada |
+| `getNetBalance(coinId, source?)` | `number` | Balance neto. Sin `source` = global. Con `source` = por caleta. |
+| `getPortfolioCoins(source?)` | `PortfolioCoin[]` | Monedas con balance > 0. Sin `source` = global. Con `source` = por caleta. |
+| `getAverageCostBasis(coinId, source)` | `number \| null` | Costo promedio ponderado en esa caleta. `null` si no hay historial. |
+| `deleteTransaction(txId)` | `Transaction[]` | Elimina por ID (wrapper sobre `removeHolding`). Retorna lista actualizada. |
 
 ```javascript
 import {
   getTransactionsByCoin,
   getNetBalance,
   getPortfolioCoins,
+  getAverageCostBasis,
   deleteTransaction,
 } from '../utils/transactionUtils.js';
 
-// Verificar balance disponible antes de vender
-const available = getNetBalance('bitcoin'); // → 1.5
+// Verificar balance disponible antes de vender (por caleta)
+const available = getNetBalance('bitcoin', 'Binance'); // balance en Binance
 if (sellQty > available) { /* error */ }
 
-// Listar monedas disponibles para PortfolioPicker
-const coins = getPortfolioCoins();
-// → [{ coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', logoUrl: '...', netBalance: 1.5 }]
+// Obtener cost basis para transferencia
+const costBasis = getAverageCostBasis('bitcoin', 'Binance');
+// → 30000 (promedio ponderado de compras en Binance)
+
+// Listar monedas disponibles en PortfolioPicker (filtradas por caleta)
+const coins = getPortfolioCoins('Binance');
+// → [{ coinId: 'bitcoin', name: 'Bitcoin', symbol: 'btc', logoUrl: '...', netBalance: 0.5 }]
 ```
 
 ---
@@ -132,17 +169,26 @@ Ruta: `#/coin/:id`
 
 ### Secciones
 
-1. **Header:** nombre, logo, precio actual y cambio 24h (CoinGecko API, async).
-2. **Stats:** balance total, valor en USD, número de compras, número de ventas.
+1. **Header:** nombre, logo, precio actual y cambio 24h (CoinGecko via `apiFetch`, async).
+2. **Stats:** balance total, valor en USD, número de compras + transferencias recibidas, número de ventas.
 3. **Historial:** lista cronológica de todas las transacciones de esa moneda.
+
+### Badges de tipo de transacción
+
+| Tipo | Color | Label |
+|---|---|---|
+| `buy` | `text-emerald-400 bg-emerald-400/10` | Compra |
+| `sell` | `text-rose-400 bg-rose-400/10` | Venta |
+| `transfer_out` | `text-amber-400 bg-amber-400/10` | Transferencia enviada |
+| `transfer_in` | `text-sky-400 bg-sky-400/10` | Transferencia recibida |
 
 ### Eliminar una transacción
 
-- El botón ❌ en cada fila del historial abre un `confirm()` nativo.
-- Si se confirma, llama a `deleteTransaction(tx.id)` y re-renderiza la lista y las stats.
+- El botón 🗑 en cada fila del historial abre un modal de confirmación (`openConfirmDeleteModal`).
+- Si se confirma, llama a `deleteTransaction(tx.id)` (que usa `removeHolding`), re-renderiza la lista y las stats, y dispatcha el evento `holdings-updated` para sincronizar la tabla principal.
 - **La operación es irreversible.**
 
-> ⚠️ **Transferencias:** Si eliminas la entrada `sell` (caleta origen) de una transferencia, la entrada `transfer` (caleta destino) queda huérfana. El balance neto de la moneda aumentará incorrectamente. Elimina ambas entradas para revertir una transferencia completa.
+> ⚠️ **Transferencias:** Si eliminas la entrada `transfer_out` (caleta origen) de una transferencia, la entrada `transfer_in` (caleta destino) queda huérfana. El balance neto de la moneda aumentará incorrectamente. Elimina ambas entradas para revertir una transferencia completa.
 
 ---
 
@@ -151,12 +197,12 @@ Ruta: `#/coin/:id`
 Si en el futuro se necesita añadir un tipo (ej. `staking`, `airdrop`):
 
 1. **`transactionUtils.js`:** Actualizar `getNetBalance()` y `getPortfolioCoins()` con la nueva regla de suma/resta.
-2. **`HoldingsTable.js`:** Actualizar `aggregateHoldings()` (líneas ~67-68) con la misma regla.
+2. **`HoldingsTable.js`:** Actualizar `aggregateHoldings()` con la misma regla.
 3. **`chartDataAdapter.js`:** Actualizar `aggregateForHistory()` con la misma regla.
 4. **`AddAssetModal.js`:** Añadir el tab si corresponde.
 5. **`CoinDetails.js`:** Añadir el badge y color del nuevo tipo en `_txRow()`.
 
-> ⚠️ **Las reglas de aggregación deben ser idénticas en `transactionUtils.js` y `aggregateHoldings()`.** Una divergencia causaría que CoinDetails muestre un balance distinto al que ve el usuario en la tabla principal.
+> ⚠️ **Las reglas de agregación deben ser idénticas en `transactionUtils.js` y `aggregateHoldings()`.** Una divergencia causaría que CoinDetails muestre un balance distinto al que ve el usuario en la tabla principal.
 
 ---
 
@@ -168,11 +214,11 @@ Posible causa: la regla de suma/resta en `getNetBalance()` difiere de `aggregate
 
 ```bash
 # Verificar en consola del browser:
-JSON.parse(localStorage.getItem('caleta_holdings'))
+JSON.parse(localStorage.getItem('caleta_user_holdings'))
   .filter(tx => tx.coinId === 'bitcoin')
   .reduce((acc, tx) => {
-    if (tx.type === 'buy' || tx.type === 'transfer') return acc + tx.balance;
-    if (tx.type === 'sell') return acc - tx.balance;
+    if (tx.type === 'buy' || tx.type === 'transfer_in') return acc + tx.balance;
+    if (tx.type === 'sell' || tx.type === 'transfer_out') return acc - tx.balance;
     return acc;
   }, 0);
 ```
@@ -185,21 +231,28 @@ Verificar que se crearon las dos entradas:
 
 ```bash
 # En consola del browser:
-JSON.parse(localStorage.getItem('caleta_holdings'))
+JSON.parse(localStorage.getItem('caleta_user_holdings'))
   .filter(tx => tx.coinId === 'bitcoin')
   .map(tx => ({ type: tx.type, source: tx.source, balance: tx.balance }));
 ```
 
-Expected: una entrada `sell` con la caleta origen y una entrada `transfer` con la caleta destino.
+Expected: una entrada `transfer_out` con la caleta origen y una entrada `transfer_in` con la caleta destino.
 
 ### PortfolioPicker aparece vacío
 
-Ocurre cuando no hay monedas con balance neto > 0. Causas posibles:
+Ocurre cuando no hay monedas con balance neto > 0 en la caleta seleccionada. Causas posibles:
 - No hay holdings registrados.
-- Todos los holdings tienen balance neto ≤ 0 (overselling previo a la validación).
+- Todos los holdings de esa caleta tienen balance neto ≤ 0.
+- La caleta seleccionada no tiene la moneda (está en otra caleta).
 
-Revisar directamente el localStorage y verificar con `getNetBalance(coinId)`.
+Revisar directamente el localStorage y verificar con `getNetBalance(coinId, 'NombreCaleta')`.
+
+### Cost basis no se calcula (Transfer)
+
+Si `getAverageCostBasis(coinId, source)` retorna `null`:
+- No hay compras ni transferencias recibidas de esa moneda en la caleta origen.
+- El fallback usa el precio actual de mercado via CoinGecko.
 
 ---
 
-*Última actualización: 2026-06-21*
+*Última actualización: 2026-06-23*
