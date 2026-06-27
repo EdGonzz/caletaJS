@@ -12,63 +12,139 @@ import sprite from '../assets/sprite.svg';
 const CoinDetails = (params = {}) => {
   const coinId = escapeHTML(params.id ?? '');
   return `
-    <main id="coin-details-root" class="min-h-screen p-6 max-w-5xl mx-auto" aria-label="Detalle de moneda">
+    <main id="coin-details-root" class="min-h-screen" aria-label="Detalle de moneda">
 
-      <a href="#/" class="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 text-sm font-medium group">
-        <svg class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">
-          <use href="${sprite}#arrow-left"></use>
-        </svg>
-        Volver al portafolio
-      </a>
+      <!-- ── Hero Section ── -->
+      <div class="coin-details-hero relative overflow-hidden">
+        <!-- Ambient glow de fondo -->
+        <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+          <div class="coin-hero-glow"></div>
+        </div>
 
-      <!-- Header moneda -->
-      <section id="coin-header" class="flex items-center gap-4 mb-8" aria-live="polite">
-        <div id="coin-logo-wrapper" class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
-          <span class="text-slate-500 text-xs" aria-hidden="true">…</span>
-        </div>
-        <div class="flex-1 min-w-0">
-          <h1 id="coin-name" class="text-2xl font-bold text-white">Cargando…</h1>
-          <span id="coin-symbol" class="text-sm text-slate-400 uppercase font-medium"></span>
-        </div>
-        <div class="text-right shrink-0">
-          <p id="coin-price" class="text-xl font-semibold text-white">—</p>
-          <p id="coin-change" class="text-sm text-slate-400">24h —</p>
-        </div>
-      </section>
+        <div class="relative z-10 max-w-5xl mx-auto px-6 pt-6 pb-8">
 
-      <!-- Stats rápidos -->
-      <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" aria-label="Estadísticas del activo">
-        <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-          <p class="text-xs text-slate-400 mb-1">Balance total</p>
-          <p id="stat-balance" class="text-lg font-bold text-white font-display">—</p>
-        </div>
-        <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-          <p class="text-xs text-slate-400 mb-1">Valor actual (USD)</p>
-          <p id="stat-value" class="text-lg font-bold text-white font-display">—</p>
-        </div>
-        <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-          <p class="text-xs text-slate-400 mb-1">Compras + Recibidas</p>
-          <p id="stat-buys" class="text-lg font-bold text-emerald-400">—</p>
-        </div>
-        <div class="bg-slate-800/60 rounded-xl p-4 border border-slate-700/50">
-          <p class="text-xs text-slate-400 mb-1">Ventas + Enviadas</p>
-          <p id="stat-sells" class="text-lg font-bold text-rose-400">—</p>
-        </div>
-      </section>
+          <!-- Back link -->
+          <a href="#/" class="inline-flex items-center gap-2 text-slate-400 hover:text-primary transition-colors mb-8 text-sm font-medium group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md" aria-label="Volver al portafolio">
+            <svg class="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-200" aria-hidden="true">
+              <use href="${sprite}#arrow-left"></use>
+            </svg>
+            Volver al portafolio
+          </a>
 
-      <!-- Historial -->
-      <section aria-label="Historial de transacciones">
-        <h2 class="text-lg font-semibold text-white mb-4">Historial de transacciones</h2>
-        <div id="tx-list" class="space-y-2" aria-live="polite">
-          <p class="text-slate-500 text-sm">Cargando…</p>
+          <!-- Coin Header -->
+          <section id="coin-header" class="flex items-center gap-5" aria-live="polite">
+            <!-- Logo con skeleton -->
+            <div id="coin-logo-wrapper" class="relative shrink-0">
+              <div class="w-12 h-12 rounded-full skeleton-shimmer flex items-center justify-center" aria-hidden="true">
+                <span class="text-slate-500 text-xs">…</span>
+              </div>
+            </div>
+
+            <!-- Name + Symbol -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-3 flex-wrap">
+                <h1 id="coin-name" class="text-3xl font-bold text-white font-display tracking-tight">Cargando…</h1>
+                <span id="coin-symbol" class="coin-symbol-badge"></span>
+              </div>
+              <p id="coin-rank" class="text-xs text-slate-500 mt-1"></p>
+            </div>
+
+            <!-- Price -->
+            <div class="text-right shrink-0">
+              <p id="coin-price" class="text-2xl font-bold text-white font-display tabular-nums">—</p>
+              <p id="coin-change" class="text-sm font-semibold mt-1">24h —</p>
+            </div>
+          </section>
         </div>
-      </section>
+      </div>
+
+      <!-- ── Content ── -->
+      <div class="max-w-5xl mx-auto px-6 py-8 space-y-8">
+
+        <!-- Stats Grid -->
+        <section aria-label="Estadísticas del activo">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <article class="coin-stat-card group" aria-label="Balance total">
+              <div class="coin-stat-icon coin-stat-icon--neutral" aria-hidden="true">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <p class="coin-stat-label">Balance total</p>
+              <p id="stat-balance" class="coin-stat-value">—</p>
+              <div class="coin-stat-bar" aria-hidden="true"></div>
+            </article>
+
+            <article class="coin-stat-card group" aria-label="Valor actual en USD">
+              <div class="coin-stat-icon coin-stat-icon--primary" aria-hidden="true">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/>
+                </svg>
+              </div>
+              <p class="coin-stat-label">Valor actual</p>
+              <p id="stat-value" class="coin-stat-value coin-stat-value--accent">—</p>
+              <div class="coin-stat-bar coin-stat-bar--accent" aria-hidden="true"></div>
+            </article>
+
+            <article class="coin-stat-card group" aria-label="Compras y transferencias recibidas">
+              <div class="coin-stat-icon coin-stat-icon--green" aria-hidden="true">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+              </div>
+              <p class="coin-stat-label">Compras + Recibidas</p>
+              <p id="stat-buys" class="coin-stat-value coin-stat-value--green">—</p>
+              <div class="coin-stat-bar coin-stat-bar--green" aria-hidden="true"></div>
+            </article>
+
+            <article class="coin-stat-card group" aria-label="Ventas y transferencias enviadas">
+              <div class="coin-stat-icon coin-stat-icon--red" aria-hidden="true">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+                </svg>
+              </div>
+              <p class="coin-stat-label">Ventas + Enviadas</p>
+              <p id="stat-sells" class="coin-stat-value coin-stat-value--red">—</p>
+              <div class="coin-stat-bar coin-stat-bar--red" aria-hidden="true"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Transaction History -->
+        <section aria-label="Historial de transacciones">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-base font-semibold text-white font-display flex items-center gap-2">
+              <span class="w-1 h-5 rounded-full bg-primary inline-block" aria-hidden="true"></span>
+              Historial de transacciones
+            </h2>
+            <span id="tx-count" class="text-xs text-slate-500 tabular-nums"></span>
+          </div>
+          <div id="tx-list" class="space-y-3" aria-live="polite" aria-relevant="additions removals">
+            ${_txSkeleton()}
+          </div>
+        </section>
+
+      </div>
 
       ${ConfirmDeleteModal()}
       <span id="coin-id-data" data-coin-id="${coinId}" hidden></span>
     </main>
   `;
 };
+
+/** Renders skeleton placeholders for tx list */
+const _txSkeleton = () =>
+  Array.from({ length: 3 }, () => `
+    <div class="tx-row-skeleton" aria-hidden="true">
+      <div class="skeleton-shimmer h-4 w-16 rounded-full"></div>
+      <div class="flex flex-col gap-2 flex-1">
+        <div class="skeleton-shimmer h-3 w-40 rounded"></div>
+        <div class="skeleton-shimmer h-2.5 w-28 rounded"></div>
+      </div>
+      <div class="skeleton-shimmer h-4 w-20 rounded ml-auto"></div>
+    </div>
+  `).join('');
 
 export default CoinDetails;
 
@@ -94,10 +170,21 @@ export const initCoinDetails = async () => {
     const data = await res.json();
     _renderHeader(data);
     _renderStats(coinId, data.market_data?.current_price?.usd ?? null);
+    _applyHeroAccent(data.image?.small ?? null);
   } catch (err) {
     console.warn('CoinDetails: fallo en CoinGecko —', err);
     const nameEl = document.getElementById('coin-name');
     if (nameEl) nameEl.textContent = coinId;
+  }
+};
+
+// ── Aplica color de acento del logo al glow de fondo ──────────────
+const _applyHeroAccent = (imgSrc) => {
+  if (!imgSrc) return;
+  const glow = document.querySelector('.coin-hero-glow');
+  if (glow) {
+    // Usa la imagen como referencia visual para la intensidad del glow
+    glow.style.backgroundImage = `radial-gradient(ellipse 600px 300px at 50% 0%, rgba(11, 213, 112, 0.12) 0%, transparent 70%)`;
   }
 };
 
@@ -106,12 +193,20 @@ const _renderHeader = (data) => {
   const symbol = data.symbol?.toUpperCase() ?? '';
   const price = data.market_data?.current_price?.usd ?? null;
   const change = data.market_data?.price_change_percentage_24h ?? null;
+  const rank = data.market_cap_rank ?? null;
 
   const logoWrapper = document.getElementById('coin-logo-wrapper');
-  if (logoWrapper && data.image?.small) {
+  // Preferimos `large` (250×250) > `small` (27×27) para evitar upscaling borroso.
+  // Mostramos a 48×48px CSS — suficiente para el header sin artefactos.
+  const imgSrc = data.image?.large ?? data.image?.small ?? null;
+  if (logoWrapper && imgSrc) {
     logoWrapper.innerHTML = `
-      <img src="${escapeHTML(data.image.small)}" alt="${escapeHTML(name)} logo"
-           class="w-10 h-10 rounded-full" loading="lazy" width="40" height="40" />
+      <div class="coin-logo-ring">
+        <img src="${escapeHTML(imgSrc)}"
+             alt="${escapeHTML(name)} logo"
+             class="w-12 h-12 rounded-full object-contain"
+             loading="eager" width="48" height="48" />
+      </div>
     `;
   }
 
@@ -119,16 +214,25 @@ const _renderHeader = (data) => {
   if (nameEl) nameEl.textContent = name;
 
   const symbolEl = document.getElementById('coin-symbol');
-  if (symbolEl) symbolEl.textContent = symbol;
+  if (symbolEl) {
+    symbolEl.textContent = symbol;
+    symbolEl.className = 'coin-symbol-badge';
+  }
+
+  const rankEl = document.getElementById('coin-rank');
+  if (rankEl && rank) {
+    rankEl.textContent = `Rank #${rank}`;
+  }
 
   const priceEl = document.getElementById('coin-price');
   if (priceEl) priceEl.textContent = price != null ? formatCurrency(price) : '—';
 
   const changeEl = document.getElementById('coin-change');
   if (changeEl && change != null) {
-    const sign = change >= 0 ? '+' : '';
+    const isPositive = change >= 0;
+    const sign = isPositive ? '+' : '';
     changeEl.textContent = `24h ${sign}${change.toFixed(2)}%`;
-    changeEl.className = `text-sm font-medium ${change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+    changeEl.className = `text-sm font-semibold mt-1 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`;
   }
 };
 
@@ -152,60 +256,82 @@ const _renderTransactions = (coinId) => {
   if (!txList) return;
 
   const txs = getTransactionsByCoin(coinId);
+  const countEl = document.getElementById('tx-count');
 
   if (txs.length === 0) {
-    txList.innerHTML = '<p class="text-slate-500 text-sm">Sin transacciones registradas para esta moneda.</p>';
+    if (countEl) countEl.textContent = '';
+    txList.innerHTML = `
+      <div class="tx-empty-state" role="status">
+        <svg class="w-8 h-8 text-slate-600 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M9 12h6m-3-3v6m-7 4h14a2 2 0 002-2V7l-5-5H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+        </svg>
+        <p class="text-slate-400 text-sm font-medium">Sin transacciones</p>
+        <p class="text-slate-600 text-xs mt-1">Aún no hay movimientos registrados para esta moneda.</p>
+      </div>
+    `;
     return;
   }
 
-  txList.innerHTML = txs.map(_txRow).join('');
+  if (countEl) countEl.textContent = `${txs.length} transacción${txs.length !== 1 ? 'es' : ''}`;
+  txList.innerHTML = txs.map((tx, i) => _txRow(tx, i)).join('');
 
   txList.querySelectorAll('[data-delete-tx]').forEach((btn) => {
     btn.addEventListener('click', () => _handleDeleteTx(btn.dataset.deleteTx, coinId));
   });
 };
 
-/** @param {Object} tx @returns {string} */
-const _txRow = (tx) => {
-  const typeColors = {
-    buy: 'text-emerald-400 bg-emerald-400/10',
-    sell: 'text-rose-400 bg-rose-400/10',
-    transfer_in: 'text-sky-400 bg-sky-400/10',
-    transfer_out: 'text-amber-400 bg-amber-400/10',
+/** @param {Object} tx @param {number} index @returns {string} */
+const _txRow = (tx, index) => {
+  const typeConfig = {
+    buy: { label: 'Compra', cls: 'tx-badge--buy', dot: 'tx-dot--green' },
+    sell: { label: 'Venta', cls: 'tx-badge--sell', dot: 'tx-dot--red' },
+    transfer_in: { label: 'Recibida', cls: 'tx-badge--transfer-in', dot: 'tx-dot--sky' },
+    transfer_out: { label: 'Enviada', cls: 'tx-badge--transfer-out', dot: 'tx-dot--amber' },
   };
-  const typeLabels = {
-    buy: 'Compra',
-    sell: 'Venta',
-    transfer_in: 'Recibida',
-    transfer_out: 'Enviada',
-  };
-  const colorClass = typeColors[tx.type] ?? 'text-slate-400 bg-slate-400/10';
-  const label = escapeHTML(typeLabels[tx.type] ?? tx.type);
+
+  const config = typeConfig[tx.type] ?? { label: tx.type, cls: 'tx-badge--default', dot: 'tx-dot--default' };
+  const label = escapeHTML(config.label);
   const date = tx.date
     ? new Date(tx.date).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })
     : '—';
+  const animDelay = `animation-delay: ${index * 40}ms`;
 
   return `
-    <article class="flex items-center gap-3 bg-slate-800/50 hover:bg-slate-700/40 transition-colors rounded-xl p-4 border border-slate-700/30"
+    <article class="tx-row group"
+             style="${animDelay}"
              aria-label="${label} de ${escapeHTML(String(tx.balance ?? 0))} ${escapeHTML(tx.symbol ?? '')}">
-      <span class="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0 ${colorClass}">${label}</span>
+
+      <!-- Type badge -->
+      <div class="shrink-0 flex flex-col items-center gap-1.5">
+        <span class="tx-badge ${config.cls}" aria-label="Tipo: ${label}">${label}</span>
+      </div>
+
+      <!-- Main info -->
       <div class="flex-1 min-w-0">
-        <p class="text-white font-medium text-sm">
-          ${escapeHTML(formatNumber(tx.balance ?? 0, 8))} ${escapeHTML(tx.symbol?.toUpperCase() ?? '')}
+        <p class="text-white font-semibold text-sm tabular-nums">
+          ${escapeHTML(formatNumber(tx.balance ?? 0, 8))}
+          <span class="text-slate-400 font-normal">${escapeHTML(tx.symbol?.toUpperCase() ?? '')}</span>
         </p>
-        <p class="text-slate-400 text-xs mt-0.5 truncate">
-          ${escapeHTML(tx.source ?? '—')} · ${escapeHTML(date)}${tx.fees ? ` · Fees: $${escapeHTML(String(tx.fees))}` : ''}
+        <p class="text-slate-500 text-xs mt-1 truncate flex items-center gap-1.5">
+          <span>${escapeHTML(tx.source ?? '—')}</span>
+          <span class="text-slate-700" aria-hidden="true">·</span>
+          <time datetime="${escapeHTML(tx.date ?? '')}">${escapeHTML(date)}</time>
+          ${tx.fees ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="text-slate-500">Fee: $${escapeHTML(String(tx.fees))}</span>` : ''}
         </p>
-        ${tx.notes ? `<p class="text-slate-500 text-xs mt-0.5 italic truncate">${escapeHTML(tx.notes)}</p>` : ''}
+        ${tx.notes ? `<p class="text-slate-600 text-xs mt-1 italic truncate">${escapeHTML(tx.notes)}</p>` : ''}
       </div>
+
+      <!-- Price per unit -->
       <div class="text-right shrink-0">
-        <p class="text-white text-sm font-medium">${tx.price ? formatCurrency(tx.price) : '—'}</p>
-        <p class="text-slate-400 text-xs">precio/unidad</p>
+        <p class="text-white text-sm font-semibold tabular-nums">${tx.price ? formatCurrency(tx.price) : '—'}</p>
+        <p class="text-slate-600 text-xs mt-0.5">precio/u</p>
       </div>
+
+      <!-- Delete button -->
       <button data-delete-tx="${escapeHTML(tx.id)}"
               aria-label="Eliminar transacción del ${escapeHTML(date)}"
-              class="text-slate-600 hover:text-rose-400 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-400 rounded p-1 shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              class="tx-delete-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
           <polyline points="3 6 5 6 21 6"/>
           <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
           <path d="M10 11v6M14 11v6"/>

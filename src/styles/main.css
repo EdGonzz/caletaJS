@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap')
-layer(base);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap') layer(base);
 
 @import "tailwindcss";
 
@@ -19,16 +18,23 @@ layer(base);
   --color-accent-red-dark: #dc2626;
 
   /* Tokens de superficie semánticos */
-  --color-surface: #0f172a;             /* body bg (slate-900) */
-  --color-surface-elevated: #1e293b;     /* cards, glass-panel base */
-  --color-surface-overlay: #151e32;      /* modals */
+  --color-surface: #0f172a;
+  /* body bg (slate-900) */
+  --color-surface-elevated: #1e293b;
+  /* cards, glass-panel base */
+  --color-surface-overlay: #151e32;
+  /* modals */
   --color-surface-hover: rgba(255, 255, 255, 0.05);
 
   /* Tokens de texto semánticos */
-  --color-text-primary: #f8fafc;         /* títulos, valores importantes */
-  --color-text-secondary: #cbd5e1;       /* texto cuerpo */
-  --color-text-muted: #64748b;           /* texto secundario, placeholders */
-  --color-text-accent: #0bd570;          /* texto acentuado */
+  --color-text-primary: #f8fafc;
+  /* títulos, valores importantes */
+  --color-text-secondary: #cbd5e1;
+  /* texto cuerpo */
+  --color-text-muted: #64748b;
+  /* texto secundario, placeholders */
+  --color-text-accent: #0bd570;
+  /* texto acentuado */
 
   /* Bordes */
   --color-border-default: rgba(51, 65, 85, 0.5);
@@ -67,7 +73,10 @@ body {
 }
 
 /* ── Tipografía display para headings ── */
-h1, h2, h3, .font-display {
+h1,
+h2,
+h3,
+.font-display {
   font-family: var(--font-display);
 }
 
@@ -145,8 +154,13 @@ h1, h2, h3, .font-display {
 
 /* ── Skeleton Shimmer ── */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .skeleton-shimmer {
@@ -157,8 +171,17 @@ h1, h2, h3, .font-display {
 
 /* ── Pulse dot animation (live indicator) ── */
 @keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
 }
 
 .pulse-dot {
@@ -171,6 +194,7 @@ h1, h2, h3, .font-display {
     opacity: 0;
     transform: translateY(24px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -242,6 +266,7 @@ h1, h2, h3, .font-display {
 
 /* ── Accesibilidad: Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -270,6 +295,7 @@ h1, h2, h3, .font-display {
     opacity: 0;
     transform: translateY(12px) scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -281,6 +307,7 @@ h1, h2, h3, .font-display {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+
   to {
     opacity: 0;
     transform: translateY(8px) scale(0.96);
@@ -296,3 +323,323 @@ h1, h2, h3, .font-display {
   animation: toast-out 0.22s ease-in forwards;
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   CoinDetails — Hero, Stats, Transaction Timeline
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Hero ── */
+.coin-details-hero {
+  background: linear-gradient(180deg,
+      rgba(11, 213, 112, 0.06) 0%,
+      rgba(15, 23, 42, 0.0) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.coin-hero-glow {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(ellipse 600px 300px at 50% 0%,
+      rgba(11, 213, 112, 0.10) 0%,
+      transparent 70%);
+  pointer-events: none;
+}
+
+.coin-logo-ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(11, 213, 112, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Symbol badge ── */
+.coin-symbol-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: rgba(11, 213, 112, 0.1);
+  border: 1px solid rgba(11, 213, 112, 0.2);
+  border-radius: 9999px;
+  font-family: var(--font-mono);
+}
+
+/* ── Stat Cards ── */
+.coin-stat-card {
+  position: relative;
+  overflow: hidden;
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(51, 65, 85, 0.4);
+  border-radius: 1rem;
+  padding: 1.125rem;
+  transition: border-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+  animation: stat-card-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.coin-stat-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes stat-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.coin-stat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.coin-stat-icon--neutral {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+}
+
+.coin-stat-icon--primary {
+  background: rgba(11, 213, 112, 0.12);
+  color: var(--color-primary);
+}
+
+.coin-stat-icon--green {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+}
+
+.coin-stat-icon--red {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+}
+
+.coin-stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-bottom: 0.375rem;
+}
+
+.coin-stat-value {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #f8fafc;
+  font-family: var(--font-display);
+  line-height: 1.2;
+  margin-bottom: 0.75rem;
+  word-break: break-all;
+}
+
+.coin-stat-value--accent {
+  color: var(--color-primary);
+}
+
+.coin-stat-value--green {
+  color: #34d399;
+}
+
+.coin-stat-value--red {
+  color: #f87171;
+}
+
+/* Bottom accent bar */
+.coin-stat-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(51, 65, 85, 0.5);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.coin-stat-card:hover .coin-stat-bar {
+  transform: scaleX(1);
+}
+
+.coin-stat-bar--accent {
+  background: linear-gradient(90deg, var(--color-primary), rgba(11, 213, 112, 0.3));
+}
+
+.coin-stat-bar--green {
+  background: linear-gradient(90deg, #34d399, rgba(52, 211, 153, 0.3));
+}
+
+.coin-stat-bar--red {
+  background: linear-gradient(90deg, #f87171, rgba(248, 113, 113, 0.3));
+}
+
+/* ── Skeleton row ── */
+.tx-row-skeleton {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 1.25rem;
+  background: rgba(30, 41, 59, 0.35);
+  border: 1px solid rgba(51, 65, 85, 0.3);
+  border-radius: 0.875rem;
+}
+
+/* ── Transaction Rows ── */
+@keyframes tx-row-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(51, 65, 85, 0.35);
+  border-radius: 0.875rem;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  animation: tx-row-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  cursor: default;
+}
+
+.tx-row:hover {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(71, 85, 105, 0.5);
+  transform: translateX(2px);
+}
+
+/* ── Type badges ── */
+.tx-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.tx-badge--buy {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.2);
+}
+
+.tx-badge--sell {
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.2);
+}
+
+.tx-badge--transfer-in {
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.2);
+}
+
+.tx-badge--transfer-out {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.2);
+}
+
+.tx-badge--default {
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+  border-color: rgba(100, 116, 139, 0.2);
+}
+
+/* ── Timeline dots ── */
+.tx-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.tx-dot--green {
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+}
+
+.tx-dot--red {
+  background: #f87171;
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.5);
+}
+
+.tx-dot--sky {
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+.tx-dot--amber {
+  background: #fbbf24;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+}
+
+.tx-dot--default {
+  background: #64748b;
+}
+
+/* ── Delete button ── */
+.tx-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  color: #334155;
+  border-radius: 0.5rem;
+  transition: color 0.15s ease, background 0.15s ease;
+  opacity: 0;
+}
+
+.tx-row:hover .tx-delete-btn {
+  opacity: 1;
+}
+
+.tx-delete-btn:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* ── Empty state ── */
+.tx-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px dashed rgba(51, 65, 85, 0.5);
+  border-radius: 0.875rem;
+  text-align: center;
+}
