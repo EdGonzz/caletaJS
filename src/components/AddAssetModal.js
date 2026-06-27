@@ -354,7 +354,11 @@ const renderInner = () => {
               const sourceName = selectedExchange
                 ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
                 : 'Wallet';
-              const avgPrice = getAverageCostBasis(found.coinId, sourceName);
+              // Primero buscar en el exchange seleccionado; si no hay, buscar en todos
+              let avgPrice = getAverageCostBasis(found.coinId, sourceName);
+              if (avgPrice === 0) {
+                avgPrice = getAverageCostBasis(found.coinId);
+              }
               price = avgPrice > 0 ? avgPrice.toString() : "0";
             } else {
               price = "0";

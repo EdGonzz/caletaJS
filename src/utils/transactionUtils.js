@@ -65,17 +65,20 @@ export const getPortfolioCoins = (source) => {
 };
 
 /**
- * Calcula el precio promedio ponderado de compra de una moneda en un source específico.
+ * Calcula el precio promedio ponderado de compra de una moneda, filtrable por source.
  * Considera solo transacciones de tipo buy y transfer_in (entradas que aumentan el balance).
+ * Si no se especifica source, busca en todas las fuentes.
  * Sirve para pre-fill el precio en Transfer (cost basis heredado).
  * @param {string} coinId
- * @param {string} source
+ * @param {string} [source] - Opcional, filtra por caleta específica
  * @returns {number} Precio promedio ponderado, o 0 si no hay entradas
  */
 export const getAverageCostBasis = (coinId, source) => {
-  const entries = getHoldings().filter(
-    (tx) => tx.coinId === coinId && tx.source === source && (tx.type === 'buy' || tx.type === 'transfer_in')
-  );
+  const entries = getHoldings().filter((tx) => {
+    if (tx.coinId !== coinId) return false;
+    if (source && tx.source !== source) return false;
+    return tx.type === 'buy' || tx.type === 'transfer_in';
+  });
 
   if (entries.length === 0) return 0;
 
