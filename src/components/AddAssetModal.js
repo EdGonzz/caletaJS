@@ -39,6 +39,7 @@ let quantity = "";
 let price = selectedCoin?.current_price?.toString() || "0";
 let date = now();
 let fees = "";
+let networkFee = ""; // Network fee en la moneda (solo Transfer)
 let notes = "";
 let showNotes = false;
 
@@ -127,18 +128,20 @@ const FormView = () => `
           </div>
         </div>
 
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Price Per Coin</label>
-            <button id="use-market-btn" class="text-[10px] text-primary hover:brightness-110 font-semibold transition-colors" aria-label="Usar precio de mercado">Use Market</button>
-          </div>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <span class="text-slate-400 font-medium">$</span>
+        ${activeTab !== 'transfer' ? `
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Price Per Coin</label>
+              <button id="use-market-btn" class="text-[10px] text-primary hover:brightness-110 font-semibold transition-colors" aria-label="Usar precio de mercado">Use Market</button>
             </div>
-            <input id="price-input" type="text" inputmode="decimal" placeholder="0.00" value="${price}" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <span class="text-slate-400 font-medium">$</span>
+              </div>
+              <input id="price-input" type="text" inputmode="decimal" placeholder="0.00" value="${price}" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            </div>
           </div>
-        </div>
+        ` : ''}
       </div>
 
       <!-- Date & Time -->
@@ -167,16 +170,47 @@ const FormView = () => `
           </button>
         </div>
 
-        <div class="space-y-2">
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (Optional)</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <span class="text-slate-400 font-medium text-sm">$</span>
+        ${activeTab !== 'transfer' ? `
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (Optional)</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <span class="text-slate-400 font-medium text-sm">$</span>
+              </div>
+              <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
             </div>
-            <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
+          </div>
+        ` : `
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Network Fee (opcional)</label>
+            <div class="relative">
+              <input id="network-fee-input" type="text" inputmode="decimal" value="${networkFee}" placeholder="0.00"
+                     class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm"
+                     aria-label="Comisión de red en la moneda" />
+              <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <span class="text-xs font-bold text-slate-400">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
+              </div>
+            </div>
+          </div>
+        `}
+      </div>
+
+      ${activeTab === 'transfer' ? `
+        <!-- Destino recibe (auto-calculado) -->
+        <div id="destino-recibe-block" class="p-3 bg-slate-800/30 rounded-xl border border-slate-700/30 ${!quantity ? 'hidden' : ''}">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-400 font-medium">Destino recibe</span>
+            <span id="destino-recibe-value" class="text-sm font-semibold text-white tabular-nums">
+              ${(() => {
+                const q = parseFloat(quantity) || 0;
+                const nf = parseFloat(networkFee) || 0;
+                const dest = Math.max(0, q - nf);
+                return `${dest.toFixed(8)} ${selectedCoin?.symbol?.toUpperCase() ?? ''}`;
+              })()}
+            </span>
           </div>
         </div>
-      </div>
+      ` : ''}
 
       ${activeTab === 'transfer' ? `
         <div class="space-y-2">
@@ -215,7 +249,7 @@ const FormView = () => `
       <div class="p-4 bg-slate-800/60 rounded-xl flex justify-between items-center border border-slate-700/50">
         <div class="flex flex-col">
           <span class="text-xs text-slate-400 font-medium">Total Spent</span>
-          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${formatUsd((parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0))}</span>
+          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${activeTab === 'transfer' ? '—' : formatUsd((parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0))}</span>
         </div>
       </div>
 
@@ -349,6 +383,16 @@ const renderInner = () => {
               image: found.logoUrl,
               current_price: 0, // Sin precio de API en este flujo
             };
+
+            // Auto-seleccionar el exchange con mayor balance
+            if (found.sources && found.sources.length > 0) {
+              const topSource = found.sources.reduce((max, s) => s.balance > max.balance ? s : max, found.sources[0]);
+              const allSources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+              const matchedExchange = allSources.find(ex => (typeof ex === 'string' ? ex : ex.name) === topSource.name);
+              if (matchedExchange) {
+                selectedExchange = matchedExchange;
+              }
+            }
             // Heredar cost basis para Transfer, reset para Sell
             if (activeTab === 'transfer') {
               const sourceName = selectedExchange
@@ -432,6 +476,7 @@ const openModal = async () => {
   price = selectedCoin?.current_price?.toString() || "0";
   date = now();
   fees = "";
+  networkFee = "";
   notes = "";
   showNotes = false;
   destinationExchange = null;
@@ -587,6 +632,7 @@ const wireFormView = () => {
   qtyInput?.addEventListener("input", () => {
     quantity = sanitizeInput(qtyInput);
     updateTotal();
+    _updateDestinoRecibe();
   });
   priceInput?.addEventListener("input", () => {
     price = sanitizeInput(priceInput);
@@ -599,6 +645,14 @@ const wireFormView = () => {
     fees = sanitizeInput(feesInput);
     updateTotal();
   });
+
+  // Network Fee input (solo Transfer)
+  const networkFeeInput = document.getElementById("network-fee-input");
+  networkFeeInput?.addEventListener("input", () => {
+    networkFee = sanitizeInput(networkFeeInput);
+    _updateDestinoRecibe();
+  });
+
   notesTextarea?.addEventListener("input", (e) => {
     notes = e.target.value;
   });
@@ -614,12 +668,22 @@ const wireFormView = () => {
     const errorText = document.getElementById("form-error-text");
     if (errorEl) errorEl.classList.add("hidden");
 
-    if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
-      if (errorEl && errorText) {
-        errorText.textContent = "Por favor completa los campos obligatorios: cantidad, precio y moneda.";
-        errorEl.classList.remove("hidden");
+    if (activeTab === 'transfer') {
+      if (isNaN(parsedQty) || parsedQty <= 0 || !selectedCoin) {
+        if (errorEl && errorText) {
+          errorText.textContent = "Por favor completa los campos obligatorios: cantidad y moneda.";
+          errorEl.classList.remove("hidden");
+        }
+        return;
       }
-      return;
+    } else {
+      if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
+        if (errorEl && errorText) {
+          errorText.textContent = "Por favor completa los campos obligatorios: cantidad, precio y moneda.";
+          errorEl.classList.remove("hidden");
+        }
+        return;
+      }
     }
 
     const sourceName = selectedExchange
@@ -663,6 +727,17 @@ const wireFormView = () => {
     }
 
     if (activeTab === 'transfer') {
+      // Validar network fee < cantidad
+      const parsedNetworkFee = parseFloat(networkFee) || 0;
+      if (parsedNetworkFee >= parsedQty) {
+        if (errorEl && errorText) {
+          errorText.textContent = 'La comisión de red no puede ser mayor o igual a la cantidad enviada.';
+          errorEl.classList.remove('hidden');
+        }
+        return;
+      }
+      const destQuantity = parsedQty - parsedNetworkFee;
+
       // Transfer → 2 entradas atómicas enlazadas por transferId
       const TRANSFER_ID = crypto.randomUUID();
       const destName = typeof destinationExchange === 'string'
@@ -675,16 +750,16 @@ const wireFormView = () => {
         logoUrl: selectedCoin.image || selectedCoin.thumb || '',
         balance: parsedQty, price: parsedPrice, source: sourceName,
         sourceIcon: 'wallet', type: 'transfer_out', transferId: TRANSFER_ID,
-        date, fees: parsedFees, notes,
+        date, fees: 0, networkFee: parsedNetworkFee, notes,
       });
 
-      // Entrada en Caleta B
+      // Entrada en Caleta B (balance = cantidad - networkFee)
       addHolding({
         coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
         logoUrl: selectedCoin.image || selectedCoin.thumb || '',
-        balance: parsedQty, price: parsedPrice, source: destName,
+        balance: destQuantity, price: parsedPrice, source: destName,
         sourceIcon: 'wallet', type: 'transfer_in', transferId: TRANSFER_ID,
-        date, fees: 0,
+        date, fees: 0, networkFee: parsedNetworkFee,
         notes: notes ? `[Recibido desde ${sourceName}] ${notes}` : `Recibido desde ${sourceName}`,
       });
     } else {
@@ -707,6 +782,24 @@ const wireFormView = () => {
 
     closeModal();
   });
+};
+
+// ─── Helper: Update "Destino recibe" display ────────────────────
+const _updateDestinoRecibe = () => {
+  const block = document.getElementById('destino-recibe-block');
+  const valueEl = document.getElementById('destino-recibe-value');
+  if (!block || !valueEl) return;
+
+  const q = parseFloat(quantity) || 0;
+  const nf = parseFloat(networkFee) || 0;
+  const dest = Math.max(0, q - nf);
+
+  if (q > 0) {
+    block.classList.remove('hidden');
+    valueEl.textContent = `${dest.toFixed(8)} ${selectedCoin?.symbol?.toUpperCase() ?? ''}`;
+  } else {
+    block.classList.add('hidden');
+  }
 };
 
 // ─── Wire Exchange View ────────────────────────────────────────────
@@ -789,6 +882,27 @@ const _wireDestinationExchangeView = () => {
         currentView = 'form';
         renderInner();
       }
+    });
+  });
+
+  // Add new exchange → open AddExchangeModal (asigna a destinationExchange)
+  document.getElementById("add-new-exchange-btn")?.addEventListener("click", () => {
+    openAddExchangeModal({
+      onBack: () => {
+        currentView = "destination-exchange";
+        renderInner();
+      },
+      onSave: (exchange) => {
+        destinationExchange = {
+          id: exchange.id,
+          name: exchange.name,
+          image: exchange.image ?? null,
+          url: exchange.url ?? null,
+          description: exchange.url ? new URL(exchange.url).hostname.replace('www.', '') : null,
+        };
+        currentView = "form";
+        renderInner();
+      },
     });
   });
 };

@@ -1,6 +1,6 @@
 // src/pages/CoinDetails.js
-import { escapeHTML, formatCurrency, formatNumber } from '../utils/helpers.js';
-import { getTransactionsByCoin, getNetBalance, deleteTransaction } from '../utils/transactionUtils.js';
+import { escapeHTML, formatCurrency, formatNumber, formatCryptoPrice } from '../utils/helpers.js';
+import { getTransactionsByCoin, getNetBalance, deleteTransaction, getCoinDistribution } from '../utils/transactionUtils.js';
 import { getHoldings } from '../utils/holdingsStorage.js';
 import ConfirmDeleteModal, { openConfirmDeleteModal, initConfirmDeleteModal, cleanupConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
 import sprite from '../assets/sprite.svg';
@@ -111,6 +111,18 @@ const CoinDetails = (params = {}) => {
           </div>
         </section>
 
+        <!-- Distribution by exchange -->
+        <section aria-label="Distribución por caleta" id="distribution-section" class="hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-base font-semibold text-white font-display flex items-center gap-2">
+              <span class="w-1 h-5 rounded-full bg-primary inline-block" aria-hidden="true"></span>
+              Distribución por caleta
+            </h2>
+          </div>
+          <div id="distribution-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          </div>
+        </section>
+
         <!-- Transaction History -->
         <section aria-label="Historial de transacciones">
           <div class="flex items-center justify-between mb-5">
@@ -159,6 +171,7 @@ export const initCoinDetails = async () => {
   if (!coinId) return;
 
   _renderStats(coinId, null);
+  _renderDistribution(coinId);
   _renderTransactions(coinId);
 
   try {
@@ -170,6 +183,7 @@ export const initCoinDetails = async () => {
     const data = await res.json();
     _renderHeader(data);
     _renderStats(coinId, data.market_data?.current_price?.usd ?? null);
+    _renderDistribution(coinId);
     _applyHeroAccent(data.image?.small ?? null);
   } catch (err) {
     console.warn('CoinDetails: fallo en CoinGecko —', err);
@@ -225,7 +239,7 @@ const _renderHeader = (data) => {
   }
 
   const priceEl = document.getElementById('coin-price');
-  if (priceEl) priceEl.textContent = price != null ? formatCurrency(price) : '—';
+  if (priceEl) priceEl.textContent = price != null ? formatCryptoPrice(price) : '—';
 
   const changeEl = document.getElementById('coin-change');
   if (changeEl && change != null) {
@@ -248,6 +262,37 @@ const _renderStats = (coinId, currentPrice) => {
   if (el('stat-value')) el('stat-value').textContent = currentPrice != null ? formatCurrency(balance * currentPrice) : '—';
   if (el('stat-buys')) el('stat-buys').textContent = String(buys);
   if (el('stat-sells')) el('stat-sells').textContent = String(sells);
+  _renderDistribution(coinId);
+};
+
+/** @param {string} coinId */
+const _renderDistribution = (coinId) => {
+  const section = document.getElementById('distribution-section');
+  const list = document.getElementById('distribution-list');
+  if (!section || !list) return;
+
+  const dist = getCoinDistribution(coinId);
+
+  if (dist.length === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+
+  section.classList.remove('hidden');
+  list.innerHTML = dist.map(d => `
+    <div class="flex items-center gap-3 bg-slate-800/40 rounded-xl p-3 border border-slate-700/30">
+      <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
+        ${d.sourceImage
+          ? `<img src="${escapeHTML(d.sourceImage)}" alt="${escapeHTML(d.source)}" class="w-6 h-6 rounded-full object-contain" loading="lazy" />`
+          : `<span class="text-[10px] font-bold text-white uppercase">${escapeHTML(d.source.charAt(0))}</span>`
+        }
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-medium text-white">${escapeHTML(d.source)}</p>
+        <p class="text-xs text-slate-400 tabular-nums">${formatNumber(d.balance, 8)}</p>
+      </div>
+    </div>
+  `).join('');
 };
 
 /** @param {string} coinId */
@@ -313,17 +358,30 @@ const _txRow = (tx, index) => {
           <span class="text-slate-400 font-normal">${escapeHTML(tx.symbol?.toUpperCase() ?? '')}</span>
         </p>
         <p class="text-slate-500 text-xs mt-1 truncate flex items-center gap-1.5">
-          <span>${escapeHTML(tx.source ?? '—')}</span>
+          ${tx.type === 'transfer_in' || tx.type === 'transfer_out'
+            ? `<span class="inline-flex items-center gap-1 text-slate-400">
+                ${tx.type === 'transfer_out'
+                  ? `<span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>
+                     <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
+                     <span class="text-sky-400 font-medium">Destino</span>`
+                  : `<span class="text-sky-400 font-medium">Origen</span>
+                     <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
+                     <span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>`
+                }
+              </span>`
+            : `<span>${escapeHTML(tx.source ?? '—')}</span>`
+          }
           <span class="text-slate-700" aria-hidden="true">·</span>
           <time datetime="${escapeHTML(tx.date ?? '')}">${escapeHTML(date)}</time>
           ${tx.fees ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="text-slate-500">Fee: $${escapeHTML(String(tx.fees))}</span>` : ''}
+          ${tx.networkFee ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="text-slate-500">Network: ${escapeHTML(String(tx.networkFee))}</span>` : ''}
         </p>
         ${tx.notes ? `<p class="text-slate-600 text-xs mt-1 italic truncate">${escapeHTML(tx.notes)}</p>` : ''}
       </div>
 
       <!-- Price per unit -->
       <div class="text-right shrink-0">
-        <p class="text-white text-sm font-semibold tabular-nums">${tx.price ? formatCurrency(tx.price) : '—'}</p>
+        <p class="text-white text-sm font-semibold tabular-nums">${tx.price != null && tx.price > 0 ? formatCryptoPrice(tx.price) : '—'}</p>
         <p class="text-slate-600 text-xs mt-0.5">precio/u</p>
       </div>
 

@@ -5,7 +5,7 @@ import { escapeHTML } from '../utils/helpers.js';
 
 /**
  * Renderiza una fila de moneda del portafolio.
- * @param {{ coinId: string, name: string, symbol: string, logoUrl: string, netBalance: number }} coin
+ * @param {{ coinId: string, name: string, symbol: string, logoUrl: string, netBalance: number, sources: Array<{name: string, image: string, balance: number}> }} coin
  * @param {string} selectedCoinId
  * @returns {string}
  */
@@ -32,7 +32,17 @@ const PortfolioOption = (coin, selectedCoinId) => {
       </div>
       <div class="text-right">
         <p class="text-xs text-slate-300 font-medium">${coin.netBalance.toFixed(8)}</p>
-        <p class="text-xs text-slate-500">disponible</p>
+        <p class="text-xs text-slate-500 mb-1">disponible</p>
+        ${coin.sources && coin.sources.length > 0 ? `
+          <div class="flex flex-wrap gap-1 justify-end">
+            ${coin.sources.map(s => `
+              <span class="inline-flex items-center gap-0.5 text-[10px] text-slate-500 bg-slate-800/60 rounded px-1.5 py-0.5 border border-slate-700/50">
+                ${s.image ? `<img src="${escapeHTML(s.image)}" alt="" class="w-3 h-3 rounded-full" />` : ''}
+                ${escapeHTML(s.name)}
+              </span>
+            `).join('')}
+          </div>
+        ` : ''}
       </div>
     </button>
   `;
