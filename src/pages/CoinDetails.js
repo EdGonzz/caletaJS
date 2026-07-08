@@ -1,5 +1,6 @@
 // src/pages/CoinDetails.js
-import { escapeHTML, formatCurrency, formatNumber, formatCryptoPrice } from '../utils/helpers.js';
+import { escapeHTML } from '../utils/helpers.js';
+import { formatUsd, formatNumber, formatCryptoPrice } from '../utils/formatters.js';
 import { getTransactionsByCoin, getNetBalance, deleteTransaction, getCoinDistribution } from '../utils/transactionUtils.js';
 import { getHoldings } from '../utils/holdingsStorage.js';
 import ConfirmDeleteModal, { openConfirmDeleteModal, initConfirmDeleteModal, cleanupConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
@@ -259,7 +260,7 @@ const _renderStats = (coinId, currentPrice) => {
 
   const el = (id) => document.getElementById(id);
   if (el('stat-balance')) el('stat-balance').textContent = formatNumber(balance, 8);
-  if (el('stat-value')) el('stat-value').textContent = currentPrice != null ? formatCurrency(balance * currentPrice) : '—';
+  if (el('stat-value')) el('stat-value').textContent = currentPrice != null ? formatCryptoPrice(balance * currentPrice) : '—';
   if (el('stat-buys')) el('stat-buys').textContent = String(buys);
   if (el('stat-sells')) el('stat-sells').textContent = String(sells);
   _renderDistribution(coinId);

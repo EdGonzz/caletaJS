@@ -3,7 +3,8 @@ import { storage } from "../utils/storage";
 import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
-import { now, formatPreciseUsd } from "../utils/formatters";
+import { now } from "../utils/formatters";
+import { formatCryptoPrice } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
@@ -53,7 +54,7 @@ const updateTotal = () => {
   const total = q * p + f;
   const totalDisplay = document.getElementById('total-display');
   if (totalDisplay) {
-    totalDisplay.textContent = activeTab === 'transfer' ? '—' : (total > 0 ? formatPreciseUsd(total) : '—');
+    totalDisplay.textContent = activeTab === 'transfer' ? '—' : (total > 0 ? formatCryptoPrice(total) : '—');
   }
 };
 
@@ -253,7 +254,7 @@ const FormView = () => `
           <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${(() => {
     if (activeTab === 'transfer') return '—';
     const total = (parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0);
-    return total > 0 ? formatPreciseUsd(total) : '—';
+    return total > 0 ? formatCryptoPrice(total) : '—';
   })()}</span>
         </div>
       </div>
