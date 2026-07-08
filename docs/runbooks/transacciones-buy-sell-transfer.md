@@ -89,6 +89,7 @@ Clave: `caleta_user_holdings` (array JSON).
   "price": 104000,
   "source": "Binance",
   "sourceIcon": "wallet",
+  "sourceImage": "https://...",
   "type": "buy",
   "date": "2026-06-21T20:00",
   "fees": 2.5,

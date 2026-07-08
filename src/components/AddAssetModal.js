@@ -3,7 +3,7 @@ import { storage } from "../utils/storage";
 import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
-import { now, formatUsd } from "../utils/formatters";
+import { now, formatPreciseUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
@@ -47,13 +47,14 @@ let showNotes = false;
  * Calcula y actualiza el total de la transacción en la UI.
  */
 const updateTotal = () => {
-    const q = parseFloat(quantity) || 0;
-    const p = parseFloat(price) || 0;
-    const f = parseFloat(fees) || 0;
-    const totalDisplay = document.getElementById('total-display');
-    if (totalDisplay) {
-        totalDisplay.textContent = formatUsd(q * p + f);
-    }
+  const q = parseFloat(quantity) || 0;
+  const p = parseFloat(price) || 0;
+  const f = parseFloat(fees) || 0;
+  const total = q * p + f;
+  const totalDisplay = document.getElementById('total-display');
+  if (totalDisplay) {
+    totalDisplay.textContent = activeTab === 'transfer' ? '—' : (total > 0 ? formatPreciseUsd(total) : '—');
+  }
 };
 
 // ─── Tab Button ────────────────────────────────────────────────────
@@ -202,11 +203,11 @@ const FormView = () => `
             <span class="text-xs text-slate-400 font-medium">Destino recibe</span>
             <span id="destino-recibe-value" class="text-sm font-semibold text-white tabular-nums">
               ${(() => {
-                const q = parseFloat(quantity) || 0;
-                const nf = parseFloat(networkFee) || 0;
-                const dest = Math.max(0, q - nf);
-                return `${dest.toFixed(8)} ${selectedCoin?.symbol?.toUpperCase() ?? ''}`;
-              })()}
+      const q = parseFloat(quantity) || 0;
+      const nf = parseFloat(networkFee) || 0;
+      const dest = Math.max(0, q - nf);
+      return `${dest.toFixed(8)} ${selectedCoin?.symbol?.toUpperCase() ?? ''}`;
+    })()}
             </span>
           </div>
         </div>
@@ -219,11 +220,11 @@ const FormView = () => `
                   class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group"
                   aria-label="Seleccionar caleta de destino">
             ${destinationExchange
-              ? destinationExchange.image
-                ? `<img alt="${destinationExchange.name}" class="w-5 h-5 mr-3 rounded-full" src="${destinationExchange.image}" width="20" height="20" loading="lazy" />`
-                : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${destinationExchange.name.charAt(0).toUpperCase()}</div>`
-              : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
-            }
+      ? destinationExchange.image
+        ? `<img alt="${destinationExchange.name}" class="w-5 h-5 mr-3 rounded-full" src="${destinationExchange.image}" width="20" height="20" loading="lazy" />`
+        : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${destinationExchange.name.charAt(0).toUpperCase()}</div>`
+      : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
+    }
             <span class="text-sm font-medium ${destinationExchange ? 'text-slate-200' : 'text-slate-500'}">
               ${destinationExchange?.name ?? 'Seleccionar destino'}
             </span>
@@ -249,7 +250,11 @@ const FormView = () => `
       <div class="p-4 bg-slate-800/60 rounded-xl flex justify-between items-center border border-slate-700/50">
         <div class="flex flex-col">
           <span class="text-xs text-slate-400 font-medium">Total Spent</span>
-          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${activeTab === 'transfer' ? '—' : formatUsd((parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0))}</span>
+          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${(() => {
+    if (activeTab === 'transfer') return '—';
+    const total = (parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0);
+    return total > 0 ? formatPreciseUsd(total) : '—';
+  })()}</span>
         </div>
       </div>
 
@@ -322,16 +327,16 @@ const renderInner = () => {
         inner.innerHTML = CoinPicker([], selectedCoin.id, true);
         // Ensure buttons work even during loading
         initCoinPicker({
-            onBack: () => { currentView = "form"; renderInner(); },
-            onClose: closeModal,
-            onSelect: () => {}, // Not selectable while loading
-            onCoinsUpdate: () => {},
-            currentCoins: [],
-            selectedCoinId: selectedCoin.id
+          onBack: () => { currentView = "form"; renderInner(); },
+          onClose: closeModal,
+          onSelect: () => { }, // Not selectable while loading
+          onCoinsUpdate: () => { },
+          currentCoins: [],
+          selectedCoinId: selectedCoin.id
         });
         getTopCoins().then(newCoins => {
-            coins = new Map(newCoins.map(c => [c.id, c]));
-            renderInner();
+          coins = new Map(newCoins.map(c => [c.id, c]));
+          renderInner();
         });
         return;
       }
@@ -339,32 +344,32 @@ const renderInner = () => {
       const coinsArray = Array.from(coins.values());
       inner.innerHTML = CoinPicker(coinsArray, selectedCoin.id);
       initCoinPicker({
-          onBack: () => { currentView = "form"; renderInner(); },
-          onClose: closeModal,
-          onSelect: async (id) => {
-              // Si la moneda seleccionada viene de búsqueda, podría no tener precio
-              let found = coins.get(id);
-              
-              // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
-              if (!found || !found.current_price) {
-                  const detailedCoin = await getCoin(id);
-                  if (detailedCoin) {
-                      found = detailedCoin;
-                      // Opcionalmente actualizar la lista local para futuras referencias
-                      if (!coins.has(id)) coins.set(id, detailedCoin);
-                  }
-              }
+        onBack: () => { currentView = "form"; renderInner(); },
+        onClose: closeModal,
+        onSelect: async (id) => {
+          // Si la moneda seleccionada viene de búsqueda, podría no tener precio
+          let found = coins.get(id);
 
-              if (found) {
-                  selectedCoin = found;
-                  price = found.current_price?.toString() || "0";
-                  currentView = "form";
-                  renderInner();
-              }
-          },
-          onCoinsUpdate: (newCoins) => { coins = new Map(newCoins.map(c => [c.id, c])); },
-          currentCoins: coinsArray,
-          selectedCoinId: selectedCoin.id
+          // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
+          if (!found || !found.current_price) {
+            const detailedCoin = await getCoin(id);
+            if (detailedCoin) {
+              found = detailedCoin;
+              // Opcionalmente actualizar la lista local para futuras referencias
+              if (!coins.has(id)) coins.set(id, detailedCoin);
+            }
+          }
+
+          if (found) {
+            selectedCoin = found;
+            price = found.current_price?.toString() || "0";
+            currentView = "form";
+            renderInner();
+          }
+        },
+        onCoinsUpdate: (newCoins) => { coins = new Map(newCoins.map(c => [c.id, c])); },
+        currentCoins: coinsArray,
+        selectedCoinId: selectedCoin.id
       });
     } else {
       // Sell / Transfer — PortfolioPicker desde localStorage
@@ -422,53 +427,53 @@ const renderInner = () => {
 const openModal = async () => {
   currentView = "form";
   activeTab = "buy";
-  
+
   // Persistencia: Seleccionar la moneda con más balance si existe
   const holdings = getHoldings();
   if (holdings.length > 0) {
-      // Agrupar por coinId y sumar balances
-      const balances = holdings.reduce((acc, h) => {
-          acc[h.coinId] = (acc[h.coinId] || 0) + (h.balance || 0);
-          return acc;
-      }, {});
-      
-      const topCoinId = Object.entries(balances).sort((a, b) => b[1] - a[1])[0][0];
-      const topHolding = holdings.find(h => h.coinId === topCoinId);
-      
-      if (topHolding) {
-          selectedCoin = {
-              id: topHolding.coinId,
-              name: topHolding.name,
-              symbol: topHolding.symbol,
-              image: topHolding.logoUrl,
-              current_price: topHolding.price
-          };
-      }
+    // Agrupar por coinId y sumar balances
+    const balances = holdings.reduce((acc, h) => {
+      acc[h.coinId] = (acc[h.coinId] || 0) + (h.balance || 0);
+      return acc;
+    }, {});
+
+    const topCoinId = Object.entries(balances).sort((a, b) => b[1] - a[1])[0][0];
+    const topHolding = holdings.find(h => h.coinId === topCoinId);
+
+    if (topHolding) {
+      selectedCoin = {
+        id: topHolding.coinId,
+        name: topHolding.name,
+        symbol: topHolding.symbol,
+        image: topHolding.logoUrl,
+        current_price: topHolding.price
+      };
+    }
   } else {
-      selectedCoin = DEFAULT_COIN;
-      // Fetch asíncrono seguro del precio real de Bitcoin
-      getCoin('bitcoin').then(coinData => {
-          // Evitar sobrescribir si el usuario ya cambió a otra moneda en el intermedio
-          if (coinData?.current_price && selectedCoin.id === 'bitcoin') {
-              const priceInput = document.getElementById('price-input');
-              // Solo actualizar si el usuario no ha digitado un valor personalizado aún
-              if (priceInput && (priceInput.value === "0" || priceInput.value === "")) {
-                  selectedCoin = coinData;
-                  price = coinData.current_price.toString();
-                  priceInput.value = price;
-                  updateTotal();
-              }
-          }
-      });
+    selectedCoin = DEFAULT_COIN;
+    // Fetch asíncrono seguro del precio real de Bitcoin
+    getCoin('bitcoin').then(coinData => {
+      // Evitar sobrescribir si el usuario ya cambió a otra moneda en el intermedio
+      if (coinData?.current_price && selectedCoin.id === 'bitcoin') {
+        const priceInput = document.getElementById('price-input');
+        // Solo actualizar si el usuario no ha digitado un valor personalizado aún
+        if (priceInput && (priceInput.value === "0" || priceInput.value === "")) {
+          selectedCoin = coinData;
+          price = coinData.current_price.toString();
+          priceInput.value = price;
+          updateTotal();
+        }
+      }
+    });
   }
 
   // Persistencia de Exchange: Cargar el último usado o el primero disponible
   const lastExchange = storage.get('caleta_last_exchange');
   if (lastExchange) {
-      selectedExchange = lastExchange;
+    selectedExchange = lastExchange;
   } else {
-      const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
-      selectedExchange = _sources[0] ?? null;
+    const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+    selectedExchange = _sources[0] ?? null;
   }
 
   // Reset form state on open
@@ -562,22 +567,22 @@ const wireFormView = () => {
 
     // Si el precio es 0 o no disponible, intentar fetch
     if (!marketPrice) {
-        const fresh = await getCoin(clickedCoinId);
-        // Validar que el usuario no haya cambiado de moneda en el transcurso
-        if (selectedCoin.id === clickedCoinId && fresh?.current_price) {
-            selectedCoin = fresh;
-            marketPrice = fresh.current_price;
-        }
+      const fresh = await getCoin(clickedCoinId);
+      // Validar que el usuario no haya cambiado de moneda en el transcurso
+      if (selectedCoin.id === clickedCoinId && fresh?.current_price) {
+        selectedCoin = fresh;
+        marketPrice = fresh.current_price;
+      }
     }
 
     // Validar consistencia de la selección antes de pintar en el DOM
     if (selectedCoin.id === clickedCoinId && marketPrice) {
-        price = marketPrice.toString();
-        const priceInput = document.getElementById("price-input");
-        if (priceInput) priceInput.value = price;
-        updateTotal();
+      price = marketPrice.toString();
+      const priceInput = document.getElementById("price-input");
+      if (priceInput) priceInput.value = price;
+      updateTotal();
     } else if (selectedCoin.id === clickedCoinId) {
-        showWarning("No se pudo obtener el precio de mercado actual.");
+      showWarning("No se pudo obtener el precio de mercado actual.");
     }
   });
 
@@ -615,8 +620,8 @@ const wireFormView = () => {
     // Conservar solo el primer punto decimal y remover los duplicados subsiguientes
     const firstPointIndex = val.indexOf(".");
     if (firstPointIndex !== -1) {
-      val = val.substring(0, firstPointIndex + 1) + 
-            val.substring(firstPointIndex + 1).replace(/\./g, "");
+      val = val.substring(0, firstPointIndex + 1) +
+        val.substring(firstPointIndex + 1).replace(/\./g, "");
     }
 
     inputEl.value = val;
@@ -690,6 +695,10 @@ const wireFormView = () => {
       ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
       : 'Wallet';
 
+    const sourceImage = selectedExchange && typeof selectedExchange !== 'string'
+      ? selectedExchange.image || null
+      : null;
+
     // Validación de overselling (Sell y Transfer) — por-exchange (ADR-025)
     if (activeTab === 'sell' || activeTab === 'transfer') {
       const netBalance = getNetBalance(selectedCoin.id, sourceName);
@@ -744,12 +753,16 @@ const wireFormView = () => {
         ? destinationExchange
         : destinationExchange.name;
 
+      const destImage = destinationExchange && typeof destinationExchange !== 'string'
+        ? destinationExchange.image || null
+        : null;
+
       // Salida de Caleta A
       addHolding({
         coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
         logoUrl: selectedCoin.image || selectedCoin.thumb || '',
         balance: parsedQty, price: parsedPrice, source: sourceName,
-        sourceIcon: 'wallet', type: 'transfer_out', transferId: TRANSFER_ID,
+        sourceIcon: 'wallet', sourceImage, type: 'transfer_out', transferId: TRANSFER_ID,
         date, fees: 0, networkFee: parsedNetworkFee, notes,
       });
 
@@ -758,7 +771,7 @@ const wireFormView = () => {
         coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
         logoUrl: selectedCoin.image || selectedCoin.thumb || '',
         balance: destQuantity, price: parsedPrice, source: destName,
-        sourceIcon: 'wallet', type: 'transfer_in', transferId: TRANSFER_ID,
+        sourceIcon: 'wallet', sourceImage: destImage, type: 'transfer_in', transferId: TRANSFER_ID,
         date, fees: 0, networkFee: parsedNetworkFee,
         notes: notes ? `[Recibido desde ${sourceName}] ${notes}` : `Recibido desde ${sourceName}`,
       });
@@ -768,15 +781,15 @@ const wireFormView = () => {
         coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
         logoUrl: selectedCoin.image || selectedCoin.thumb || '',
         balance: parsedQty, price: parsedPrice, source: sourceName,
-        sourceIcon: 'wallet', type: activeTab, date, fees: parsedFees, notes,
+        sourceIcon: 'wallet', sourceImage, type: activeTab, date, fees: parsedFees, notes,
       });
     }
 
     // Guardar último exchange seleccionado para persistencia
     if (selectedExchange) {
-        storage.set('caleta_last_exchange', selectedExchange);
+      storage.set('caleta_last_exchange', selectedExchange);
     }
-    
+
     // Notify other components (HoldingsTable, StatsGrid)
     window.dispatchEvent(new CustomEvent('holdings-updated', { detail: {} }));
 

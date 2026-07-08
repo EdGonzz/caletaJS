@@ -118,7 +118,7 @@ export const getCoinDistribution = (coinId) => {
     if (delta === 0) continue;
 
     if (!map.has(tx.source)) {
-      map.set(tx.source, { source: tx.source, sourceImage: tx.logoUrl || '', balance: 0 });
+      map.set(tx.source, { source: tx.source, sourceImage: tx.sourceImage || tx.logoUrl || '', balance: 0 });
     }
     map.get(tx.source).balance += delta;
   }

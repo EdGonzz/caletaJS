@@ -283,9 +283,9 @@ const _renderDistribution = (coinId) => {
     <div class="flex items-center gap-3 bg-slate-800/40 rounded-xl p-3 border border-slate-700/30">
       <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center shrink-0 overflow-hidden">
         ${d.sourceImage
-          ? `<img src="${escapeHTML(d.sourceImage)}" alt="${escapeHTML(d.source)}" class="w-6 h-6 rounded-full object-contain" loading="lazy" />`
-          : `<span class="text-[10px] font-bold text-white uppercase">${escapeHTML(d.source.charAt(0))}</span>`
-        }
+      ? `<img src="${escapeHTML(d.sourceImage)}" alt="${escapeHTML(d.source)}" class="w-6 h-6 rounded-full object-contain" loading="lazy" />`
+      : `<span class="text-[10px] font-bold text-white uppercase">${escapeHTML(d.source.charAt(0))}</span>`
+    }
       </div>
       <div class="flex-1 min-w-0">
         <p class="text-sm font-medium text-white">${escapeHTML(d.source)}</p>
@@ -359,18 +359,18 @@ const _txRow = (tx, index) => {
         </p>
         <p class="text-slate-500 text-xs mt-1 truncate flex items-center gap-1.5">
           ${tx.type === 'transfer_in' || tx.type === 'transfer_out'
-            ? `<span class="inline-flex items-center gap-1 text-slate-400">
+      ? `<span class="inline-flex items-center gap-1 text-slate-400">
                 ${tx.type === 'transfer_out'
-                  ? `<span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>
+        ? `<span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>
                      <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
                      <span class="text-sky-400 font-medium">Destino</span>`
-                  : `<span class="text-sky-400 font-medium">Origen</span>
+        : `<span class="text-sky-400 font-medium">Origen</span>
                      <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
                      <span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>`
-                }
+      }
               </span>`
-            : `<span>${escapeHTML(tx.source ?? '—')}</span>`
-          }
+      : `<span>${escapeHTML(tx.source ?? '—')}</span>`
+    }
           <span class="text-slate-700" aria-hidden="true">·</span>
           <time datetime="${escapeHTML(tx.date ?? '')}">${escapeHTML(date)}</time>
           ${tx.fees ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="text-slate-500">Fee: $${escapeHTML(String(tx.fees))}</span>` : ''}
