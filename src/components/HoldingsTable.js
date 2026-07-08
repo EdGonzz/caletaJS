@@ -53,6 +53,10 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
         sparkPath: "M0,15 Q25,25 50,10 T100,5",
         sparkColor: "#64748b",
         isFlat: (tx.symbol ?? '').toLowerCase().includes("usd") || (tx.symbol ?? '').toLowerCase().includes("eur"),
+        // P&L tracking — método de costo promedio (average cost)
+        _totalInvested: 0,
+        _totalUnitsAcquired: 0,
+        costBasis: 0,
       };
     }
 
@@ -67,11 +71,27 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
     // Balance calculation (regla centralizada — ver ADR-028)
     acc[key].balance += getBalanceDelta(tx);
 
+    // Costo promedio: acumula inversión en entradas (buy / transfer_in)
+    if (tx.type === 'buy' || tx.type === 'transfer_in') {
+      acc[key]._totalInvested += (tx.balance ?? 0) * (tx.price ?? 0);
+      acc[key]._totalUnitsAcquired += (tx.balance ?? 0);
+    }
+
     return acc;
   }, {});
 
-  // Return only assets with a positive balance
-  return Object.values(aggregated).filter(h => h.balance > 0);
+  // Calcular costBasis con método de costo promedio y limpiar campos internos
+  const holdings = Object.values(aggregated).filter(h => h.balance > 0);
+  holdings.forEach(h => {
+    const avgCostPerUnit = h._totalUnitsAcquired > 0
+      ? h._totalInvested / h._totalUnitsAcquired
+      : 0;
+    h.costBasis = avgCostPerUnit * h.balance;
+    delete h._totalInvested;
+    delete h._totalUnitsAcquired;
+  });
+
+  return holdings;
 };
 
 /**
@@ -693,12 +713,15 @@ export const initHoldingsTable = () => {
         data = data.map(asset => {
           const market = markets.find(m => m.id === asset.id);
           if (market) {
+            // `price_change_percentage_24h` puede ser null en coins sin suficiente
+            // historial — usamos ?? 0 para evitar NaN en StatsGrid y AssetRow.
+            const change24h = market.price_change_percentage_24h ?? 0;
             return {
               ...asset,
-              price: market.current_price,
-              change24h: market.price_change_percentage_24h,
-              value: asset.balance * market.current_price,
-              sparkColor: market.price_change_percentage_24h >= 0 ? "#0bd570" : "#ef4444",
+              price: market.current_price ?? asset.price,
+              change24h,
+              value: asset.balance * (market.current_price ?? asset.price),
+              sparkColor: change24h >= 0 ? "#0bd570" : "#ef4444",
             };
           }
           return { ...asset, value: asset.balance * asset.price };

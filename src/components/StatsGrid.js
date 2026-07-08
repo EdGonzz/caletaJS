@@ -15,19 +15,30 @@ const renderSkeletons = () => {
 };
 
 const renderCards = (holdings = [], usingCachedPrices = false) => {
-  const totalBalance = holdings.reduce((acc, curr) => acc + curr.value, 0);
+  const totalBalance = holdings.reduce((acc, curr) => acc + (curr.value ?? 0), 0);
 
+  // Promedio ponderado del cambio 24h. Se usa `?? 0` para que coins sin dato
+  // (change24h === null de la API) no contaminen el cálculo con NaN.
   const totalChange24h = totalBalance > 0
-    ? holdings.reduce((acc, curr) => acc + (curr.change24h * curr.value), 0) / totalBalance
+    ? holdings.reduce((acc, curr) => acc + ((curr.change24h ?? 0) * (curr.value ?? 0)), 0) / totalBalance
     : 0;
 
   const formatChangeValue = totalBalance > 0
     ? `${totalChange24h >= 0 ? '+' : ''}${formatUsd(totalBalance * (totalChange24h / 100))}`
     : formatUsd(0);
 
-  const topMover = holdings.length > 0
-    ? [...holdings].sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h))[0]
+  // Solo considera coins con dato de cambio válido para el Top Mover.
+  const holdingsWithChange = holdings.filter(h => h.change24h != null && isFinite(h.change24h));
+  const topMover = holdingsWithChange.length > 0
+    ? [...holdingsWithChange].sort((a, b) => Math.abs(b.change24h) - Math.abs(a.change24h))[0]
     : null;
+
+  // P&L Total: ganancia/pérdida real vs costo base promedio
+  const totalCostBasis = holdings.reduce((acc, h) => acc + (h.costBasis ?? 0), 0);
+  const totalPnL = totalBalance - totalCostBasis;
+  const totalPnLPct = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0;
+  const isPnLPositive = totalPnL >= 0;
+  const hasCostBasis = totalCostBasis > 0;
 
   const cards = [
     {
@@ -60,14 +71,24 @@ const renderCards = (holdings = [], usingCachedPrices = false) => {
       `,
     },
     {
-      title: "Total Assets",
-      value: holdings.length.toString(),
-      description: "Unique coins in wallet",
-      iconLabel: "Chart Area Line",
-      icon: "chart-area-line",
-      extra: `
+      title: "P&L Total",
+      value: hasCostBasis
+        ? `${isPnLPositive ? '+' : ''}${formatUsd(totalPnL)}`
+        : formatUsd(0),
+      badge: hasCostBasis ? formatPercent(totalPnLPct) : '',
+      description: hasCostBasis
+        ? `vs. costo base ${formatUsd(totalCostBasis)}`
+        : "Agrega activos para ver tu P&L",
+      iconLabel: isPnLPositive ? "Trending Up" : "Trending Down",
+      icon: hasCostBasis ? (isPnLPositive ? "trending-up" : "trending-down") : "",
+      extra: hasCostBasis ? `
         <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
-          <div class="h-full w-full bg-gradient-to-r from-blue-500 to-primary rounded-full"></div>
+          <div class="${isPnLPositive ? 'bg-primary shadow-[0_0_10px_#0bd570]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'} h-full rounded-full transition-all duration-500"
+               style="width: ${Math.min(Math.abs(totalPnLPct), 100)}%"></div>
+        </div>
+      ` : `
+        <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div class="bg-slate-700 h-full w-0 rounded-full"></div>
         </div>
       `,
     },
@@ -96,6 +117,7 @@ const renderCards = (holdings = [], usingCachedPrices = false) => {
 
   return cards.map((card) => StatCard(card)).join("");
 };
+
 
 export const initStatsGrid = () => {
   const container = document.getElementById("stats-grid-container");

@@ -6,10 +6,13 @@ import { getHoldings } from './holdingsStorage.js';
 import { getCoinHistory } from './getCoinHistory.js';
 import { DEFAULT_SOURCE } from './sources.js';
 import { ApiError, ErrorType } from './errors.js';
+import { getBalanceDelta } from './transactionUtils.js';
 
 /**
  * Agrega holdings crudos por coinId, sumando balances cross-exchange.
- * Replica la lógica de buy/sell de HoldingsTable.aggregateHoldings().
+ * Usa getBalanceDelta() como regla centralizada de balance (ADR-028) para
+ * que los tipos 'buy', 'sell', 'transfer_in', 'transfer_out' se manejen
+ * de forma consistente con el resto de la aplicación.
  *
  * @param {Array} holdings - Array de holdings crudos
  * @returns {{ coinId: string, name: string, symbol: string, balance: number }[]}
@@ -19,17 +22,18 @@ const aggregateForHistory = (holdings = []) => {
   const map = new Map();
 
   for (const h of holdings) {
+    const delta = getBalanceDelta(h);
+    if (delta === 0) continue;
+
     const existing = map.get(h.coinId);
     if (existing) {
-      if (h.type === 'buy' || h.type === 'transfer') existing.balance += h.balance ?? 0;
-      if (h.type === 'sell') existing.balance -= h.balance ?? 0;
+      existing.balance += delta;
     } else {
-      const initialBalance = (h.type === 'buy' || h.type === 'transfer') ? (h.balance ?? 0) : -(h.balance ?? 0);
       map.set(h.coinId, {
         coinId: h.coinId,
         name: h.name ?? h.coinId,
         symbol: h.symbol ?? '',
-        balance: initialBalance,
+        balance: delta,
       });
     }
   }
