@@ -1,5 +1,5 @@
 import StatCard from "./StatCard";
-import { formatUsd, formatPercent } from "../utils/formatters";
+import { formatUsd, formatPercent, formatCryptoPrice } from "../utils/formatters";
 
 const StatsGrid = () => {
   return `
@@ -87,7 +87,7 @@ const renderCards = (holdings = [], usingCachedPrices = false) => {
             <div class="flex items-center gap-1.5">
               <span class="text-sm font-bold text-white truncate">${topMover.name}</span>
             </div>
-            <span class="text-xs text-slate-400">${formatUsd(topMover.price ?? 0)}</span>
+            <span class="text-xs text-slate-400">${formatCryptoPrice(topMover.price ?? 0)}</span>
           </div>
         </div>
       ` : "",
