@@ -1,5 +1,7 @@
 // src/utils/transactionUtils.js
 import { getHoldings, removeHolding } from './holdingsStorage.js';
+import { getSource } from './sources.js';
+
 
 /**
  * Retorna el cambio neto en balance que produce una transacción.
@@ -46,6 +48,7 @@ export const getNetBalance = (coinId, source) =>
  */
 export const getPortfolioCoins = (source) => {
   const map = new Map();
+  const allSources = getSource();
 
   for (const tx of getHoldings()) {
     if (source && tx.source !== source) continue;
@@ -67,7 +70,9 @@ export const getPortfolioCoins = (source) => {
     if (srcIndex >= 0) {
       entry.sources[srcIndex].balance += getBalanceDelta(tx);
     } else {
-      entry.sources.push({ name: tx.source, image: tx.logoUrl || '', balance: getBalanceDelta(tx) });
+      const foundSource = allSources.find(s => (typeof s === 'string' ? s : s.name) === tx.source);
+      const sourceImage = (foundSource && typeof foundSource !== 'string' ? foundSource.image : '') || '';
+      entry.sources.push({ name: tx.source, image: sourceImage, balance: getBalanceDelta(tx) });
     }
   }
 

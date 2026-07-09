@@ -128,14 +128,33 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
   /** @type {Map<string, number>} */
   const portfolioByDate = new Map();
 
-  aggregated.forEach(({ coinId, balance }, i) => {
-    const startDate = startDateByCoin.get(coinId);
+  aggregated.forEach(({ coinId }, i) => {
+    // 1. Filtrar y ordenar transacciones de esta moneda cronológicamente
+    const coinTx = holdings.filter(h => h.coinId === coinId);
+    const sortedTx = [...coinTx].sort((a, b) => {
+      const dateA = a.date || a.createdAt || '';
+      const dateB = b.date || b.createdAt || '';
+      return dateA.localeCompare(dateB);
+    });
 
-    // Deduplicar precios por fecha (el último punto del día gana)
-    // y omitir fechas anteriores a cuando el usuario adquirió la coin.
-    // Para intradía (timestamps UNIX), agrupar por fecha YYYY-MM-DD.
-    // Para diario (YYYY-MM-DD), usar la fecha como clave directamente.
-    /** @type {Map<string, number>} */
+    // 2. Helper para obtener el balance acumulado de esta moneda a un tiempo dado
+    const getBalanceAt = (timeKey) => {
+      let accum = 0;
+      for (const tx of sortedTx) {
+        const txTime = tx.date || tx.createdAt || '';
+        if (isIntraday) {
+          const txTs = Math.floor(new Date(txTime).getTime() / 1000);
+          if (txTs <= timeKey) accum += getBalanceDelta(tx);
+        } else {
+          const txDateStr = txTime.split('T')[0];
+          if (txDateStr <= timeKey) accum += getBalanceDelta(tx);
+        }
+      }
+      return accum;
+    };
+
+    // 3. Agrupar y deduplicar precios de CoinGecko por fecha/hora
+    /** @type {Map<string|number, number>} */
     const priceByDate = new Map();
     for (const { time, value } of histories[i]) {
       let alignedTime = time;
@@ -143,22 +162,60 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
         const interval = days <= 1 ? 300 : 3600;
         alignedTime = Math.round(time / interval) * interval;
       }
-
-      const dateStr = isIntraday
-        ? new Date(alignedTime * 1000).toISOString().split('T')[0]
-        : alignedTime;
-
-      if (startDate && dateStr < startDate) continue;
       priceByDate.set(alignedTime, value);
     }
 
-    for (const [timeKey, price] of priceByDate) {
-      portfolioByDate.set(timeKey, (portfolioByDate.get(timeKey) ?? 0) + balance * price);
+    // 4. Determinar la primera fecha/punto en el que la moneda tuvo balance > 0
+    const sortedTimeKeys = [...priceByDate.keys()].sort((a, b) => 
+      isIntraday ? Number(a) - Number(b) : String(a).localeCompare(String(b))
+    );
+
+    let firstActiveTimeKey = null;
+    for (const tk of sortedTimeKeys) {
+      if (getBalanceAt(tk) > 0) {
+        firstActiveTimeKey = tk;
+        break;
+      }
+    }
+
+    // 5. Calcular el precio ponderado de compra del primer día para alineación
+    let firstDayOverridePrice = null;
+    if (firstActiveTimeKey !== null) {
+      const targetDateStr = isIntraday
+        ? new Date(Number(firstActiveTimeKey) * 1000).toISOString().split('T')[0]
+        : String(firstActiveTimeKey);
+
+      const dayBuyTxs = sortedTx.filter(tx => {
+        const txTime = tx.date || tx.createdAt || '';
+        const txDateStr = txTime.split('T')[0];
+        return txDateStr === targetDateStr && getBalanceDelta(tx) > 0;
+      });
+
+      if (dayBuyTxs.length > 0) {
+        const totalInvested = dayBuyTxs.reduce((sum, tx) => sum + (tx.balance ?? 0) * (tx.price ?? 0), 0);
+        const totalQty = dayBuyTxs.reduce((sum, tx) => sum + (tx.balance ?? 0), 0);
+        if (totalQty > 0) {
+          firstDayOverridePrice = totalInvested / totalQty;
+        }
+      }
+    }
+
+    // 6. Sumar al valor total del portafolio por cada punto del tiempo
+    for (const [timeKey, marketPrice] of priceByDate) {
+      const currentBal = getBalanceAt(timeKey);
+      if (currentBal <= 0) continue; // Si no tenía balance en este punto, no aporta valor
+
+      let finalPrice = marketPrice;
+      if (timeKey === firstActiveTimeKey && firstDayOverridePrice !== null) {
+        finalPrice = firstDayOverridePrice;
+      }
+
+      portfolioByDate.set(timeKey, (portfolioByDate.get(timeKey) ?? 0) + currentBal * finalPrice);
     }
   });
 
   return [...portfolioByDate.entries()]
-    .sort(([a], [b]) => isIntraday ? a - b : a.localeCompare(b))
+    .sort(([a], [b]) => isIntraday ? Number(a) - Number(b) : String(a).localeCompare(String(b)))
     .map(([time, value]) => ({ time, value }));
 };
 
