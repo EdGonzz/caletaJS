@@ -8,7 +8,7 @@ import { formatCryptoPrice } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
-import { showWarning } from "./ErrorToast.js";
+import { showWarning, showError } from "./ErrorToast.js";
 import { PortfolioPicker, initPortfolioPicker } from './PortfolioPicker.js';
 import { getPortfolioCoins, getNetBalance, getAverageCostBasis } from '../utils/transactionUtils.js';
 
@@ -259,15 +259,10 @@ const FormView = () => `
         </div>
       </div>
 
-      <!-- Error message (announced by screen readers) -->
-      <div id="form-error" class="hidden px-4 py-3 mb-4 bg-red-400/10 border border-red-400/30 rounded-xl" role="alert">
-        <p id="form-error-text" class="text-red-400 text-sm font-medium"></p>
-      </div>
-
       <!-- Submit -->
       <button
         id="submit-transaction-btn"
-        class="w-full py-4 bg-primary hover:brightness-110 text-slate-900 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl active:scale-[0.99] transition-all duration-200 text-base btn-press"
+        class="w-full py-4 mt-4 bg-primary hover:brightness-110 text-slate-900 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl active:scale-[0.99] transition-all duration-200 text-base btn-press"
         aria-label="Agregar transacción"
       >
         Add Transaction
@@ -378,16 +373,26 @@ const renderInner = () => {
       initPortfolioPicker({
         onBack: () => { currentView = 'form'; renderInner(); },
         onClose: closeModal,
-        onSelect: (coinId) => {
+        onSelect: async (coinId) => {
           const coins = getPortfolioCoins();
           const found = coins.find((c) => c.coinId === coinId);
           if (found) {
+            let currentPrice = 0;
+            try {
+              const detailedCoin = await getCoin(coinId);
+              if (detailedCoin && detailedCoin.current_price) {
+                currentPrice = detailedCoin.current_price;
+              }
+            } catch (err) {
+              console.error("Error al obtener precio de la moneda:", err);
+            }
+
             selectedCoin = {
               id: found.coinId,
               name: found.name,
               symbol: found.symbol,
               image: found.logoUrl,
-              current_price: 0, // Sin precio de API en este flujo
+              current_price: currentPrice,
             };
 
             // Auto-seleccionar el exchange con mayor balance
@@ -399,7 +404,7 @@ const renderInner = () => {
                 selectedExchange = matchedExchange;
               }
             }
-            // Heredar cost basis para Transfer, reset para Sell
+            // Heredar cost basis para Transfer, usar precio de mercado para Sell
             if (activeTab === 'transfer') {
               const sourceName = selectedExchange
                 ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
@@ -411,7 +416,7 @@ const renderInner = () => {
               }
               price = avgPrice > 0 ? avgPrice.toString() : "0";
             } else {
-              price = "0";
+              price = currentPrice > 0 ? currentPrice.toString() : "0";
             }
             currentView = 'form';
             renderInner();
@@ -669,25 +674,14 @@ const wireFormView = () => {
     const parsedPrice = parseFloat(price);
     const parsedFees = parseFloat(fees) || 0;
 
-    // Ocultar error previo
-    const errorEl = document.getElementById("form-error");
-    const errorText = document.getElementById("form-error-text");
-    if (errorEl) errorEl.classList.add("hidden");
-
     if (activeTab === 'transfer') {
       if (isNaN(parsedQty) || parsedQty <= 0 || !selectedCoin) {
-        if (errorEl && errorText) {
-          errorText.textContent = "Por favor completa los campos obligatorios: cantidad y moneda.";
-          errorEl.classList.remove("hidden");
-        }
+        showWarning("Por favor completa los campos obligatorios: cantidad y moneda.");
         return;
       }
     } else {
       if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
-        if (errorEl && errorText) {
-          errorText.textContent = "Por favor completa los campos obligatorios: cantidad, precio y moneda.";
-          errorEl.classList.remove("hidden");
-        }
+        showWarning("Por favor completa los campos obligatorios: cantidad, precio y moneda.");
         return;
       }
     }
@@ -704,11 +698,7 @@ const wireFormView = () => {
     if (activeTab === 'sell' || activeTab === 'transfer') {
       const netBalance = getNetBalance(selectedCoin.id, sourceName);
       if (parsedQty > netBalance) {
-        if (errorEl && errorText) {
-          errorText.textContent =
-            `Balance insuficiente. Disponible: ${netBalance.toFixed(8)} ${selectedCoin.symbol.toUpperCase()}`;
-          errorEl.classList.remove('hidden');
-        }
+        showError(`Balance insuficiente. Disponible: ${netBalance.toFixed(8)} ${selectedCoin.symbol.toUpperCase()}`);
         return;
       }
     }
@@ -719,20 +709,14 @@ const wireFormView = () => {
         ? destinationExchange
         : destinationExchange.name;
       if (sourceName === destName) {
-        if (errorEl && errorText) {
-          errorText.textContent = 'La caleta de destino debe ser distinta a la caleta de origen.';
-          errorEl.classList.remove('hidden');
-        }
+        showWarning('La caleta de destino debe ser distinta a la caleta de origen.');
         return;
       }
     }
 
     // Validación de caleta destino en Transfer
     if (activeTab === 'transfer' && !destinationExchange) {
-      if (errorEl && errorText) {
-        errorText.textContent = 'Selecciona una caleta de destino para la transferencia.';
-        errorEl.classList.remove('hidden');
-      }
+      showWarning('Selecciona una caleta de destino para la transferencia.');
       return;
     }
 
@@ -740,10 +724,7 @@ const wireFormView = () => {
       // Validar network fee < cantidad
       const parsedNetworkFee = parseFloat(networkFee) || 0;
       if (parsedNetworkFee >= parsedQty) {
-        if (errorEl && errorText) {
-          errorText.textContent = 'La comisión de red no puede ser mayor o igual a la cantidad enviada.';
-          errorEl.classList.remove('hidden');
-        }
+        showWarning('La comisión de red no puede ser mayor o igual a la cantidad enviada.');
         return;
       }
       const destQuantity = parsedQty - parsedNetworkFee;
