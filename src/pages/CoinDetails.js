@@ -1,7 +1,7 @@
 // src/pages/CoinDetails.js
 import { escapeHTML } from '../utils/helpers.js';
 import { formatUsd, formatNumber, formatCryptoPrice } from '../utils/formatters.js';
-import { getTransactionsByCoin, getNetBalance, deleteTransaction, getCoinDistribution } from '../utils/transactionUtils.js';
+import { getTransactionsByCoin, getNetBalance, getBalanceDelta, deleteTransaction, getCoinDistribution } from '../utils/transactionUtils.js';
 import { getHoldings } from '../utils/holdingsStorage.js';
 import ConfirmDeleteModal, { openConfirmDeleteModal, initConfirmDeleteModal, cleanupConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
 import sprite from '../assets/sprite.svg';
@@ -88,25 +88,27 @@ const CoinDetails = (params = {}) => {
               <div class="coin-stat-bar coin-stat-bar--accent" aria-hidden="true"></div>
             </article>
 
-            <article class="coin-stat-card group" aria-label="Compras y transferencias recibidas">
+            <article class="coin-stat-card group" aria-label="Total de entradas recibidas">
               <div class="coin-stat-icon coin-stat-icon--green" aria-hidden="true">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
                 </svg>
               </div>
-              <p class="coin-stat-label">Compras + Recibidas</p>
+              <p class="coin-stat-label">Total Entradas</p>
               <p id="stat-buys" class="coin-stat-value coin-stat-value--green">—</p>
+              <p id="stat-buys-sub" class="text-[10px] text-slate-500 mt-1 hidden"></p>
               <div class="coin-stat-bar coin-stat-bar--green" aria-hidden="true"></div>
             </article>
 
-            <article class="coin-stat-card group" aria-label="Ventas y transferencias enviadas">
+            <article class="coin-stat-card group" aria-label="Total de salidas enviadas más comisiones">
               <div class="coin-stat-icon coin-stat-icon--red" aria-hidden="true">
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                   <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
                 </svg>
               </div>
-              <p class="coin-stat-label">Ventas + Enviadas</p>
+              <p class="coin-stat-label">Total Salidas</p>
               <p id="stat-sells" class="coin-stat-value coin-stat-value--red">—</p>
+              <p id="stat-sells-sub" class="text-[10px] text-slate-500 mt-1 hidden"></p>
               <div class="coin-stat-bar coin-stat-bar--red" aria-hidden="true"></div>
             </article>
           </div>
@@ -255,14 +257,42 @@ const _renderHeader = (data) => {
 const _renderStats = (coinId, currentPrice) => {
   const txs = getTransactionsByCoin(coinId);
   const balance = getNetBalance(coinId);
-  const buys = txs.filter((t) => t.type === 'buy' || t.type === 'transfer_in').length;
-  const sells = txs.filter((t) => t.type === 'sell' || t.type === 'transfer_out').length;
+
+  const symbol = txs[0]?.symbol?.toUpperCase() ?? '';
+  const totalIns = txs
+    .filter((t) => t.type === 'buy' || t.type === 'transfer_in')
+    .reduce((sum, t) => sum + (t.balance ?? 0), 0);
+  const totalOuts = txs
+    .filter((t) => t.type === 'sell' || t.type === 'transfer_out')
+    .reduce((sum, t) => sum + (t.balance ?? 0), 0);
+  const totalFees = txs
+    .filter((t) => t.type === 'sell' || t.type === 'transfer_out')
+    .reduce((sum, t) => sum + (t.fees ?? 0), 0);
 
   const el = (id) => document.getElementById(id);
-  if (el('stat-balance')) el('stat-balance').textContent = formatNumber(balance, 8);
-  if (el('stat-value')) el('stat-value').textContent = currentPrice != null ? formatCryptoPrice(balance * currentPrice) : '—';
-  if (el('stat-buys')) el('stat-buys').textContent = String(buys);
-  if (el('stat-sells')) el('stat-sells').textContent = String(sells);
+  if (el('stat-balance')) {
+    el('stat-balance').textContent = `${formatNumber(balance, 8)} ${symbol}`.trim();
+  }
+  if (el('stat-value')) {
+    el('stat-value').textContent = currentPrice != null ? formatCryptoPrice(balance * currentPrice) : '—';
+  }
+  if (el('stat-buys')) {
+    el('stat-buys').textContent = `+${formatNumber(totalIns, 8)} ${symbol}`.trim();
+  }
+  if (el('stat-sells')) {
+    el('stat-sells').textContent = `−${formatNumber(totalOuts + totalFees, 8)} ${symbol}`.trim();
+  }
+
+  const sellsSubEl = el('stat-sells-sub');
+  if (sellsSubEl) {
+    if (totalFees > 0) {
+      sellsSubEl.textContent = `Comisión: ${formatNumber(totalFees, 8)} ${symbol}`.trim();
+      sellsSubEl.classList.remove('hidden');
+    } else {
+      sellsSubEl.classList.add('hidden');
+    }
+  }
+
   _renderDistribution(coinId);
 };
 
@@ -318,16 +348,28 @@ const _renderTransactions = (coinId) => {
     return;
   }
 
+  // Sort chronologically to compute running balance
+  const chronological = [...txs].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const runningBalances = new Map();
+  let running = 0;
+  for (const tx of chronological) {
+    running += getBalanceDelta(tx);
+    runningBalances.set(tx.id, running);
+  }
+
+  const symbol = txs[0]?.symbol?.toUpperCase() ?? '';
+
   if (countEl) countEl.textContent = `${txs.length} transacción${txs.length !== 1 ? 'es' : ''}`;
-  txList.innerHTML = txs.map((tx, i) => _txRow(tx, i)).join('');
+
+  txList.innerHTML = txs.map((tx, i) => _txRow(tx, i, runningBalances.get(tx.id), symbol)).join('');
 
   txList.querySelectorAll('[data-delete-tx]').forEach((btn) => {
     btn.addEventListener('click', () => _handleDeleteTx(btn.dataset.deleteTx, coinId));
   });
 };
 
-/** @param {Object} tx @param {number} index @returns {string} */
-const _txRow = (tx, index) => {
+/** @param {Object} tx @param {number} index @param {number} [runningBalance] @param {string} [coinSymbol] @returns {string} */
+const _txRow = (tx, index, runningBalance, coinSymbol) => {
   const typeConfig = {
     buy: { label: 'Compra', cls: 'tx-badge--buy', dot: 'tx-dot--green' },
     sell: { label: 'Venta', cls: 'tx-badge--sell', dot: 'tx-dot--red' },
@@ -337,44 +379,53 @@ const _txRow = (tx, index) => {
 
   const config = typeConfig[tx.type] ?? { label: tx.type, cls: 'tx-badge--default', dot: 'tx-dot--default' };
   const label = escapeHTML(config.label);
+  const symbol = escapeHTML(coinSymbol ?? tx.symbol?.toUpperCase() ?? '');
   const date = tx.date
     ? new Date(tx.date).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' })
     : '—';
   const animDelay = `animation-delay: ${index * 40}ms`;
 
+  // Delta neto (Fase 2.1)
+  const delta = getBalanceDelta(tx);
+  const deltaSign = delta >= 0 ? '+' : '';
+  const deltaCls = delta >= 0 ? 'tx-delta--positive' : 'tx-delta--negative';
+
   return `
     <article class="tx-row group"
              style="${animDelay}"
-             aria-label="${label} de ${escapeHTML(String(tx.balance ?? 0))} ${escapeHTML(tx.symbol ?? '')}">
+             aria-label="${label} de ${escapeHTML(String(tx.balance ?? 0))} ${symbol}">
 
-      <!-- Type badge -->
-      <div class="shrink-0 flex flex-col items-center gap-1.5">
+      <!-- Type badge + delta -->
+      <div class="tx-badge-col">
         <span class="tx-badge ${config.cls}" aria-label="Tipo: ${label}">${label}</span>
+        <span class="tx-delta ${deltaCls}" aria-label="Impacto neto: ${deltaSign}${formatNumber(delta, 8)} ${symbol}">
+          ${deltaSign}${formatNumber(delta, 8)}
+        </span>
       </div>
 
       <!-- Main info -->
       <div class="flex-1 min-w-0">
         <p class="text-white font-semibold text-sm tabular-nums">
           ${escapeHTML(formatNumber(tx.balance ?? 0, 8))}
-          <span class="text-slate-400 font-normal">${escapeHTML(tx.symbol?.toUpperCase() ?? '')}</span>
+          <span class="text-slate-400 font-normal">${symbol}</span>
         </p>
         <p class="text-slate-500 text-xs mt-1 truncate flex items-center gap-1.5">
           ${tx.type === 'transfer_in' || tx.type === 'transfer_out'
       ? `<span class="inline-flex items-center gap-1 text-slate-400">
                 ${tx.type === 'transfer_out'
-        ? `<span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>
+         ? `<span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>
                      <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
                      <span class="text-sky-400 font-medium">Destino</span>`
-        : `<span class="text-sky-400 font-medium">Origen</span>
+         : `<span class="text-sky-400 font-medium">Origen</span>
                      <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
                      <span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>`
-      }
+       }
               </span>`
       : `<span>${escapeHTML(tx.source ?? '—')}</span>`
     }
           <span class="text-slate-700" aria-hidden="true">·</span>
           <time datetime="${escapeHTML(tx.date ?? '')}">${escapeHTML(date)}</time>
-          ${tx.fees ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="text-slate-500">Fee: $${escapeHTML(String(tx.fees))}</span>` : ''}
+          ${tx.fees ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="tx-fee-currency">Fee: ${escapeHTML(String(tx.fees))} ${symbol} <span class="tx-fee-tooltip" title="Esta comisión se deduce del balance de la moneda" aria-label="Ayuda sobre la comisión" tabindex="0" role="tooltip">?</span></span>` : ''}
           ${tx.networkFee ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="text-slate-500">Network: ${escapeHTML(String(tx.networkFee))}</span>` : ''}
         </p>
         ${tx.notes ? `<p class="text-slate-600 text-xs mt-1 italic truncate">${escapeHTML(tx.notes)}</p>` : ''}
@@ -385,6 +436,14 @@ const _txRow = (tx, index) => {
         <p class="text-white text-sm font-semibold tabular-nums">${tx.price != null && tx.price > 0 ? formatCryptoPrice(tx.price) : '—'}</p>
         <p class="text-slate-600 text-xs mt-0.5">precio/u</p>
       </div>
+
+      <!-- Running balance (Fase 2.3) -->
+      ${runningBalance != null ? `
+      <div class="tx-balance-column text-right shrink-0">
+        <p class="text-white text-sm font-semibold tabular-nums font-mono">${formatNumber(runningBalance, 8)}</p>
+        <p class="text-slate-600 text-xs mt-0.5">${symbol}</p>
+      </div>
+      ` : ''}
 
       <!-- Delete button -->
       <button data-delete-tx="${escapeHTML(tx.id)}"

@@ -11,9 +11,18 @@ import { getSource } from './sources.js';
  * @returns {number}
  */
 export const getBalanceDelta = (tx) => {
-  if (tx.type === 'buy' || tx.type === 'transfer_in') return tx.balance ?? 0;
-  if (tx.type === 'sell' || tx.type === 'transfer_out') return -(tx.balance ?? 0);
-  return 0;
+  const delta = tx.type === 'buy' || tx.type === 'transfer_in'
+    ? (tx.balance ?? 0)
+    : tx.type === 'sell' || tx.type === 'transfer_out'
+      ? -(tx.balance ?? 0)
+      : 0;
+
+  // Restar fees: el fee se descuenta del balance de la moneda
+  if (tx.fees && (tx.type === 'sell' || tx.type === 'transfer_out')) {
+    return delta - (tx.fees ?? 0);
+  }
+
+  return delta;
 };
 
 /**
