@@ -3,8 +3,7 @@ import { storage } from "../utils/storage";
 import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
-import { now } from "../utils/formatters";
-import { formatCryptoPrice } from "../utils/formatters";
+import { now, formatPreciseUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, getHoldings } from "../utils/holdingsStorage";
 import sprite from "../assets/sprite.svg";
@@ -51,10 +50,22 @@ const updateTotal = () => {
   const q = parseFloat(quantity) || 0;
   const p = parseFloat(price) || 0;
   const f = parseFloat(fees) || 0;
-  const total = q * p + f;
+  
+  let total = 0;
+  if (activeTab === 'buy') {
+    total = q * p + f;
+  } else if (activeTab === 'sell') {
+    total = q * p - f;
+  }
+
   const totalDisplay = document.getElementById('total-display');
   if (totalDisplay) {
-    totalDisplay.textContent = activeTab === 'transfer' ? '—' : (total > 0 ? formatCryptoPrice(total) : '—');
+    totalDisplay.textContent = activeTab === 'transfer' ? '—' : formatPreciseUsd(total);
+  }
+
+  const totalLabel = document.getElementById('total-label');
+  if (totalLabel) {
+    totalLabel.textContent = activeTab === 'sell' ? 'Total Received' : 'Total Spent';
   }
 };
 
@@ -250,11 +261,14 @@ const FormView = () => `
       <!-- Total -->
       <div class="p-4 bg-slate-800/60 rounded-xl flex justify-between items-center border border-slate-700/50">
         <div class="flex flex-col">
-          <span class="text-xs text-slate-400 font-medium">Total Spent</span>
+          <span id="total-label" class="text-xs text-slate-400 font-medium">${activeTab === 'sell' ? 'Total Received' : 'Total Spent'}</span>
           <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${(() => {
     if (activeTab === 'transfer') return '—';
-    const total = (parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0);
-    return total > 0 ? formatCryptoPrice(total) : '—';
+    const q = parseFloat(quantity) || 0;
+    const p = parseFloat(price) || 0;
+    const f = parseFloat(fees) || 0;
+    const total = activeTab === 'buy' ? (q * p + f) : (q * p - f);
+    return formatPreciseUsd(total);
   })()}</span>
         </div>
       </div>
@@ -682,6 +696,14 @@ const wireFormView = () => {
     } else {
       if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
         showWarning("Por favor completa los campos obligatorios: cantidad, precio y moneda.");
+        return;
+      }
+    }
+
+    if (activeTab === 'sell') {
+      const totalReceived = (parsedQty * parsedPrice) - parsedFees;
+      if (totalReceived < 0) {
+        showWarning("La comisión no puede ser mayor al valor total de la venta.");
         return;
       }
     }

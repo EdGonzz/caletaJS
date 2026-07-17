@@ -8,6 +8,15 @@ export const formatUsd = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n);
 
 /**
+ * Formats a number as USD currency with up to 8 decimals to preserve small fractions.
+ *
+ * @param {number} n - The number to format
+ * @returns {string} Formatted currency string
+ */
+export const formatPreciseUsd = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 8 }).format(n);
+
+/**
  * Formats a number as a generic string with variable decimals.
  * 
  * @param {number} n 
