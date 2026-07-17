@@ -53,9 +53,9 @@ const updateTotal = () => {
   
   let total = 0;
   if (activeTab === 'buy') {
-    total = q * p + f;
+    total = q * p + f; // f is in USD
   } else if (activeTab === 'sell') {
-    total = q * p - f;
+    total = Math.max(0, q - f) * p; // f is in crypto (e.g. BTC)
   }
 
   const totalDisplay = document.getElementById('total-display');
@@ -183,7 +183,7 @@ const FormView = () => `
           </button>
         </div>
 
-        ${activeTab !== 'transfer' ? `
+        ${activeTab === 'buy' ? `
           <div class="space-y-2">
             <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (Optional)</label>
             <div class="relative">
@@ -191,6 +191,16 @@ const FormView = () => `
                 <span class="text-slate-400 font-medium text-sm">$</span>
               </div>
               <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
+            </div>
+          </div>
+        ` : activeTab === 'sell' ? `
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (opcional)</label>
+            <div class="relative">
+              <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones en la moneda" />
+              <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <span class="text-xs font-bold text-slate-400">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
+              </div>
             </div>
           </div>
         ` : `
@@ -701,9 +711,8 @@ const wireFormView = () => {
     }
 
     if (activeTab === 'sell') {
-      const totalReceived = (parsedQty * parsedPrice) - parsedFees;
-      if (totalReceived < 0) {
-        showWarning("La comisión no puede ser mayor al valor total de la venta.");
+      if (parsedFees > parsedQty) {
+        showWarning("La comisión no puede ser mayor a la cantidad de monedas vendidas.");
         return;
       }
     }
