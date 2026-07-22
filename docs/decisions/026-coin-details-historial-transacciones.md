@@ -15,8 +15,8 @@
 | Fetch CoinGecko | `fetch()` directo a `/coins/:id` | `apiFetch()` con `process.env.API_URL` + header API key |
 | Delete | `confirm()` nativo | `openConfirmDeleteModal` (componente existente) |
 | Icono delete | SVG inline hardcodeado | `#trash` del sprite |
-| Stats compras | `count(type === 'buy' \|\| type === 'transfer')` | `count(type === 'buy' \|\| type === 'transfer_in')` |
-| Stats ventas | `count(type === 'sell')` | `count(type === 'sell')` (transfer_out no es venta) |
+| Stats compras | `count(type === 'buy' || type === 'transfer')` | `count(type === 'buy')` (v3: excluye transferencias) |
+| Stats ventas | `count(type === 'sell')` | `count(type === 'sell') + comisiones` (v3: excluye transferencias) |
 | Badge transfer_out | No existía (era `sell`) | Ámbar "Transferencia enviada" |
 | Badge transfer_in | No existía (era `transfer`) | Sky "Transferencia recibida" |
 | Cleanup | Sin AbortController | `cleanupCoinDetails()` con abort |
@@ -48,9 +48,9 @@ Cuatro métricas calculadas con `transactionUtils`:
 | Stat | Fuente | Cálculo |
 |---|---|---|
 | Balance total | localStorage | `getNetBalance(coinId)` |
-| Valor actual (USD) | localStorage × API | `balance × currentPrice` (si price disponible) |
-| Compras + Transferencias recibidas | localStorage | `count(type === 'buy' \|\| type === 'transfer_in')` |
-| Ventas | localStorage | `count(type === 'sell')` |
+| Valor actual (USD) | localStorage × API | `balance × currentPrice` (si precio disponible) |
+| Total Entradas | localStorage | `count(type === 'buy')` (se excluyen transferencias para evitar inflar volumen) |
+| Total Salidas | localStorage | `count(type === 'sell') + comisiones` (se excluyen transferencias, solo comisiones reales y de red) |
 
 Las stats se renderizan en dos momentos: inmediatamente (sin valor en USD) y al resolver el fetch (con valor en USD actualizado).
 
@@ -177,7 +177,7 @@ sequenceDiagram
 - **Cleanup correcto:** `AbortController` previene errores al navegar durante fetch.
 - **Notificaciones post-delete:** Dispatch `holdings-updated` mantiene sincronizada la HoldingsTable.
 - **Sprite unificado:** Usa `#trash` del sprite en vez de SVG inline hardcodeado.
-- **Stats correctas:** `transfer_out` no se cuenta como venta. `transfer_in` sí se cuenta en compras.
+- **Stats correctas:** Se excluyen los montos de transferencia de "Total Entradas" y "Total Salidas" para evitar inflar el volumen bruto del portafolio. Las comisiones de red (`networkFee`) de las transferencias sí se acumulan en las salidas (gastos).
 - **Sin bloqueo por API:** Las transacciones se muestran inmediatamente desde localStorage.
 - **Link desde HoldingsTable:** El nombre de cada moneda se convierte en link a `#/coin/:id`.
 

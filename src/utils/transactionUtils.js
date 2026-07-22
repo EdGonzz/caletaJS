@@ -33,7 +33,16 @@ export const getBalanceDelta = (tx) => {
 export const getTransactionsByCoin = (coinId) =>
   getHoldings()
     .filter((tx) => tx.coinId === coinId)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      if (dateA - dateB !== 0) {
+        return dateB - dateA;
+      }
+      if (a.type === 'transfer_in' && b.type === 'transfer_out') return -1;
+      if (a.type === 'transfer_out' && b.type === 'transfer_in') return 1;
+      return 0;
+    });
 
 /**
  * Calcula el balance neto de una moneda, filtrable por source.

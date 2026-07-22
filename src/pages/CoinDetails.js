@@ -257,17 +257,19 @@ const _renderHeader = (data) => {
 const _renderStats = (coinId, currentPrice) => {
   const txs = getTransactionsByCoin(coinId);
   const balance = getNetBalance(coinId);
-
   const symbol = txs[0]?.symbol?.toUpperCase() ?? '';
+
   const totalIns = txs
-    .filter((t) => t.type === 'buy' || t.type === 'transfer_in')
+    .filter((t) => t.type === 'buy')
     .reduce((sum, t) => sum + (t.balance ?? 0), 0);
   const totalOuts = txs
-    .filter((t) => t.type === 'sell' || t.type === 'transfer_out')
+    .filter((t) => t.type === 'sell')
     .reduce((sum, t) => sum + (t.balance ?? 0), 0);
-  const totalFees = txs
-    .filter((t) => t.type === 'sell' || t.type === 'transfer_out')
-    .reduce((sum, t) => sum + (t.fees ?? 0), 0);
+  const totalFees = txs.reduce((sum, t) => {
+    const fee = t.type === 'sell' ? (t.fees ?? 0) : 0;
+    const netFee = t.type === 'transfer_out' ? (t.networkFee ?? 0) : 0;
+    return sum + fee + netFee;
+  }, 0);
 
   const el = (id) => document.getElementById(id);
   if (el('stat-balance')) {
@@ -348,13 +350,27 @@ const _renderTransactions = (coinId) => {
     return;
   }
 
-  // Sort chronologically to compute running balance
-  const chronological = [...txs].sort((a, b) => new Date(a.date) - new Date(b.date));
+  // Sort chronologically to compute running balance per source
+  const chronological = [...txs].sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    if (dateA - dateB !== 0) {
+      return dateA - dateB;
+    }
+    if (a.type === 'transfer_out' && b.type === 'transfer_in') return -1;
+    if (a.type === 'transfer_in' && b.type === 'transfer_out') return 1;
+    return 0;
+  });
+
   const runningBalances = new Map();
-  let running = 0;
+  const sourceBalances = new Map();
   for (const tx of chronological) {
-    running += getBalanceDelta(tx);
-    runningBalances.set(tx.id, running);
+    const src = tx.source;
+    const currentSrcBal = sourceBalances.get(src) || 0;
+    const delta = getBalanceDelta(tx);
+    const newSrcBal = currentSrcBal + delta;
+    sourceBalances.set(src, newSrcBal);
+    runningBalances.set(tx.id, newSrcBal);
   }
 
   const symbol = txs[0]?.symbol?.toUpperCase() ?? '';
@@ -385,10 +401,63 @@ const _txRow = (tx, index, runningBalance, coinSymbol) => {
     : '—';
   const animDelay = `animation-delay: ${index * 40}ms`;
 
-  // Delta neto (Fase 2.1)
+  // Delta neto
   const delta = getBalanceDelta(tx);
   const deltaSign = delta >= 0 ? '+' : '';
   const deltaCls = delta >= 0 ? 'tx-delta--positive' : 'tx-delta--negative';
+
+  // Resolver origen/destino y logos para la visualización del flujo
+  let sourceText = '';
+  if (tx.type === 'transfer_in' || tx.type === 'transfer_out') {
+    let sourceName = tx.source;
+    let sourceImg = tx.sourceImage;
+    let targetName = 'Destino';
+    let targetImg = null;
+
+    if (tx.transferId) {
+      const paired = getHoldings().find(h => h.transferId === tx.transferId && h.id !== tx.id);
+      if (paired) {
+        if (tx.type === 'transfer_out') {
+          targetName = paired.source;
+          targetImg = paired.sourceImage;
+        } else {
+          sourceName = paired.source;
+          sourceImg = paired.sourceImage;
+          targetName = tx.source;
+          targetImg = tx.sourceImage;
+        }
+      }
+    }
+
+    const renderExchangeBadge = (name, img, isTarget) => {
+      const textCls = isTarget ? 'text-sky-400 font-medium' : 'text-amber-400 font-medium';
+      const logoHtml = img 
+        ? `<img src="${escapeHTML(img)}" alt="${escapeHTML(name)}" class="w-3.5 h-3.5 rounded-full object-contain inline shrink-0" loading="lazy" />` 
+        : '';
+      return `
+        <span class="inline-flex items-center gap-1">
+          ${logoHtml}
+          <span class="${textCls}">${escapeHTML(name)}</span>
+        </span>
+      `;
+    };
+
+    sourceText = `
+      <span class="inline-flex items-center gap-1.5 text-slate-400">
+        ${renderExchangeBadge(sourceName, sourceImg, false)}
+        <svg class="w-3 h-3 text-slate-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M5 12h14M13 18l6-6-6-6"/>
+        </svg>
+        ${renderExchangeBadge(targetName, targetImg, true)}
+      </span>
+    `;
+  } else {
+    // Transacción normal (Compra/Venta)
+    const logoHtml = tx.sourceImage 
+      ? `<img src="${escapeHTML(tx.sourceImage)}" alt="${escapeHTML(tx.source)}" class="w-3.5 h-3.5 rounded-full object-contain inline mr-1 shrink-0" loading="lazy" />` 
+      : '';
+    sourceText = `<span class="text-slate-400 font-medium inline-flex items-center">${logoHtml}${escapeHTML(tx.source ?? '—')}</span>`;
+  }
 
   return `
     <article class="tx-row group"
@@ -409,20 +478,8 @@ const _txRow = (tx, index, runningBalance, coinSymbol) => {
           ${escapeHTML(formatNumber(tx.balance ?? 0, 8))}
           <span class="text-slate-400 font-normal">${symbol}</span>
         </p>
-        <p class="text-slate-500 text-xs mt-1 truncate flex items-center gap-1.5">
-          ${tx.type === 'transfer_in' || tx.type === 'transfer_out'
-      ? `<span class="inline-flex items-center gap-1 text-slate-400">
-                ${tx.type === 'transfer_out'
-         ? `<span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>
-                     <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
-                     <span class="text-sky-400 font-medium">Destino</span>`
-         : `<span class="text-sky-400 font-medium">Origen</span>
-                     <svg class="w-3 h-3 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 18l6-6-6-6"/></svg>
-                     <span class="text-amber-400 font-medium">${escapeHTML(tx.source ?? '—')}</span>`
-       }
-              </span>`
-      : `<span>${escapeHTML(tx.source ?? '—')}</span>`
-    }
+        <p class="text-slate-500 text-xs mt-1 truncate flex items-center gap-1.5 flex-wrap">
+          ${sourceText}
           <span class="text-slate-700" aria-hidden="true">·</span>
           <time datetime="${escapeHTML(tx.date ?? '')}">${escapeHTML(date)}</time>
           ${tx.fees ? `<span class="text-slate-700" aria-hidden="true">·</span><span class="tx-fee-currency">Fee: ${escapeHTML(String(tx.fees))} ${symbol} <span class="tx-fee-tooltip" title="Esta comisión se deduce del balance de la moneda" aria-label="Ayuda sobre la comisión" tabindex="0" role="tooltip">?</span></span>` : ''}
@@ -441,7 +498,7 @@ const _txRow = (tx, index, runningBalance, coinSymbol) => {
       ${runningBalance != null ? `
       <div class="tx-balance-column text-right shrink-0">
         <p class="text-white text-sm font-semibold tabular-nums font-mono">${formatNumber(runningBalance, 8)}</p>
-        <p class="text-slate-600 text-xs mt-0.5">${symbol}</p>
+        <p class="text-slate-600 text-xs mt-0.5">en ${escapeHTML(tx.source)}</p>
       </div>
       ` : ''}
 

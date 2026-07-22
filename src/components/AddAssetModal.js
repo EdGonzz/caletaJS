@@ -47,6 +47,8 @@ let showNotes = false;
  * Calcula y actualiza el total de la transacción en la UI.
  */
 const updateTotal = () => {
+  if (activeTab === 'transfer') return;
+  
   const q = parseFloat(quantity) || 0;
   const p = parseFloat(price) || 0;
   const f = parseFloat(fees) || 0;
@@ -269,19 +271,20 @@ const FormView = () => `
       </div>
 
       <!-- Total -->
+      ${activeTab !== 'transfer' ? `
       <div class="p-4 bg-slate-800/60 rounded-xl flex justify-between items-center border border-slate-700/50">
         <div class="flex flex-col">
           <span id="total-label" class="text-xs text-slate-400 font-medium">${activeTab === 'sell' ? 'Total Received' : 'Total Spent'}</span>
           <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${(() => {
-    if (activeTab === 'transfer') return '—';
-    const q = parseFloat(quantity) || 0;
-    const p = parseFloat(price) || 0;
-    const f = parseFloat(fees) || 0;
-    const total = activeTab === 'buy' ? (q * p + f) : (q * p - f);
-    return formatPreciseUsd(total);
-  })()}</span>
+            const q = parseFloat(quantity) || 0;
+            const p = parseFloat(price) || 0;
+            const f = parseFloat(fees) || 0;
+            const total = activeTab === 'buy' ? (q * p + f) : Math.max(0, q - f) * p;
+            return formatPreciseUsd(total);
+          })()}</span>
         </div>
       </div>
+      ` : ''}
 
       <!-- Submit -->
       <button
