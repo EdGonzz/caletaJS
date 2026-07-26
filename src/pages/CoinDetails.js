@@ -5,6 +5,10 @@ import { getTransactionsByCoin, getNetBalance, getBalanceDelta, deleteTransactio
 import { getHoldings } from '../utils/holdingsStorage.js';
 import ConfirmDeleteModal, { openConfirmDeleteModal, initConfirmDeleteModal, cleanupConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
 import sprite from '../assets/sprite.svg';
+import { apiFetch, ApiError, ErrorType } from '../utils/errors.js';
+
+const API_KEY = process.env.API_KEY;
+const API_URL = process.env.API_URL;
 
 /**
  * @param {{ id?: string }} params
@@ -178,17 +182,26 @@ export const initCoinDetails = async () => {
   _renderTransactions(coinId);
 
   try {
-    const res = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${encodeURIComponent(coinId)}` +
-      `?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false`
+    const data = await apiFetch(
+      `${API_URL}/coins/markets?vs_currency=usd&ids=${encodeURIComponent(coinId)}` +
+      `&sparkline=false&price_change_percentage=24h`,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-cg-demo-api-key': API_KEY || '',
+        },
+      }
     );
-    if (!res.ok) throw new Error(`CoinGecko ${res.status}`);
-    const data = await res.json();
-    _renderHeader(data);
-    _renderStats(coinId, data.market_data?.current_price?.usd ?? null);
-    _renderDistribution(coinId);
-    _applyHeroAccent(data.image?.small ?? null);
+    // /coins/markets returns an array — extract first element
+    const coin = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    if (coin) {
+      _renderHeader(coin);
+      _renderStats(coinId, coin.current_price ?? null);
+      _renderDistribution(coinId);
+      _applyHeroAccent(coin.image ?? null);
+    }
   } catch (err) {
+    if (err instanceof ApiError && err.type === ErrorType.ABORT) return;
     console.warn('CoinDetails: fallo en CoinGecko —', err);
     const nameEl = document.getElementById('coin-name');
     if (nameEl) nameEl.textContent = coinId;
@@ -208,14 +221,13 @@ const _applyHeroAccent = (imgSrc) => {
 const _renderHeader = (data) => {
   const name = data.name ?? '';
   const symbol = data.symbol?.toUpperCase() ?? '';
-  const price = data.market_data?.current_price?.usd ?? null;
-  const change = data.market_data?.price_change_percentage_24h ?? null;
+  const price = data.current_price ?? null;
+  const change = data.price_change_percentage_24h ?? null;
   const rank = data.market_cap_rank ?? null;
 
   const logoWrapper = document.getElementById('coin-logo-wrapper');
-  // Preferimos `large` (250×250) > `small` (27×27) para evitar upscaling borroso.
-  // Mostramos a 48×48px CSS — suficiente para el header sin artefactos.
-  const imgSrc = data.image?.large ?? data.image?.small ?? null;
+  // /coins/markets devuelve `image` como string directamente.
+  const imgSrc = data.image ?? null;
   if (logoWrapper && imgSrc) {
     logoWrapper.innerHTML = `
       <div class="coin-logo-ring">

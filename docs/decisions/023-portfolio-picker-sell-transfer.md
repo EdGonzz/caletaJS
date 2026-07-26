@@ -1,7 +1,7 @@
 # ADR-023: PortfolioPicker — Selector desde localStorage para Sell y Transfer
 
-- **Estado:** Aceptada (v2 — extensiones de Transfer)
-- **Fecha:** 2026-06-21 (v1) / 2026-06-23 (v2)
+- **Estado:** Aceptada (v3 — source badges + auto-select exchange)
+- **Fecha:** 2026-06-21 (v1) / 2026-06-23 (v2) / 2026-07-02 (v3)
 - **Contexto:** El flujo de Sell y Transfer en `AddAssetModal` usaba `CoinPicker` (búsqueda en CoinGecko API), permitiendo registrar ventas o transferencias de monedas que el usuario no posee. La v1 reemplazó el picker por uno local. La v2 añade filtro por-exchange, oculta el campo price en Transfer y añade network fee.
 
 ## Contexto
@@ -25,12 +25,13 @@ Se reemplaza el `CoinPicker` (API) por `PortfolioPicker` (localStorage) **única
 
 ```
 src/components/PortfolioPicker.js
-  ├── PortfolioOption(coin, selectedCoinId) → string       # Fila con balance disponible
-  ├── PortfolioPicker(selectedCoinId, sourceFilter) → string      # Shell del view con búsqueda
+  ├── PortfolioOption(coin, selectedCoinId) → string       # Fila con balance disponible + badges de exchange con cantidad
+  ├── PortfolioPicker(selectedCoinId, sourceFilter) → string      # Shell del view con búsqueda (sourceFilter disponible pero no usado en modal)
   └── initPortfolioPicker({ onBack, onClose, onSelect, onSearch }) → void
+      └── onSelect: auto-selecciona el exchange con mayor balance (v3)
 ```
 
-El componente recibe un `sourceFilter` opcional que pasa a `getPortfolioCoins(sourceFilter)`. Si el usuario tiene seleccionada una caleta específica (ej. "Binance"), el picker solo muestra monedas con balance > 0 en Binance.
+El componente recibe un `sourceFilter` opcional que pasa a `getPortfolioCoins(sourceFilter)`. Este parámetro está disponible para consumidores que necesiten filtrar por exchange, pero **no se usa en el modal principal** porque el flujo es Moneda → Exchange → Form.
 
 **Incluye barra de búsqueda local** (idéntica en UX a la de `CoinPicker`):
 - No debounce — los datos son locales, el filtrado es instantáneo.
@@ -39,6 +40,22 @@ El componente recibe un `sourceFilter` opcional que pasa a `getPortfolioCoins(so
 - Si el portafolio está vacío, no muestra la barra de búsqueda (solo el empty state "Sin monedas en tu portafolio").
 
 El callback `onSearch` recibe el término de búsqueda y puede usarse para reiniciar el scroll al tope de la lista. Al escribir en el input, se filtran las filas visibles vía `data-*` attributes, igual que en `SelectExchange`.
+
+### Mejoras de v3 — Source badges y auto-select de exchange
+
+La v3 resuelve la tensión entre "filtrar por exchange" y "el usuario elige moneda primero":
+
+1. **Badges de exchange con cantidad:** Cada fila del PortfolioPicker muestra badges con el nombre
+   del exchange y la cantidad disponible en él (ej. `Binance · 0.5000`, `Kraken · 0.3000`).
+   Los datos vienen del array `sources[]` que devuelve `getPortfolioCoins()`, con
+   `{name, image, balance}` por cada source con balance > 0.
+
+2. **Auto-selección de exchange:** Al seleccionar una moneda, el `onSelect` busca el exchange
+   con mayor balance y lo asigna a `selectedExchange`, evitando el bug donde el cost basis
+   daba 0 porque el exchange seleccionado no tenía la moneda.
+
+Esto hace innecesario el `sourceFilter` en el modal: el usuario ve todas sus monedas, sabe
+en qué exchanges están, y al elegir una el exchange correcto se selecciona solo.
 
 ### Campos del formulario por tab
 
@@ -63,7 +80,9 @@ El callback `onSearch` recibe el término de búsqueda y puede usarse para reini
     // CoinPicker — API de CoinGecko (sin cambios)
   } else {
     // Sell / Transfer → PortfolioPicker — localStorage
-    inner.innerHTML = PortfolioPicker(selectedCoin.id, selectedExchange?.name);
+    // No se pasa sourceFilter porque el usuario elige moneda antes que exchange.
+    // El balance por-exchange se muestra vía badges en cada PortfolioOption.
+    inner.innerHTML = PortfolioPicker(selectedCoin.id);
     initPortfolioPicker({ onBack, onClose, onSelect });
   }
 ```
@@ -111,4 +130,4 @@ El botón "Caleta Destino" abre una vista `destination-exchange` que reutiliza `
 - **ADR-025** (transactionUtils): `getPortfolioCoins(source)` y `getAverageCostBasis(coinId, source)` son dependencias directas.
 
 ---
-*Última actualización: 2026-06-24*
+*Última actualización: 2026-07-02*

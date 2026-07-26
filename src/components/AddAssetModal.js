@@ -134,7 +134,7 @@ const FormView = () => `
       <!-- Quantity + Price -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="space-y-2">
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantity</label>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">${activeTab === 'transfer' ? 'Cantidad a enviar' : 'Quantity'}</label>
           <div class="relative">
             <input id="quantity-input" type="text" inputmode="decimal" placeholder="0.00" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
@@ -438,8 +438,13 @@ const renderInner = () => {
                 : 'Wallet';
               // Primero buscar en el exchange seleccionado; si no hay, buscar en todos
               let avgPrice = getAverageCostBasis(found.coinId, sourceName);
-              if (avgPrice === 0) {
+              if (avgPrice === null || avgPrice === 0) {
                 avgPrice = getAverageCostBasis(found.coinId);
+              }
+              // Si no hay cost basis, fallback al precio de mercado actual
+              if (avgPrice === null || avgPrice === 0) {
+                const marketCoin = await getCoin(found.coinId);
+                avgPrice = marketCoin?.current_price ?? 0;
               }
               price = avgPrice > 0 ? avgPrice.toString() : "0";
             } else {

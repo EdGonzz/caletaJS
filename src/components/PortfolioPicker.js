@@ -39,6 +39,7 @@ const PortfolioOption = (coin, selectedCoinId) => {
               <span class="inline-flex items-center gap-0.5 text-[10px] text-slate-500 bg-slate-800/60 rounded px-1.5 py-0.5 border border-slate-700/50">
                 ${s.image ? `<img src="${escapeHTML(s.image)}" alt="" class="w-3 h-3 rounded-full" />` : ''}
                 ${escapeHTML(s.name)}
+                <span class="text-slate-600">${s.balance.toFixed(4)}</span>
               </span>
             `).join('')}
           </div>

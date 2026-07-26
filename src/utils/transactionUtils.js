@@ -110,7 +110,7 @@ export const getPortfolioCoins = (source) => {
  * Sirve para pre-fill el precio en Transfer (cost basis heredado).
  * @param {string} coinId
  * @param {string} [source] - Opcional, filtra por caleta específica
- * @returns {number} Precio promedio ponderado, o 0 si no hay entradas
+ * @returns {number|null} Precio promedio ponderado, o null si no hay entradas
  */
 export const getAverageCostBasis = (coinId, source) => {
   const entries = getHoldings().filter((tx) => {
@@ -119,7 +119,7 @@ export const getAverageCostBasis = (coinId, source) => {
     return tx.type === 'buy' || tx.type === 'transfer_in';
   });
 
-  if (entries.length === 0) return 0;
+  if (entries.length === 0) return null;
 
   const totalCost = entries.reduce((sum, tx) => sum + (tx.balance ?? 0) * (tx.price ?? 0), 0);
   const totalQty = entries.reduce((sum, tx) => sum + (tx.balance ?? 0), 0);
