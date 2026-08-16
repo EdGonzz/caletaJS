@@ -10,28 +10,30 @@ import { escapeHTML } from '../utils/helpers.js';
  * @returns {string}
  */
 const PortfolioOption = (coin, selectedCoinId) => {
+  const coinName = typeof coin.name === 'string' ? coin.name : '';
+  const coinSymbol = typeof coin.symbol === 'string' ? coin.symbol : '';
   const isSelected = coin.coinId === selectedCoinId;
   return `
     <button
       data-portfolio-coin-id="${escapeHTML(coin.coinId)}"
-      data-coin-name="${escapeHTML(coin.name.toLowerCase())}"
-      data-coin-symbol="${escapeHTML(coin.symbol.toLowerCase())}"
-      aria-label="Seleccionar ${escapeHTML(coin.name)}"
+      data-coin-name="${escapeHTML(coinName.toLowerCase())}"
+      data-coin-symbol="${escapeHTML(coinSymbol.toLowerCase())}"
+      aria-label="Seleccionar ${escapeHTML(coinName)}"
       class="portfolio-coin-row w-full flex items-center justify-between p-3 rounded-xl border transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40
         ${isSelected ? 'border-primary/60 bg-primary/5' : 'border-slate-700 bg-slate-800/40 hover:border-slate-500'}"
     >
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-full shrink-0 overflow-hidden bg-slate-800 flex items-center justify-center">
-          <img src="${escapeHTML(coin.logoUrl ?? '')}" alt="${escapeHTML(coin.name)}"
+          <img src="${escapeHTML(coin.logoUrl ?? '')}" alt="${escapeHTML(coinName)}"
                class="w-7 h-7 object-contain" width="28" height="28" loading="lazy" />
         </div>
         <div class="text-left">
-          <span class="font-bold text-white text-sm">${escapeHTML(coin.name)}</span>
-          <span class="text-xs text-slate-400 font-medium ml-2">${escapeHTML(coin.symbol.toUpperCase())}</span>
+          <span class="font-bold text-white text-sm">${escapeHTML(coinName)}</span>
+          <span class="text-xs text-slate-400 font-medium ml-2">${escapeHTML(coinSymbol.toUpperCase())}</span>
         </div>
       </div>
       <div class="text-right">
-        <p class="text-xs text-slate-300 font-medium">${coin.netBalance.toFixed(8)}</p>
+        <p class="text-xs text-slate-300 font-medium">${(coin.netBalance ?? 0).toFixed(8)}</p>
         <p class="text-xs text-slate-500 mb-1">disponible</p>
         ${coin.sources && coin.sources.length > 0 ? `
           <div class="flex flex-wrap gap-1 justify-end">
@@ -39,7 +41,7 @@ const PortfolioOption = (coin, selectedCoinId) => {
               <span class="inline-flex items-center gap-0.5 text-[10px] text-slate-500 bg-slate-800/60 rounded px-1.5 py-0.5 border border-slate-700/50">
                 ${s.image ? `<img src="${escapeHTML(s.image)}" alt="" class="w-3 h-3 rounded-full" />` : ''}
                 ${escapeHTML(s.name)}
-                <span class="text-slate-600">${s.balance.toFixed(4)}</span>
+                 <span class="text-slate-600">${(s.balance ?? 0).toFixed(4)}</span>
               </span>
             `).join('')}
           </div>

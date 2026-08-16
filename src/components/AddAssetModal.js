@@ -5,11 +5,22 @@ import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatPreciseUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
-import { addHolding, getHoldings } from "../utils/holdingsStorage";
+import { addHolding, addHoldingsBatch, getHoldings } from "../utils/holdingsStorage";
+import { escapeHTML } from "../utils/helpers.js";
 import sprite from "../assets/sprite.svg";
 import { showWarning, showError } from "./ErrorToast.js";
 import { PortfolioPicker, initPortfolioPicker } from './PortfolioPicker.js';
 import { getPortfolioCoins, getNetBalance, getAverageCostBasis } from '../utils/transactionUtils.js';
+
+/** @param {string|null} url @returns {string|null} */
+const safeHostname = (url) => {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return null;
+  }
+};
 
 let coins = new Map();
 
@@ -243,14 +254,26 @@ const FormView = () => `
           <button id="destination-exchange-btn"
                   class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group"
                   aria-label="Seleccionar caleta de destino">
-            ${destinationExchange
-      ? destinationExchange.image
-        ? `<img alt="${destinationExchange.name}" class="w-5 h-5 mr-3 rounded-full" src="${destinationExchange.image}" width="20" height="20" loading="lazy" />`
-        : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${destinationExchange.name.charAt(0).toUpperCase()}</div>`
-      : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`
-    }
+            ${(() => {
+              const destName = typeof destinationExchange === 'string'
+                ? destinationExchange
+                : destinationExchange?.name ?? '';
+              const destImage = typeof destinationExchange === 'object' && destinationExchange !== null
+                ? destinationExchange.image
+                : null;
+
+              return destinationExchange
+                ? destImage
+                  ? `<img alt="${escapeHTML(destName)}" class="w-5 h-5 mr-3 rounded-full" src="${escapeHTML(destImage)}" width="20" height="20" loading="lazy" />`
+                  : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${escapeHTML(destName.charAt(0).toUpperCase())}</div>`
+                : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`;
+            })()}
             <span class="text-sm font-medium ${destinationExchange ? 'text-slate-200' : 'text-slate-500'}">
-              ${destinationExchange?.name ?? 'Seleccionar destino'}
+              ${escapeHTML(
+                typeof destinationExchange === 'string'
+                  ? destinationExchange
+                  : destinationExchange?.name ?? 'Seleccionar destino'
+              )}
             </span>
             <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors ml-auto">
               <use href="${sprite}#chevron-down"></use>
@@ -441,10 +464,9 @@ const renderInner = () => {
               if (avgPrice === null || avgPrice === 0) {
                 avgPrice = getAverageCostBasis(found.coinId);
               }
-              // Si no hay cost basis, fallback al precio de mercado actual
+              // Si no hay cost basis, fallback al precio de mercado actual (ya resuelto)
               if (avgPrice === null || avgPrice === 0) {
-                const marketCoin = await getCoin(found.coinId);
-                avgPrice = marketCoin?.current_price ?? 0;
+                avgPrice = currentPrice;
               }
               price = avgPrice > 0 ? avgPrice.toString() : "0";
             } else {
@@ -466,27 +488,20 @@ const openModal = async () => {
   currentView = "form";
   activeTab = "buy";
 
-  // Persistencia: Seleccionar la moneda con más balance si existe
-  const holdings = getHoldings();
-  if (holdings.length > 0) {
-    // Agrupar por coinId y sumar balances
-    const balances = holdings.reduce((acc, h) => {
-      acc[h.coinId] = (acc[h.coinId] || 0) + (h.balance || 0);
-      return acc;
-    }, {});
-
-    const topCoinId = Object.entries(balances).sort((a, b) => b[1] - a[1])[0][0];
-    const topHolding = holdings.find(h => h.coinId === topCoinId);
-
-    if (topHolding) {
-      selectedCoin = {
-        id: topHolding.coinId,
-        name: topHolding.name,
-        symbol: topHolding.symbol,
-        image: topHolding.logoUrl,
-        current_price: topHolding.price
-      };
-    }
+  // Persistencia: Seleccionar la moneda con más balance neto (usa getBalanceDelta correctamente)
+  const portfolioCoins = getPortfolioCoins();
+  const topCoin = portfolioCoins.reduce(
+    (max, c) => (max === null || c.netBalance > max.netBalance ? c : max),
+    null
+  );
+  if (topCoin) {
+    selectedCoin = {
+      id: topCoin.coinId,
+      name: topCoin.name,
+      symbol: topCoin.symbol,
+      image: topCoin.logoUrl,
+      current_price: 0,
+    };
   } else {
     selectedCoin = DEFAULT_COIN;
     // Fetch asíncrono seguro del precio real de Bitcoin
@@ -707,8 +722,10 @@ const wireFormView = () => {
     const parsedFees = parseFloat(fees) || 0;
 
     if (activeTab === 'transfer') {
-      if (isNaN(parsedQty) || parsedQty <= 0 || !selectedCoin) {
-        showWarning("Por favor completa los campos obligatorios: cantidad y moneda.");
+      if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice <= 0 || !selectedCoin) {
+        showWarning(parsedPrice <= 0 && !isNaN(parsedPrice)
+          ? "No se pudo determinar el precio de la transferencia. Verifica tu conexión e intenta de nuevo."
+          : "Por favor completa los campos obligatorios: cantidad, precio y moneda.");
         return;
       }
     } else {
@@ -778,24 +795,24 @@ const wireFormView = () => {
         ? destinationExchange.image || null
         : null;
 
-      // Salida de Caleta A
-      addHolding({
-        coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
-        logoUrl: selectedCoin.image || selectedCoin.thumb || '',
-        balance: parsedQty, price: parsedPrice, source: sourceName,
-        sourceIcon: 'wallet', sourceImage, type: 'transfer_out', transferId: TRANSFER_ID,
-        date, fees: 0, networkFee: parsedNetworkFee, notes,
-      });
-
-      // Entrada en Caleta B (balance = cantidad - networkFee)
-      addHolding({
-        coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
-        logoUrl: selectedCoin.image || selectedCoin.thumb || '',
-        balance: destQuantity, price: parsedPrice, source: destName,
-        sourceIcon: 'wallet', sourceImage: destImage, type: 'transfer_in', transferId: TRANSFER_ID,
-        date, fees: 0, networkFee: parsedNetworkFee,
-        notes: notes ? `[Recibido desde ${sourceName}] ${notes}` : `Recibido desde ${sourceName}`,
-      });
+      // Transfer atómica — ambas entradas en una sola escritura a localStorage
+      addHoldingsBatch([
+        {
+          coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+          logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+          balance: parsedQty, price: parsedPrice, source: sourceName,
+          sourceIcon: 'wallet', sourceImage, type: 'transfer_out', transferId: TRANSFER_ID,
+          date, fees: 0, networkFee: parsedNetworkFee, notes,
+        },
+        {
+          coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+          logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+          balance: destQuantity, price: parsedPrice, source: destName,
+          sourceIcon: 'wallet', sourceImage: destImage, type: 'transfer_in', transferId: TRANSFER_ID,
+          date, fees: 0, networkFee: parsedNetworkFee,
+          notes: notes ? `[Recibido desde ${sourceName}] ${notes}` : `Recibido desde ${sourceName}`,
+        },
+      ]);
     } else {
       // Buy o Sell normal
       addHolding({
@@ -882,7 +899,7 @@ const wireExchangeView = () => {
           name: exchange.name,
           image: exchange.image ?? null,
           url: exchange.url ?? null,
-          description: exchange.url ? new URL(exchange.url).hostname.replace('www.', '') : null,
+          description: safeHostname(exchange.url),
         };
         currentView = "form";
         renderInner();
@@ -932,7 +949,7 @@ const _wireDestinationExchangeView = () => {
           name: exchange.name,
           image: exchange.image ?? null,
           url: exchange.url ?? null,
-          description: exchange.url ? new URL(exchange.url).hostname.replace('www.', '') : null,
+          description: safeHostname(exchange.url),
         };
         currentView = "form";
         renderInner();

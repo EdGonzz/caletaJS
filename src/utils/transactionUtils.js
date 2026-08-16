@@ -1,5 +1,6 @@
 // src/utils/transactionUtils.js
-import { getHoldings, removeHolding } from './holdingsStorage.js';
+import { getHoldings } from './holdingsStorage.js';
+import { storage } from './storage.js';
 import { getSource } from './sources.js';
 
 
@@ -17,12 +18,7 @@ export const getBalanceDelta = (tx) => {
       ? -(tx.balance ?? 0)
       : 0;
 
-  // Restar fees: el fee se descuenta del balance de la moneda
-  if (tx.fees && (tx.type === 'sell' || tx.type === 'transfer_out')) {
-    return delta - (tx.fees ?? 0);
-  }
-
-  return delta;
+  return delta === 0 ? 0 : delta;
 };
 
 /**
@@ -150,8 +146,9 @@ export const getCoinDistribution = (coinId) => {
 };
 
 /**
- * Elimina una transacción por ID, con cascada para transferencias.
- * Si la transacción tiene 'transferId', también elimina la entrada emparejada (ADR-027).
+ * Elimina transacciones por ID, con cascada para transferencias.
+ * Usa una operación batch atómica (una sola escritura a localStorage).
+ * Si la transacción tiene 'transferId', también elimina todas las entradas con ese transferId (ADR-027).
  * @param {string} txId
  * @returns {boolean}
  */
@@ -160,16 +157,16 @@ export const deleteTransaction = (txId) => {
   const tx = holdings.find(h => h.id === txId);
   if (!tx) return false;
 
-  let idsToRemove = [txId];
+  const idsToRemove = new Set([txId]);
 
-  // Cascade: si es parte de una transferencia, eliminar la pareja
+  // Cascade: si es parte de una transferencia, eliminar todas las entradas con el mismo transferId
   if (tx.transferId) {
-    const paired = holdings.find(
-      h => h.transferId === tx.transferId && h.id !== txId
-    );
-    if (paired) idsToRemove.push(paired.id);
+    holdings.forEach(h => {
+      if (h.transferId === tx.transferId) idsToRemove.add(h.id);
+    });
   }
 
-  idsToRemove.forEach(id => removeHolding(id));
+  const updated = holdings.filter(h => !idsToRemove.has(h.id));
+  storage.set('caleta_user_holdings', updated);
   return true;
 };

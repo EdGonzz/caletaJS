@@ -103,10 +103,10 @@ Transferir 0.1 BTC de Binance a Ledger genera **dos entradas**:
 
 ```json
 // Entrada 1 — Salida de Binance
-{ "type": "transfer_out", "source": "Binance", "balance": 0.1, "price": 30000, "networkFee": 0, "notes": "" }
+{ "id": "uuid-1", "transferId": "tx-c5f8a1b2-...", "type": "transfer_out", "source": "Binance", "balance": 0.1, "price": 30000, "networkFee": 0, "notes": "" }
 
 // Entrada 2 — Llegada a Ledger
-{ "type": "transfer_in", "source": "Ledger", "balance": 0.1, "price": 30000, "networkFee": 0, "notes": "Recibido desde Binance" }
+{ "id": "uuid-2", "transferId": "tx-c5f8a1b2-...", "type": "transfer_in", "source": "Ledger", "balance": 0.1, "price": 30000, "networkFee": 0, "notes": "Recibido desde Binance" }
 ```
 
 ### Ejemplo de transferencia con network fee
@@ -115,10 +115,10 @@ Transferir 1 BTC de Binance a Ledger con fee de 0.001 BTC:
 
 ```json
 // Entrada 1 — Salida de Binance
-{ "type": "transfer_out", "source": "Binance", "balance": 1, "price": 30000, "networkFee": 0.001, "notes": "" }
+{ "id": "uuid-1", "transferId": "tx-c5f8a1b2-...", "type": "transfer_out", "source": "Binance", "balance": 1, "price": 30000, "networkFee": 0.001, "notes": "" }
 
 // Entrada 2 — Llegada a Ledger (recibe 0.999 BTC)
-{ "type": "transfer_in", "source": "Ledger", "balance": 0.999, "price": 30000, "networkFee": 0.001, "notes": "Recibido desde Binance" }
+{ "id": "uuid-2", "transferId": "tx-c5f8a1b2-...", "type": "transfer_in", "source": "Ledger", "balance": 0.999, "price": 30000, "networkFee": 0.001, "notes": "Recibido desde Binance" }
 ```
 
 ---
@@ -133,7 +133,7 @@ Archivo: `src/utils/transactionUtils.js`
 | `getNetBalance(coinId, source?)` | `number` | Balance neto. Sin `source` = global. Con `source` = por caleta. |
 | `getPortfolioCoins(source?)` | `PortfolioCoin[]` | Monedas con balance > 0. Sin `source` = global. Con `source` = por caleta. |
 | `getAverageCostBasis(coinId, source)` | `number \| null` | Costo promedio ponderado en esa caleta. `null` si no hay historial. |
-| `deleteTransaction(txId)` | `Transaction[]` | Elimina por ID (wrapper sobre `removeHolding`). Retorna lista actualizada. |
+| `deleteTransaction(txId)` | `boolean` | Elimina por ID con cascada para transferencias (usa batch atómico). Retorna `true` si se eliminó, `false` si no existía. |
 
 ```javascript
 import {
@@ -189,7 +189,7 @@ Ruta: `#/coin/:id`
 - Si se confirma, llama a `deleteTransaction(tx.id)` (que usa `removeHolding`), re-renderiza la lista y las stats, y dispatcha el evento `holdings-updated` para sincronizar la tabla principal.
 - **La operación es irreversible.**
 
-> ⚠️ **Transferencias:** Si eliminas la entrada `transfer_out` (caleta origen) de una transferencia, la entrada `transfer_in` (caleta destino) queda huérfana. El balance neto de la moneda aumentará incorrectamente. Elimina ambas entradas para revertir una transferencia completa.
+> **Transferencias:** Al eliminar una entrada de transferencia (`transfer_out` o `transfer_in`), `deleteTransaction()` detecta el `transferId` compartido y elimina automáticamente ambas entradas (cascada atómica). No quedan entradas huérfanas. Ver [ADR-027](../decisions/027-transfer-id-enlace-cascada.md).
 
 ---
 
@@ -256,4 +256,4 @@ Si `getAverageCostBasis(coinId, source)` retorna `null`:
 
 ---
 
-*Última actualización: 2026-06-23*
+*Última actualización: 2026-07-25*

@@ -107,41 +107,32 @@ if (activeTab === "transfer") {
   const destQuantity = parsedQty - parsedNetworkFee;
   const TRANSFER_ID = crypto.randomUUID(); // Para cascade delete (ADR-027)
 
-  // Salida del source
-  addHolding({
-    coinId,
-    name,
-    symbol,
-    logoUrl,
-    balance: parsedQty,
-    price: costBasis,
-    source: sourceName,
-    type: "transfer_out",
-    transferId: TRANSFER_ID,
-    networkFee: parsedNetworkFee,
-    date,
-    fees: 0,
-    notes,
-  });
-
-  // Entrada en destino
-  addHolding({
-    coinId,
-    name,
-    symbol,
-    logoUrl,
-    balance: destQuantity, // parsedQty - networkFee
-    price: costBasis, // mismo cost basis per-unit
-    source: destName,
-    type: "transfer_in",
-    transferId: TRANSFER_ID,
-    networkFee: parsedNetworkFee,
-    date,
-    fees: 0,
-    notes: notes
-      ? `[Recibido desde ${sourceName}] ${notes}`
-      : `Recibido desde ${sourceName}`,
-  });
+  // Transfer atómica — ambas entradas en una sola escritura
+  addHoldingsBatch([
+    {
+      coinId, name, symbol, logoUrl,
+      balance: parsedQty,
+      price: costBasis,
+      source: sourceName,
+      type: "transfer_out",
+      transferId: TRANSFER_ID,
+      networkFee: parsedNetworkFee,
+      date, fees: 0, notes,
+    },
+    {
+      coinId, name, symbol, logoUrl,
+      balance: destQuantity,
+      price: costBasis,
+      source: destName,
+      type: "transfer_in",
+      transferId: TRANSFER_ID,
+      networkFee: parsedNetworkFee,
+      date, fees: 0,
+      notes: notes
+        ? `[Recibido desde ${sourceName}] ${notes}`
+        : `Recibido desde ${sourceName}`,
+    },
+  ]);
 }
 ```
 
@@ -187,8 +178,7 @@ sequenceDiagram
     TU-->>M: 30000
     M->>M: Validar: destino != origen ✓
     M->>M: Validar: networkFee < quantity ✓
-    M->>LS: addHolding({ type:'transfer_out', transferId:'tx-abc', source:'Binance', balance:1, price:30000, networkFee:0.001 })
-    M->>LS: addHolding({ type:'transfer_in', transferId:'tx-abc', source:'Ledger', balance:0.999, price:30000, networkFee:0.001 })
+    M->>LS: addHoldingsBatch([{ transfer_out }, { transfer_in }]) — atómico
     M->>window: dispatchEvent('holdings-updated')
     window->>HT: Re-agrega holdings
     HT->>HT: Binance: -1 transfer_out = 0 BTC
@@ -212,7 +202,7 @@ sequenceDiagram
 
 - **Requiere actualizar todos los consumidores de tipos:** `aggregateHoldings()`, `getNetBalance()`, `getPortfolioCoins()`, `CoinDetails._txRow()` y `_renderStats()` deben manejar los dos nuevos tipos. Donde antes había 3 tipos (`buy`, `sell`, `transfer`), ahora hay 4 (`buy`, `sell`, `transfer_out`, `transfer_in`).
 - **Doble escritura:** Una transferencia genera 2 entradas en localStorage.
-- **Sin rollback:** Si `addHolding` falla en la segunda escritura, la primera ya quedó guardada. Extremadamente improbable en localStorage pero no manejado.
+- **Escritura atómica vía `addHoldingsBatch`:** Ambas entradas se persisten en una sola operación de localStorage (`addHoldingsBatch` en `holdingsStorage.js`). No hay riesgo de que quede persistida solo una mitad si la escritura falla.
 - **Cost basis imperfecto:** El promedio ponderado es una aproximación. El método exacto (FIFO/LIFO/HIFO por lotes) requeriría tracking individual de lotes de compra, lo cual es over-engineering para un simulador.
 
 ## Alternativas Consideradas
@@ -234,4 +224,4 @@ sequenceDiagram
 
 ---
 
-_Última actualización: 2026-06-24_
+_Última actualización: 2026-07-25_
