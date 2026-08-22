@@ -160,4 +160,7 @@ Esto se determina simplemente revisando si `tx.transferId` existe al abrir el mo
 - **ADR-025** (transactionUtils): `deleteTransaction()` se actualiza con la lógica de cascade. `removeHolding()` es la función de borrado subyacente (resuelve la deuda técnica de la v1).
 
 ---
-*Última actualización: 2026-06-24*
+
+> **Errata (2026-08-16):** La implementación del cascade evolucionó en el commit `0be04a5`: en vez de `idsToRemove.forEach(id => removeHolding(id))`, `deleteTransaction()` ahora filtra en memoria y escribe una sola vez con `storage.set('caleta_user_holdings', updated)`. La negativa "removeHolding llamado N veces" ya no aplica — ahora es una única escritura atómica (testeado en W1).
+
+*Última actualización: 2026-08-16*

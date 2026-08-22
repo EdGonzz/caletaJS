@@ -198,6 +198,18 @@ describe('deleteTransaction', () => {
     assert.strictEqual(after[0].coinId, 'solana');
   });
 
+  test('cascada: escribe una sola vez (batch atómico)', () => {
+    setupHoldings([...transferHoldings]);
+    let writeCount = 0;
+    const originalSet = storage.set;
+    storage.set = (...args) => { writeCount++; originalSet(...args); };
+
+    deleteTransaction('tx-out');
+
+    assert.strictEqual(writeCount, 1, 'storage.set debe llamarse exactamente 1 vez');
+    storage.set = originalSet;
+  });
+
   test('ID no encontrado: retorna false', () => {
     setupHoldings([...sampleHoldings]);
     const result = deleteTransaction('no-existe');

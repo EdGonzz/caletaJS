@@ -155,4 +155,6 @@ Deuda técnica resuelta: la v1 reconocía que había que exportar la clave como 
 
 ---
 
-_Última actualización: 2026-06-24_
+> **Errata (2026-08-16):** La v2 de `deleteTransaction()` ya no es un wrapper sobre `removeHolding()`. En el commit `0be04a5` (transferencia atómica), `deleteTransaction()` pasó a usar `storage.set('caleta_user_holdings', updated)` directamente para el batch atómico de cascada (ver ADR-027). `removeHolding()` sigue existiendo en `holdingsStorage.js` para otros usos.
+
+_Última actualización: 2026-08-16_

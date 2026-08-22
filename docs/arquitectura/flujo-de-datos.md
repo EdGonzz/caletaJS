@@ -332,7 +332,7 @@ sequenceDiagram
         CD->>CD: coin-name.textContent = coinId (fallback local)
     end
 
-    Note over CD: Al eliminar: deleteTransaction() → removeHolding()
+    Note over CD: Al eliminar: deleteTransaction() → storage.set (batch atómico)
     Note over CD: dispatchEvent('holdings-updated') para sincronizar HoldingsTable
 ```
 

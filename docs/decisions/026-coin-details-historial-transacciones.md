@@ -86,7 +86,7 @@ const _handleDeleteTx = (txId, coinId) => {
     title: 'Eliminar transacción',
     message: '¿Eliminar esta transacción? Esta acción no se puede deshacer.',
     onConfirm: () => {
-      deleteTransaction(txId); // → removeHolding(txId)
+      deleteTransaction(txId); // → cascada atómica (storage.set)
       _renderTransactions(coinId);
       _renderStats(coinId, null);
       window.dispatchEvent(new CustomEvent('holdings-updated'));

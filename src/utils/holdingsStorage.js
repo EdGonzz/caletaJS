@@ -20,7 +20,7 @@ export const addHolding = (holding) => {
     ...holding,
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString()
-};
+  };
 
   const updated = [...holdings, newHolding];
   storage.set(HOLDINGS_KEY, updated);

@@ -32,8 +32,8 @@ export const getTransactionsByCoin = (coinId) =>
     .sort((a, b) => {
       const dateA = new Date(a.date);
       const dateB = new Date(b.date);
-      if (dateA - dateB !== 0) {
-        return dateB - dateA;
+      if (dateA.getTime() !== dateB.getTime()) {
+        return dateB.getTime() - dateA.getTime();
       }
       if (a.type === 'transfer_in' && b.type === 'transfer_out') return -1;
       if (a.type === 'transfer_out' && b.type === 'transfer_in') return 1;
@@ -117,8 +117,15 @@ export const getAverageCostBasis = (coinId, source) => {
 
   if (entries.length === 0) return null;
 
-  const totalCost = entries.reduce((sum, tx) => sum + (tx.balance ?? 0) * (tx.price ?? 0), 0);
-  const totalQty = entries.reduce((sum, tx) => sum + (tx.balance ?? 0), 0);
+  const totalCost = entries.reduce((sum, tx) => {
+    const bal = Number(tx.balance);
+    const px = Number(tx.price);
+    return sum + (Number.isFinite(bal) ? bal : 0) * (Number.isFinite(px) ? px : 0);
+  }, 0);
+  const totalQty = entries.reduce((sum, tx) => {
+    const bal = Number(tx.balance);
+    return sum + (Number.isFinite(bal) ? bal : 0);
+  }, 0);
 
   return totalQty > 0 ? totalCost / totalQty : 0;
 };

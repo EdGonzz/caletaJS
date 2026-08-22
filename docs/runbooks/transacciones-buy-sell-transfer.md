@@ -186,7 +186,7 @@ Ruta: `#/coin/:id`
 ### Eliminar una transacción
 
 - El botón 🗑 en cada fila del historial abre un modal de confirmación (`openConfirmDeleteModal`).
-- Si se confirma, llama a `deleteTransaction(tx.id)` (que usa `removeHolding`), re-renderiza la lista y las stats, y dispatcha el evento `holdings-updated` para sincronizar la tabla principal.
+- Si se confirma, llama a `deleteTransaction(tx.id)`, re-renderiza la lista y las stats, y dispatcha el evento `holdings-updated` para sincronizar la tabla principal.
 - **La operación es irreversible.**
 
 > **Transferencias:** Al eliminar una entrada de transferencia (`transfer_out` o `transfer_in`), `deleteTransaction()` detecta el `transferId` compartido y elimina automáticamente ambas entradas (cascada atómica). No quedan entradas huérfanas. Ver [ADR-027](../decisions/027-transfer-id-enlace-cascada.md).
@@ -256,4 +256,4 @@ Si `getAverageCostBasis(coinId, source)` retorna `null`:
 
 ---
 
-*Última actualización: 2026-07-25*
+*Última actualización: 2026-08-16*

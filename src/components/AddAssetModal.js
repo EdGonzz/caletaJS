@@ -265,7 +265,7 @@ const FormView = () => `
               return destinationExchange
                 ? destImage
                   ? `<img alt="${escapeHTML(destName)}" class="w-5 h-5 mr-3 rounded-full" src="${escapeHTML(destImage)}" width="20" height="20" loading="lazy" />`
-                  : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${escapeHTML(destName.charAt(0).toUpperCase())}</div>`
+                  : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${escapeHTML((destName.charAt(0) || '?').toUpperCase())}</div>`
                 : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`;
             })()}
             <span class="text-sm font-medium ${destinationExchange ? 'text-slate-200' : 'text-slate-500'}">
@@ -495,12 +495,13 @@ const openModal = async () => {
     null
   );
   if (topCoin) {
+    const avgPrice = getAverageCostBasis(topCoin.coinId) ?? 0;
     selectedCoin = {
       id: topCoin.coinId,
       name: topCoin.name,
       symbol: topCoin.symbol,
       image: topCoin.logoUrl,
-      current_price: 0,
+      current_price: avgPrice,
     };
   } else {
     selectedCoin = DEFAULT_COIN;
@@ -723,7 +724,7 @@ const wireFormView = () => {
 
     if (activeTab === 'transfer') {
       if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice <= 0 || !selectedCoin) {
-        showWarning(parsedPrice <= 0 && !isNaN(parsedPrice)
+        showWarning(!Number.isFinite(parsedPrice) || parsedPrice <= 0
           ? "No se pudo determinar el precio de la transferencia. Verifica tu conexión e intenta de nuevo."
           : "Por favor completa los campos obligatorios: cantidad, precio y moneda.");
         return;
