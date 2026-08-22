@@ -11,6 +11,7 @@ Cumplir con el estándar WCAG 2.1 AA es fundamental. A pesar de que la UI es sim
 | **Atributos ARIA** | `aria-label` en inputs, modales, e íconos interactivos (e.g. `aria-label="Search holdings"`). | Proveer contexto sin texto visible. |
 | **Ocultamiento Visual** | `aria-hidden="true"` en elementos puramente decorativos como SVGs. | Evitar que los Screen Readers lean descripciones redundantes de íconos. |
 | **Interactividad por Teclado** | Uso exclusivo de `<button>` y `<input>` nativos en lugar de `<div>` con eventos de clic, permitiendo foco. | Permitir navegación mediante Tabulador (Tab Nav). |
+| **Textos alternativos** | Fallbacks `'Moneda sin nombre'` y `'Moneda sin símbolo'` en `PortfolioPicker` cuando `name`/`symbol` no son strings válidos. | Garantizar que `aria-label`, `alt` y textos visibles nunca estén vacíos (WCAG 1.1.1). |
 
 ## Reglas de Futuro Desarrollo
 - Todo componente nuevo debe recibir enfoque semántico.
@@ -18,4 +19,4 @@ Cumplir con el estándar WCAG 2.1 AA es fundamental. A pesar de que la UI es sim
 - Las tablas complejas deben seguir empleando `<th scope="col">`.
 
 ---
-*Última actualización: 2026-04-27*
+*Última actualización: 2026-08-16*

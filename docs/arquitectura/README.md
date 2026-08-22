@@ -57,9 +57,10 @@ caleta/
 | Desarrollo Local | [../runbooks/desarrollo-local.md](../runbooks/desarrollo-local.md) |
 | Agregar Ruta | [../runbooks/agregar-ruta.md](../runbooks/agregar-ruta.md) |
 | Agregar Caleta | [../runbooks/agregar-caleta.md](../runbooks/agregar-caleta.md) |
+| Transacciones (Buy/Sell/Transfer) | [../runbooks/transacciones-buy-sell-transfer.md](../runbooks/transacciones-buy-sell-transfer.md) |
 | Troubleshooting | [../runbooks/troubleshooting.md](../runbooks/troubleshooting.md) |
 | Deploy | [../runbooks/deploy.md](../runbooks/deploy.md) |
 | Decisiones (ADRs) | [../decisions/](../decisions/) |
 
 ---
-*Última actualización: 2026-05-30*
+*Última actualización: 2026-06-23*

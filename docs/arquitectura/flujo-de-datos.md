@@ -193,7 +193,8 @@ Se guarda utilizando el wrapper `storage.js` sobre `localStorage` nativo.
 | Variable | Tipo | Propósito | Localización |
 |---|---|---|---|
 | `caleta_user_sources` | Array de Objetos | Mantiene la lista de "sources" de activos configurados por el usuario. | `src/utils/sources.js` |
-| `caleta_holdings` | Array de Objetos | Almacena el historial de transacciones (compras/ventas/fuentes). | `src/utils/holdingsStorage.js` |
+| `caleta_user_holdings` | Array de Objetos | Almacena el historial de transacciones (compras/ventas/fuentes). | `src/utils/holdingsStorage.js` |
+| `caleta_last_exchange` | Objeto Exchange | Persiste el último exchange seleccionado en AddAssetModal. | `src/components/AddAssetModal.js` |
 
 ## Lógica de Consumo de APIs
 
@@ -216,10 +217,11 @@ Los helpers de dominio (`getCoin`, `getCoinHistory`, `getExchange`) propagan el 
 
 | Endpoint | Utilidad | Propósito | Frecuencia | Error Handling |
 |---|---|---|---|---|
-| `/search?query=` | `getCoin.js` | Búsqueda de monedas en AddAssetModal | On-demand (debounced 300ms) | `CoinPicker`: mensaje contextual + botón Reintentar |
+| `/search?query=` | `getCoin.js` | Búsqueda de monedas en AddAssetModal (solo tab **Buy**) | On-demand (debounced 300ms) | `CoinPicker`: mensaje contextual + botón Reintentar |
 | `/exchanges` | `getExchange.js` | Lista de exchanges disponibles | On-demand (al abrir modal) | `ApiError` propagado al caller |
 | `/coins/markets?ids=` | `HoldingsTable.js` | Precios actuales + change24h + sparkline | Al cargar `/` y al refresh manual | Fallback a precios cacheados + toast warning + badge "Caché" |
 | `/coins/{id}/market_chart` | `getCoinHistory.js` | Historial de precios para HistoryChart | Al cargar `/` y al cambiar período | `HistoryChart`: estado de error tipado + botón Reintentar |
+| `/coins/markets?ids=` | `CoinDetails.js` | Precio actual, cambio 24h y logo (via apiFetch) | Al navegar a `#/coin/:id` | Fallback local: `coinId` como nombre, stats desde localStorage |
 
 ### Patrón de Comunicación entre Componentes
 
@@ -248,8 +250,94 @@ ErrorToast (consumidor global)
     └── Auto-dismiss con animación + botón de cierre manual
 ```
 
+### 9. Flujo de Guardado de Transacciones (AddAssetModal)
+
+```mermaid
+sequenceDiagram
+    participant U as Usuario
+    participant M as AddAssetModal
+    participant TU as transactionUtils.js
+    participant LS as localStorage
+    participant W as window (evento)
+
+    U->>M: Abre modal, selecciona tab (buy/sell/transfer)
+
+    alt Tab Sell o Transfer
+        M->>M: currentView = 'coin'
+        M->>TU: getPortfolioCoins(sourceFilter)
+        Note over M,TU: Solo monedas con balance en la caleta seleccionada
+        TU->>LS: getHoldings()
+        LS-->>M: [{ coinId, name, netBalance }]
+        M->>M: Renderiza PortfolioPicker
+        U->>M: Selecciona moneda del portafolio
+    else Tab Buy
+        M->>M: Renderiza CoinPicker (API CoinGecko)
+    end
+
+    U->>M: Completa formulario y presiona submit
+
+    M->>TU: getNetBalance(coinId, source)  [solo Sell/Transfer]
+    TU->>LS: getHoldings()
+    LS-->>M: netBalance: 1.5
+
+    alt Balance insuficiente
+        M->>M: Muestra error inline
+    else Transfer sin destino
+        M->>M: Muestra error inline
+    else Transfer al mismo exchange
+        M->>M: Muestra error inline
+    else Network fee >= quantity
+        M->>M: Muestra error inline
+    else Validacion OK
+        alt activeTab === 'transfer'
+            M->>TU: getAverageCostBasis(coinId, source)
+            TU-->>M: costBasis: 30000
+            M->>LS: addHolding({ type:'transfer_out', source:caletaOrigen, price:costBasis })
+            M->>LS: addHolding({ type:'transfer_in', source:caletaDestino, balance:dstQty, price:costBasis })
+        else activeTab === 'buy' o 'sell'
+            M->>LS: addHolding({ type:activeTab })
+        end
+        M->>W: dispatchEvent('holdings-updated')
+        W->>M: HoldingsTable re-agrega
+    end
+```
+
+### 10. CoinDetails — Flujo de Datos
+
+```mermaid
+sequenceDiagram
+    participant Router as routes.js
+    participant CD as CoinDetails.js
+    participant TU as transactionUtils.js
+    participant LS as localStorage
+    participant API as CoinGecko /coins/markets
+
+    Router->>CD: root.innerHTML = CoinDetails({ id })
+    Router->>CD: cleanupCoinDetails()  (aborta fetch pendiente)
+    Router->>CD: await initCoinDetails()
+    CD->>TU: getTransactionsByCoin(coinId)
+    TU->>LS: getHoldings() → filter + sort
+    LS-->>CD: [tx1, tx2, ...]
+    CD->>TU: getNetBalance(coinId)
+    TU-->>CD: 1.5
+    CD->>CD: _renderStats(coinId, null) — sin precio API
+    CD->>CD: _renderTransactions(coinId)
+    CD->>API: apiFetch(markets?ids=coinId)
+    Note over CD,API: Fetch con AbortController
+    alt Fetch exitoso
+        API-->>CD: { name, image, market_data }
+        CD->>CD: _renderHeader(data)
+        CD->>CD: _renderStats(coinId, currentPrice)
+    else Fetch falla
+        CD->>CD: coin-name.textContent = coinId (fallback local)
+    end
+
+    Note over CD: Al eliminar: deleteTransaction() → storage.set (batch atómico)
+    Note over CD: dispatchEvent('holdings-updated') para sincronizar HoldingsTable
+```
+
 ---
-*Última actualización: 2026-05-30*
+Última actualización: 2026-06-23
 
 ### 7. HMR — Hot Module Replacement (Vanilla JS)
 ```mermaid

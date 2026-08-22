@@ -25,3 +25,5 @@ export const escapeHTML = (str) => {
   };
   return str.replace(/[&<>"']/g, (m) => map[m]);
 };
+
+

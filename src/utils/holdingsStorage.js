@@ -87,4 +87,22 @@ export const deleteHoldingsByCoin = (coinId, sourceFilter = null) => {
   return updated;
 };
 
+/**
+ * Adds multiple holding records atomically in a single localStorage write.
+ * Used for transfer operations (transfer_out + transfer_in) to prevent partial writes.
+ * @param {Array<Object>} holdings - Array of holding data to save.
+ * @returns {Array} The updated holdings list.
+ */
+export const addHoldingsBatch = (holdings) => {
+  const current = getHoldings();
+  const newHoldings = holdings.map(h => ({
+    ...h,
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString()
+  }));
+  const updated = [...current, ...newHoldings];
+  storage.set(HOLDINGS_KEY, updated);
+  return updated;
+};
+
 

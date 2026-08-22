@@ -3,11 +3,24 @@ import { storage } from "../utils/storage";
 import { SelectExchange } from "./SelectExchange";
 import { CoinPicker, initCoinPicker } from "./CoinPicker";
 import { getSource, DEFAULT_SOURCE } from "../utils/sources";
-import { now, formatUsd } from "../utils/formatters";
+import { now, formatPreciseUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
-import { addHolding, getHoldings } from "../utils/holdingsStorage";
+import { addHolding, addHoldingsBatch, getHoldings } from "../utils/holdingsStorage";
+import { escapeHTML } from "../utils/helpers.js";
 import sprite from "../assets/sprite.svg";
-import { showWarning } from "./ErrorToast.js";
+import { showWarning, showError } from "./ErrorToast.js";
+import { PortfolioPicker, initPortfolioPicker } from './PortfolioPicker.js';
+import { getPortfolioCoins, getNetBalance, getAverageCostBasis } from '../utils/transactionUtils.js';
+
+/** @param {string|null} url @returns {string|null} */
+const safeHostname = (url) => {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return null;
+  }
+};
 
 let coins = new Map();
 
@@ -27,7 +40,9 @@ let selectedCoin = DEFAULT_COIN;
 /** @type {import('./SelectExchange').Exchange | null} */
 const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
 let selectedExchange = _sources[0] ?? null;
-/** @type {'form'|'exchange'|'coin'} */
+/** @type {import('./SelectExchange').Exchange | null} */
+let destinationExchange = null; // Solo para Transfer
+/** @type {'form'|'exchange'|'destination-exchange'|'coin'} */
 let currentView = "form";
 
 // Persisted Form State
@@ -35,6 +50,7 @@ let quantity = "";
 let price = selectedCoin?.current_price?.toString() || "0";
 let date = now();
 let fees = "";
+let networkFee = ""; // Network fee en la moneda (solo Transfer)
 let notes = "";
 let showNotes = false;
 
@@ -42,13 +58,28 @@ let showNotes = false;
  * Calcula y actualiza el total de la transacción en la UI.
  */
 const updateTotal = () => {
-    const q = parseFloat(quantity) || 0;
-    const p = parseFloat(price) || 0;
-    const f = parseFloat(fees) || 0;
-    const totalDisplay = document.getElementById('total-display');
-    if (totalDisplay) {
-        totalDisplay.textContent = formatUsd(q * p + f);
-    }
+  if (activeTab === 'transfer') return;
+  
+  const q = parseFloat(quantity) || 0;
+  const p = parseFloat(price) || 0;
+  const f = parseFloat(fees) || 0;
+  
+  let total = 0;
+  if (activeTab === 'buy') {
+    total = q * p + f; // f is in USD
+  } else if (activeTab === 'sell') {
+    total = Math.max(0, q - f) * p; // f is in crypto (e.g. BTC)
+  }
+
+  const totalDisplay = document.getElementById('total-display');
+  if (totalDisplay) {
+    totalDisplay.textContent = activeTab === 'transfer' ? '—' : formatPreciseUsd(total);
+  }
+
+  const totalLabel = document.getElementById('total-label');
+  if (totalLabel) {
+    totalLabel.textContent = activeTab === 'sell' ? 'Total Received' : 'Total Spent';
+  }
 };
 
 // ─── Tab Button ────────────────────────────────────────────────────
@@ -114,7 +145,7 @@ const FormView = () => `
       <!-- Quantity + Price -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="space-y-2">
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Quantity</label>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">${activeTab === 'transfer' ? 'Cantidad a enviar' : 'Quantity'}</label>
           <div class="relative">
             <input id="quantity-input" type="text" inputmode="decimal" placeholder="0.00" value="${quantity}" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Cantidad" />
             <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
@@ -123,18 +154,20 @@ const FormView = () => `
           </div>
         </div>
 
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Price Per Coin</label>
-            <button id="use-market-btn" class="text-[10px] text-primary hover:brightness-110 font-semibold transition-colors" aria-label="Usar precio de mercado">Use Market</button>
-          </div>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-              <span class="text-slate-400 font-medium">$</span>
+        ${activeTab !== 'transfer' ? `
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Price Per Coin</label>
+              <button id="use-market-btn" class="text-[10px] text-primary hover:brightness-110 font-semibold transition-colors" aria-label="Usar precio de mercado">Use Market</button>
             </div>
-            <input id="price-input" type="text" inputmode="decimal" placeholder="0.00" value="${price}" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <span class="text-slate-400 font-medium">$</span>
+              </div>
+              <input id="price-input" type="text" inputmode="decimal" placeholder="0.00" value="${price}" class="w-full pl-8 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-display font-medium placeholder-slate-500 transition-all outline-none" aria-label="Precio por moneda" />
+            </div>
           </div>
-        </div>
+        ` : ''}
       </div>
 
       <!-- Date & Time -->
@@ -163,16 +196,91 @@ const FormView = () => `
           </button>
         </div>
 
-        <div class="space-y-2">
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (Optional)</label>
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <span class="text-slate-400 font-medium text-sm">$</span>
+        ${activeTab === 'buy' ? `
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (Optional)</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <span class="text-slate-400 font-medium text-sm">$</span>
+              </div>
+              <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
             </div>
-            <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-7 pr-4 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones" />
+          </div>
+        ` : activeTab === 'sell' ? `
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Fees (opcional)</label>
+            <div class="relative">
+              <input id="fees-input" type="text" inputmode="decimal" value="${fees}" placeholder="0.00" class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm" aria-label="Comisiones en la moneda" />
+              <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <span class="text-xs font-bold text-slate-400">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
+              </div>
+            </div>
+          </div>
+        ` : `
+          <div class="space-y-2">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Network Fee (opcional)</label>
+            <div class="relative">
+              <input id="network-fee-input" type="text" inputmode="decimal" value="${networkFee}" placeholder="0.00"
+                     class="w-full pl-4 pr-14 py-3 bg-slate-800/40 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary text-white font-medium placeholder-slate-500 transition-all outline-none text-sm"
+                     aria-label="Comisión de red en la moneda" />
+              <div class="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                <span class="text-xs font-bold text-slate-400">${selectedCoin?.symbol?.toUpperCase() ?? ''}</span>
+              </div>
+            </div>
+          </div>
+        `}
+      </div>
+
+      ${activeTab === 'transfer' ? `
+        <!-- Destino recibe (auto-calculado) -->
+        <div id="destino-recibe-block" class="p-3 bg-slate-800/30 rounded-xl border border-slate-700/30 ${!quantity ? 'hidden' : ''}">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-400 font-medium">Destino recibe</span>
+            <span id="destino-recibe-value" class="text-sm font-semibold text-white tabular-nums">
+              ${(() => {
+      const q = parseFloat(quantity) || 0;
+      const nf = parseFloat(networkFee) || 0;
+      const dest = Math.max(0, q - nf);
+      return `${dest.toFixed(8)} ${selectedCoin?.symbol?.toUpperCase() ?? ''}`;
+    })()}
+            </span>
           </div>
         </div>
-      </div>
+      ` : ''}
+
+      ${activeTab === 'transfer' ? `
+        <div class="space-y-2">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Caleta Destino</label>
+          <button id="destination-exchange-btn"
+                  class="w-full flex items-center px-3 py-3 bg-slate-800/40 border border-slate-700 rounded-xl hover:border-primary/50 transition-colors group"
+                  aria-label="Seleccionar caleta de destino">
+            ${(() => {
+              const destName = typeof destinationExchange === 'string'
+                ? destinationExchange
+                : destinationExchange?.name ?? '';
+              const destImage = typeof destinationExchange === 'object' && destinationExchange !== null
+                ? destinationExchange.image
+                : null;
+
+              return destinationExchange
+                ? destImage
+                  ? `<img alt="${escapeHTML(destName)}" class="w-5 h-5 mr-3 rounded-full" src="${escapeHTML(destImage)}" width="20" height="20" loading="lazy" />`
+                  : `<div class="w-5 h-5 mr-3 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-slate-700">${escapeHTML((destName.charAt(0) || '?').toUpperCase())}</div>`
+                : `<div class="w-5 h-5 mr-3 rounded-full bg-slate-600 flex items-center justify-center"><svg class="w-3 h-3 text-slate-400"><use href="${sprite}#wallet"></use></svg></div>`;
+            })()}
+            <span class="text-sm font-medium ${destinationExchange ? 'text-slate-200' : 'text-slate-500'}">
+              ${escapeHTML(
+                typeof destinationExchange === 'string'
+                  ? destinationExchange
+                  : destinationExchange?.name ?? 'Seleccionar destino'
+              )}
+            </span>
+            <svg class="w-6 h-6 text-slate-400 group-hover:text-primary transition-colors ml-auto">
+              <use href="${sprite}#chevron-down"></use>
+            </svg>
+          </button>
+        </div>
+      ` : ''}
 
       <!-- Notes toggle -->
       <div class="pt-1">
@@ -186,22 +294,25 @@ const FormView = () => `
       </div>
 
       <!-- Total -->
+      ${activeTab !== 'transfer' ? `
       <div class="p-4 bg-slate-800/60 rounded-xl flex justify-between items-center border border-slate-700/50">
         <div class="flex flex-col">
-          <span class="text-xs text-slate-400 font-medium">Total Spent</span>
-          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${formatUsd((parseFloat(quantity) || 0) * (parseFloat(price) || 0) + (parseFloat(fees) || 0))}</span>
+          <span id="total-label" class="text-xs text-slate-400 font-medium">${activeTab === 'sell' ? 'Total Received' : 'Total Spent'}</span>
+          <span id="total-display" class="text-2xl font-bold font-display text-white tracking-tight">${(() => {
+            const q = parseFloat(quantity) || 0;
+            const p = parseFloat(price) || 0;
+            const f = parseFloat(fees) || 0;
+            const total = activeTab === 'buy' ? (q * p + f) : Math.max(0, q - f) * p;
+            return formatPreciseUsd(total);
+          })()}</span>
         </div>
       </div>
-
-      <!-- Error message (announced by screen readers) -->
-      <div id="form-error" class="hidden px-4 py-3 mb-4 bg-red-400/10 border border-red-400/30 rounded-xl" role="alert">
-        <p id="form-error-text" class="text-red-400 text-sm font-medium"></p>
-      </div>
+      ` : ''}
 
       <!-- Submit -->
       <button
         id="submit-transaction-btn"
-        class="w-full py-4 bg-primary hover:brightness-110 text-slate-900 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl active:scale-[0.99] transition-all duration-200 text-base btn-press"
+        class="w-full py-4 mt-4 bg-primary hover:brightness-110 text-slate-900 font-bold rounded-xl shadow-lg shadow-primary/20 hover:shadow-xl active:scale-[0.99] transition-all duration-200 text-base btn-press"
         aria-label="Agregar transacción"
       >
         Add Transaction
@@ -251,56 +362,122 @@ const renderInner = () => {
   if (currentView === "exchange") {
     inner.innerHTML = SelectExchange(selectedExchange?.id);
     wireExchangeView();
+  } else if (currentView === 'destination-exchange') {
+    inner.innerHTML = SelectExchange(destinationExchange?.id);
+    _wireDestinationExchangeView();
   } else if (currentView === "coin") {
-    // Lazy load coins if empty
-    if (coins.size === 0) {
-      inner.innerHTML = CoinPicker([], selectedCoin.id, true);
-      // Ensure buttons work even during loading
-      initCoinPicker({
+    // Buy → CoinPicker (API), Sell/Transfer → PortfolioPicker (localStorage)
+    if (activeTab === 'buy') {
+      // Lazy load coins if empty
+      if (coins.size === 0) {
+        inner.innerHTML = CoinPicker([], selectedCoin.id, true);
+        // Ensure buttons work even during loading
+        initCoinPicker({
           onBack: () => { currentView = "form"; renderInner(); },
           onClose: closeModal,
-          onSelect: () => {}, // Not selectable while loading
-          onCoinsUpdate: () => {},
+          onSelect: () => { }, // Not selectable while loading
+          onCoinsUpdate: () => { },
           currentCoins: [],
           selectedCoinId: selectedCoin.id
-      });
-      getTopCoins().then(newCoins => {
+        });
+        getTopCoins().then(newCoins => {
           coins = new Map(newCoins.map(c => [c.id, c]));
           renderInner();
-      });
-      return;
-    }
+        });
+        return;
+      }
 
-    const coinsArray = Array.from(coins.values());
-    inner.innerHTML = CoinPicker(coinsArray, selectedCoin.id);
-    initCoinPicker({
+      const coinsArray = Array.from(coins.values());
+      inner.innerHTML = CoinPicker(coinsArray, selectedCoin.id);
+      initCoinPicker({
         onBack: () => { currentView = "form"; renderInner(); },
         onClose: closeModal,
         onSelect: async (id) => {
-            // Si la moneda seleccionada viene de búsqueda, podría no tener precio
-            let found = coins.get(id);
-            
-            // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
-            if (!found || !found.current_price) {
-                const detailedCoin = await getCoin(id);
-                if (detailedCoin) {
-                    found = detailedCoin;
-                    // Opcionalmente actualizar la lista local para futuras referencias
-                    if (!coins.has(id)) coins.set(id, detailedCoin);
-                }
-            }
+          // Si la moneda seleccionada viene de búsqueda, podría no tener precio
+          let found = coins.get(id);
 
-            if (found) {
-                selectedCoin = found;
-                price = found.current_price?.toString() || "0";
-                currentView = "form";
-                renderInner();
+          // Si no tiene precio o no está en la lista inicial, buscamos los detalles completos
+          if (!found || !found.current_price) {
+            const detailedCoin = await getCoin(id);
+            if (detailedCoin) {
+              found = detailedCoin;
+              // Opcionalmente actualizar la lista local para futuras referencias
+              if (!coins.has(id)) coins.set(id, detailedCoin);
             }
+          }
+
+          if (found) {
+            selectedCoin = found;
+            price = found.current_price?.toString() || "0";
+            currentView = "form";
+            renderInner();
+          }
         },
         onCoinsUpdate: (newCoins) => { coins = new Map(newCoins.map(c => [c.id, c])); },
         currentCoins: coinsArray,
         selectedCoinId: selectedCoin.id
-    });
+      });
+    } else {
+      // Sell / Transfer — PortfolioPicker desde localStorage
+      inner.innerHTML = PortfolioPicker(selectedCoin.id);
+      initPortfolioPicker({
+        onBack: () => { currentView = 'form'; renderInner(); },
+        onClose: closeModal,
+        onSelect: async (coinId) => {
+          const coins = getPortfolioCoins();
+          const found = coins.find((c) => c.coinId === coinId);
+          if (found) {
+            let currentPrice = 0;
+            try {
+              const detailedCoin = await getCoin(coinId);
+              if (detailedCoin && detailedCoin.current_price) {
+                currentPrice = detailedCoin.current_price;
+              }
+            } catch (err) {
+              console.error("Error al obtener precio de la moneda:", err);
+            }
+
+            selectedCoin = {
+              id: found.coinId,
+              name: found.name,
+              symbol: found.symbol,
+              image: found.logoUrl,
+              current_price: currentPrice,
+            };
+
+            // Auto-seleccionar el exchange con mayor balance
+            if (found.sources && found.sources.length > 0) {
+              const topSource = found.sources.reduce((max, s) => s.balance > max.balance ? s : max, found.sources[0]);
+              const allSources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+              const matchedExchange = allSources.find(ex => (typeof ex === 'string' ? ex : ex.name) === topSource.name);
+              if (matchedExchange) {
+                selectedExchange = matchedExchange;
+              }
+            }
+            // Heredar cost basis para Transfer, usar precio de mercado para Sell
+            if (activeTab === 'transfer') {
+              const sourceName = selectedExchange
+                ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
+                : 'Wallet';
+              // Primero buscar en el exchange seleccionado; si no hay, buscar en todos
+              let avgPrice = getAverageCostBasis(found.coinId, sourceName);
+              if (avgPrice === null || avgPrice === 0) {
+                avgPrice = getAverageCostBasis(found.coinId);
+              }
+              // Si no hay cost basis, fallback al precio de mercado actual (ya resuelto)
+              if (avgPrice === null || avgPrice === 0) {
+                avgPrice = currentPrice;
+              }
+              price = avgPrice > 0 ? avgPrice.toString() : "0";
+            } else {
+              price = currentPrice > 0 ? currentPrice.toString() : "0";
+            }
+            currentView = 'form';
+            renderInner();
+          }
+        },
+      });
+    }
   } else {
     inner.innerHTML = FormView();
     wireFormView();
@@ -310,53 +487,47 @@ const renderInner = () => {
 const openModal = async () => {
   currentView = "form";
   activeTab = "buy";
-  
-  // Persistencia: Seleccionar la moneda con más balance si existe
-  const holdings = getHoldings();
-  if (holdings.length > 0) {
-      // Agrupar por coinId y sumar balances
-      const balances = holdings.reduce((acc, h) => {
-          acc[h.coinId] = (acc[h.coinId] || 0) + (h.balance || 0);
-          return acc;
-      }, {});
-      
-      const topCoinId = Object.entries(balances).sort((a, b) => b[1] - a[1])[0][0];
-      const topHolding = holdings.find(h => h.coinId === topCoinId);
-      
-      if (topHolding) {
-          selectedCoin = {
-              id: topHolding.coinId,
-              name: topHolding.name,
-              symbol: topHolding.symbol,
-              image: topHolding.logoUrl,
-              current_price: topHolding.price
-          };
-      }
+
+  // Persistencia: Seleccionar la moneda con más balance neto (usa getBalanceDelta correctamente)
+  const portfolioCoins = getPortfolioCoins();
+  const topCoin = portfolioCoins.reduce(
+    (max, c) => (max === null || c.netBalance > max.netBalance ? c : max),
+    null
+  );
+  if (topCoin) {
+    const avgPrice = getAverageCostBasis(topCoin.coinId) ?? 0;
+    selectedCoin = {
+      id: topCoin.coinId,
+      name: topCoin.name,
+      symbol: topCoin.symbol,
+      image: topCoin.logoUrl,
+      current_price: avgPrice,
+    };
   } else {
-      selectedCoin = DEFAULT_COIN;
-      // Fetch asíncrono seguro del precio real de Bitcoin
-      getCoin('bitcoin').then(coinData => {
-          // Evitar sobrescribir si el usuario ya cambió a otra moneda en el intermedio
-          if (coinData?.current_price && selectedCoin.id === 'bitcoin') {
-              const priceInput = document.getElementById('price-input');
-              // Solo actualizar si el usuario no ha digitado un valor personalizado aún
-              if (priceInput && (priceInput.value === "0" || priceInput.value === "")) {
-                  selectedCoin = coinData;
-                  price = coinData.current_price.toString();
-                  priceInput.value = price;
-                  updateTotal();
-              }
-          }
-      });
+    selectedCoin = DEFAULT_COIN;
+    // Fetch asíncrono seguro del precio real de Bitcoin
+    getCoin('bitcoin').then(coinData => {
+      // Evitar sobrescribir si el usuario ya cambió a otra moneda en el intermedio
+      if (coinData?.current_price && selectedCoin.id === 'bitcoin') {
+        const priceInput = document.getElementById('price-input');
+        // Solo actualizar si el usuario no ha digitado un valor personalizado aún
+        if (priceInput && (priceInput.value === "0" || priceInput.value === "")) {
+          selectedCoin = coinData;
+          price = coinData.current_price.toString();
+          priceInput.value = price;
+          updateTotal();
+        }
+      }
+    });
   }
 
   // Persistencia de Exchange: Cargar el último usado o el primero disponible
   const lastExchange = storage.get('caleta_last_exchange');
   if (lastExchange) {
-      selectedExchange = lastExchange;
+    selectedExchange = lastExchange;
   } else {
-      const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
-      selectedExchange = _sources[0] ?? null;
+    const _sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+    selectedExchange = _sources[0] ?? null;
   }
 
   // Reset form state on open
@@ -364,8 +535,10 @@ const openModal = async () => {
   price = selectedCoin?.current_price?.toString() || "0";
   date = now();
   fees = "";
+  networkFee = "";
   notes = "";
   showNotes = false;
+  destinationExchange = null;
   renderInner();
 
   const backdrop = document.getElementById("modal-backdrop");
@@ -427,6 +600,12 @@ const wireFormView = () => {
     renderInner();
   });
 
+  // Destination Exchange (solo visible en Transfer)
+  document.getElementById('destination-exchange-btn')?.addEventListener('click', () => {
+    currentView = 'destination-exchange';
+    renderInner();
+  });
+
   // Notes toggle
   document.getElementById("add-notes-btn")?.addEventListener("click", () => {
     const ta = document.getElementById("notes-textarea");
@@ -442,22 +621,22 @@ const wireFormView = () => {
 
     // Si el precio es 0 o no disponible, intentar fetch
     if (!marketPrice) {
-        const fresh = await getCoin(clickedCoinId);
-        // Validar que el usuario no haya cambiado de moneda en el transcurso
-        if (selectedCoin.id === clickedCoinId && fresh?.current_price) {
-            selectedCoin = fresh;
-            marketPrice = fresh.current_price;
-        }
+      const fresh = await getCoin(clickedCoinId);
+      // Validar que el usuario no haya cambiado de moneda en el transcurso
+      if (selectedCoin.id === clickedCoinId && fresh?.current_price) {
+        selectedCoin = fresh;
+        marketPrice = fresh.current_price;
+      }
     }
 
     // Validar consistencia de la selección antes de pintar en el DOM
     if (selectedCoin.id === clickedCoinId && marketPrice) {
-        price = marketPrice.toString();
-        const priceInput = document.getElementById("price-input");
-        if (priceInput) priceInput.value = price;
-        updateTotal();
+      price = marketPrice.toString();
+      const priceInput = document.getElementById("price-input");
+      if (priceInput) priceInput.value = price;
+      updateTotal();
     } else if (selectedCoin.id === clickedCoinId) {
-        showWarning("No se pudo obtener el precio de mercado actual.");
+      showWarning("No se pudo obtener el precio de mercado actual.");
     }
   });
 
@@ -495,8 +674,8 @@ const wireFormView = () => {
     // Conservar solo el primer punto decimal y remover los duplicados subsiguientes
     const firstPointIndex = val.indexOf(".");
     if (firstPointIndex !== -1) {
-      val = val.substring(0, firstPointIndex + 1) + 
-            val.substring(firstPointIndex + 1).replace(/\./g, "");
+      val = val.substring(0, firstPointIndex + 1) +
+        val.substring(firstPointIndex + 1).replace(/\./g, "");
     }
 
     inputEl.value = val;
@@ -512,6 +691,7 @@ const wireFormView = () => {
   qtyInput?.addEventListener("input", () => {
     quantity = sanitizeInput(qtyInput);
     updateTotal();
+    _updateDestinoRecibe();
   });
   priceInput?.addEventListener("input", () => {
     price = sanitizeInput(priceInput);
@@ -524,6 +704,14 @@ const wireFormView = () => {
     fees = sanitizeInput(feesInput);
     updateTotal();
   });
+
+  // Network Fee input (solo Transfer)
+  const networkFeeInput = document.getElementById("network-fee-input");
+  networkFeeInput?.addEventListener("input", () => {
+    networkFee = sanitizeInput(networkFeeInput);
+    _updateDestinoRecibe();
+  });
+
   notesTextarea?.addEventListener("input", (e) => {
     notes = e.target.value;
   });
@@ -534,49 +722,136 @@ const wireFormView = () => {
     const parsedPrice = parseFloat(price);
     const parsedFees = parseFloat(fees) || 0;
 
-    // Ocultar error previo
-    const errorEl = document.getElementById("form-error");
-    const errorText = document.getElementById("form-error-text");
-    if (errorEl) errorEl.classList.add("hidden");
-
-    if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
-      // Anunciar error para screen readers via role="alert"
-      if (errorEl && errorText) {
-        errorText.textContent = "Por favor completa los campos obligatorios: cantidad, precio y moneda.";
-        errorEl.classList.remove("hidden");
+    if (activeTab === 'transfer') {
+      if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice <= 0 || !selectedCoin) {
+        showWarning(!Number.isFinite(parsedPrice) || parsedPrice <= 0
+          ? "No se pudo determinar el precio de la transferencia. Verifica tu conexión e intenta de nuevo."
+          : "Por favor completa los campos obligatorios: cantidad, precio y moneda.");
+        return;
       }
+    } else {
+      if (isNaN(parsedQty) || parsedQty <= 0 || isNaN(parsedPrice) || parsedPrice < 0 || !selectedCoin) {
+        showWarning("Por favor completa los campos obligatorios: cantidad, precio y moneda.");
+        return;
+      }
+    }
+
+    if (activeTab === 'sell') {
+      if (parsedFees > parsedQty) {
+        showWarning("La comisión no puede ser mayor a la cantidad de monedas vendidas.");
+        return;
+      }
+    }
+
+    const sourceName = selectedExchange
+      ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name)
+      : 'Wallet';
+
+    const sourceImage = selectedExchange && typeof selectedExchange !== 'string'
+      ? selectedExchange.image || null
+      : null;
+
+    // Validación de overselling (Sell y Transfer) — por-exchange (ADR-025)
+    if (activeTab === 'sell' || activeTab === 'transfer') {
+      const netBalance = getNetBalance(selectedCoin.id, sourceName);
+      if (parsedQty > netBalance) {
+        showError(`Balance insuficiente. Disponible: ${netBalance.toFixed(8)} ${selectedCoin.symbol.toUpperCase()}`);
+        return;
+      }
+    }
+
+    // Validación de mismo origen y destino en Transfer
+    if (activeTab === 'transfer' && destinationExchange) {
+      const destName = typeof destinationExchange === 'string'
+        ? destinationExchange
+        : destinationExchange.name;
+      if (sourceName === destName) {
+        showWarning('La caleta de destino debe ser distinta a la caleta de origen.');
+        return;
+      }
+    }
+
+    // Validación de caleta destino en Transfer
+    if (activeTab === 'transfer' && !destinationExchange) {
+      showWarning('Selecciona una caleta de destino para la transferencia.');
       return;
     }
 
-    const holding = {
-      coinId: selectedCoin?.id ?? '',
-      name: selectedCoin?.name ?? '',
-      symbol: selectedCoin?.symbol ?? '',
-      logoUrl: selectedCoin?.image || selectedCoin?.thumb || '',
-      balance: parsedQty,
-      price: parsedPrice,
-      source: selectedExchange 
-        ? (typeof selectedExchange === 'string' ? selectedExchange : selectedExchange.name) 
-        : 'Wallet',
-      sourceIcon: 'wallet',
-      type: activeTab,
-      date: date,
-      fees: parsedFees,
-      notes: notes
-    };
+    if (activeTab === 'transfer') {
+      // Validar network fee < cantidad
+      const parsedNetworkFee = parseFloat(networkFee) || 0;
+      if (parsedNetworkFee >= parsedQty) {
+        showWarning('La comisión de red no puede ser mayor o igual a la cantidad enviada.');
+        return;
+      }
+      const destQuantity = parsedQty - parsedNetworkFee;
 
-    addHolding(holding);
-    
+      // Transfer → 2 entradas atómicas enlazadas por transferId
+      const TRANSFER_ID = crypto.randomUUID();
+      const destName = typeof destinationExchange === 'string'
+        ? destinationExchange
+        : destinationExchange.name;
+
+      const destImage = destinationExchange && typeof destinationExchange !== 'string'
+        ? destinationExchange.image || null
+        : null;
+
+      // Transfer atómica — ambas entradas en una sola escritura a localStorage
+      addHoldingsBatch([
+        {
+          coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+          logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+          balance: parsedQty, price: parsedPrice, source: sourceName,
+          sourceIcon: 'wallet', sourceImage, type: 'transfer_out', transferId: TRANSFER_ID,
+          date, fees: 0, networkFee: parsedNetworkFee, notes,
+        },
+        {
+          coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+          logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+          balance: destQuantity, price: parsedPrice, source: destName,
+          sourceIcon: 'wallet', sourceImage: destImage, type: 'transfer_in', transferId: TRANSFER_ID,
+          date, fees: 0, networkFee: parsedNetworkFee,
+          notes: notes ? `[Recibido desde ${sourceName}] ${notes}` : `Recibido desde ${sourceName}`,
+        },
+      ]);
+    } else {
+      // Buy o Sell normal
+      addHolding({
+        coinId: selectedCoin.id, name: selectedCoin.name, symbol: selectedCoin.symbol,
+        logoUrl: selectedCoin.image || selectedCoin.thumb || '',
+        balance: parsedQty, price: parsedPrice, source: sourceName,
+        sourceIcon: 'wallet', sourceImage, type: activeTab, date, fees: parsedFees, notes,
+      });
+    }
+
     // Guardar último exchange seleccionado para persistencia
     if (selectedExchange) {
-        storage.set('caleta_last_exchange', selectedExchange);
+      storage.set('caleta_last_exchange', selectedExchange);
     }
-    
+
     // Notify other components (HoldingsTable, StatsGrid)
-    window.dispatchEvent(new CustomEvent('holdings-updated', { detail: { holding } }));
+    window.dispatchEvent(new CustomEvent('holdings-updated', { detail: {} }));
 
     closeModal();
   });
+};
+
+// ─── Helper: Update "Destino recibe" display ────────────────────
+const _updateDestinoRecibe = () => {
+  const block = document.getElementById('destino-recibe-block');
+  const valueEl = document.getElementById('destino-recibe-value');
+  if (!block || !valueEl) return;
+
+  const q = parseFloat(quantity) || 0;
+  const nf = parseFloat(networkFee) || 0;
+  const dest = Math.max(0, q - nf);
+
+  if (q > 0) {
+    block.classList.remove('hidden');
+    valueEl.textContent = `${dest.toFixed(8)} ${selectedCoin?.symbol?.toUpperCase() ?? ''}`;
+  } else {
+    block.classList.add('hidden');
+  }
 };
 
 // ─── Wire Exchange View ────────────────────────────────────────────
@@ -625,7 +900,57 @@ const wireExchangeView = () => {
           name: exchange.name,
           image: exchange.image ?? null,
           url: exchange.url ?? null,
-          description: exchange.url ? new URL(exchange.url).hostname.replace('www.', '') : null,
+          description: safeHostname(exchange.url),
+        };
+        currentView = "form";
+        renderInner();
+      },
+    });
+  });
+};
+
+// ─── Wire Destination Exchange View ────────────────────────────
+const _wireDestinationExchangeView = () => {
+  document.getElementById('exchange-back-btn')?.addEventListener('click', () => {
+    currentView = 'form';
+    renderInner();
+  });
+  document.getElementById('exchange-close-btn')?.addEventListener('click', closeModal);
+
+  document.getElementById('exchange-search-input')?.addEventListener('input', (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.exchange-row').forEach((row) => {
+      row.style.display = row.dataset.exchangeName?.toLowerCase().includes(term) ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.exchange-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.exchangeId;
+      const sources = getSource().filter((s) => s !== DEFAULT_SOURCE);
+      const found = sources.find((ex) => (typeof ex === 'string' ? ex : ex.id) === id);
+      if (found) {
+        destinationExchange = found;
+        currentView = 'form';
+        renderInner();
+      }
+    });
+  });
+
+  // Add new exchange → open AddExchangeModal (asigna a destinationExchange)
+  document.getElementById("add-new-exchange-btn")?.addEventListener("click", () => {
+    openAddExchangeModal({
+      onBack: () => {
+        currentView = "destination-exchange";
+        renderInner();
+      },
+      onSave: (exchange) => {
+        destinationExchange = {
+          id: exchange.id,
+          name: exchange.name,
+          image: exchange.image ?? null,
+          url: exchange.url ?? null,
+          description: safeHostname(exchange.url),
         };
         currentView = "form";
         renderInner();

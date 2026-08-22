@@ -18,7 +18,7 @@
 
 import sprite from "../assets/sprite.svg";
 import { escapeHTML } from "../utils/helpers";
-import { formatUsd, formatBalance, formatPercent } from "../utils/formatters";
+import { formatUsd, formatBalance, formatCryptoPrice, formatPercent } from "../utils/formatters";
 
 /**
  * Returns the markup for the 24h change badge.
@@ -169,7 +169,11 @@ const AssetRow = (asset) => {
             loading="lazy"
           />
           <div>
-            <div class="font-bold text-white">${safeName}</div>
+            <a href="#/coin/${safeId}"
+               class="font-bold text-white hover:text-violet-400 transition-colors focus:outline-none focus:underline"
+               aria-label="Ver detalle de ${safeName}">
+              ${safeName}
+            </a>
             <div class="text-xs text-slate-500">${safeSymbol}</div>
           </div>
         </div>
@@ -182,7 +186,7 @@ const AssetRow = (asset) => {
 
       <!-- Price -->
       <td class="px-6 py-4 text-right font-mono text-slate-300" id="price-${safeId}">
-        ${formatUsd(price)}
+        ${formatCryptoPrice(price)}
       </td>
 
       <!-- 24h % -->
@@ -198,7 +202,7 @@ const AssetRow = (asset) => {
 
       <!-- Value -->
       <td class="px-6 py-4 text-right">
-        <div class="font-mono font-bold text-white" id="value-${safeId}">${formatUsd(value)}</div>
+        <div class="font-mono font-bold text-white" id="value-${safeId}">${formatCryptoPrice(value)}</div>
       </td>
 
       <!-- Last 7d sparkline -->

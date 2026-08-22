@@ -27,6 +27,7 @@ El script `"test": "node --test src/**/*.test.js"` está configurado en `package
 | **Estructura** | `describe()` para agrupar por función, `test()` para cada caso individual |
 | **Mocking** | Las APIs del navegador se mockean vía `globalThis` en `beforeEach`/`afterEach` |
 | **Aserciones** | Se usa exclusivamente `node:assert` (`strictEqual`, `deepStrictEqual`, `ok`, `doesNotThrow`) |
+| **Contratos de escritura** | Tests que verifican el número exacto de escrituras a `storage.set` (patrón de batch atómico) |
 
 ### Requisitos
 
@@ -53,6 +54,22 @@ Las funciones puras del directorio `src/utils/` son el primer objetivo de testin
 | `getCoin` | `getCoin`, `getTopCoins` | — | 🔲 Pendiente |
 
 **Enfoque de mocking:** Se mockea `localStorage` con un `Map` y se inyecta vía `globalThis.localStorage` en `beforeEach`, limpiando en `afterEach` para garantizar aislamiento entre tests.
+
+**Verificación de batch atómico:** Para funciones que prometen una sola escritura a localStorage (como `deleteTransaction`), se intercepta `storage.set` con un contador para verificar que se llame exactamente una vez. Este patrón protege el contrato de atomicidad contra refactorizaciones accidentales:
+
+```javascript
+test('cascada: escribe una sola vez (batch atómico)', () => {
+  setupHoldings([...transferHoldings]);
+  let writeCount = 0;
+  const originalSet = storage.set;
+  storage.set = (...args) => { writeCount++; originalSet(...args); };
+
+  deleteTransaction('tx-out');
+
+  assert.strictEqual(writeCount, 1, 'storage.set debe llamarse exactamente 1 vez');
+  storage.set = originalSet;
+});
+```
 
 Ejemplo de patrón de mock:
 ```javascript
@@ -103,6 +120,7 @@ Para componentes que exponen funciones `init*()`, las pruebas deben:
 | Módulo | Líneas | Funciones | Ramas | Suite |
 |---|---|---|---|---|
 | `holdingsStorage.js` | — | 4/4 | — | `holdingsStorage.test.js` (10 casos) |
+| `transactionUtils.js` | — | 6/6 | — | `transactionUtils.test.js` (incluye test de batch atómico) |
 
 > La métrica de cobertura detallada requiere la integración de `c8` o `nyc`. Actualmente no se genera reporte de cobertura automatizado.
 
@@ -117,4 +135,4 @@ Los informes detallados de testing para commits específicos se encuentran en:
 | `95fdc11` — holdingsStorage | [`testing/holdingsStorage-report.md`](testing/holdingsStorage-report.md) |
 
 ---
-*Última actualización: 2026-05-14*
+*Última actualización: 2026-08-16*

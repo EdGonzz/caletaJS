@@ -7,6 +7,7 @@ import sprite from "../assets/sprite.svg";
 import { currentFilter } from "./ActionToolbar";
 import { apiFetch, ApiError, ErrorType, getErrorMessage } from "../utils/errors.js";
 import { showWarning } from "./ErrorToast.js";
+import { getBalanceDelta } from '../utils/transactionUtils.js';
 
 const PAGE_SIZE = 4;
 
@@ -52,6 +53,10 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
         sparkPath: "M0,15 Q25,25 50,10 T100,5",
         sparkColor: "#64748b",
         isFlat: (tx.symbol ?? '').toLowerCase().includes("usd") || (tx.symbol ?? '').toLowerCase().includes("eur"),
+        // P&L tracking — método de costo promedio (average cost)
+        _totalInvested: 0,
+        _totalUnitsAcquired: 0,
+        costBasis: 0,
       };
     }
 
@@ -63,15 +68,30 @@ const aggregateHoldings = (transactions, filter = DEFAULT_SOURCE) => {
       });
     }
 
-    // Balance calculation
-    if (tx.type === 'buy' || tx.type === 'transfer') acc[key].balance += tx.balance;
-    if (tx.type === 'sell') acc[key].balance -= tx.balance;
+    // Balance calculation (regla centralizada — ver ADR-028)
+    acc[key].balance += getBalanceDelta(tx);
+
+    // Costo promedio: acumula inversión en entradas (buy / transfer_in)
+    if (tx.type === 'buy' || tx.type === 'transfer_in') {
+      acc[key]._totalInvested += (tx.balance ?? 0) * (tx.price ?? 0);
+      acc[key]._totalUnitsAcquired += (tx.balance ?? 0);
+    }
 
     return acc;
   }, {});
 
-  // Return only assets with a positive balance
-  return Object.values(aggregated).filter(h => h.balance > 0);
+  // Calcular costBasis con método de costo promedio y limpiar campos internos
+  const holdings = Object.values(aggregated).filter(h => h.balance > 0);
+  holdings.forEach(h => {
+    const avgCostPerUnit = h._totalUnitsAcquired > 0
+      ? h._totalInvested / h._totalUnitsAcquired
+      : 0;
+    h.costBasis = avgCostPerUnit * h.balance;
+    delete h._totalInvested;
+    delete h._totalUnitsAcquired;
+  });
+
+  return holdings;
 };
 
 /**
@@ -378,21 +398,54 @@ export const initHoldingsTable = () => {
       const state = btn.dataset.state;
 
       if (state === "normal") {
+        // Reset any other open menus first
         resetAssetActionButtons();
 
-        btn.dataset.state = "delete";
-        btn.className = "asset-action-btn rounded p-1 text-red-500 hover:bg-red-500/10 transition-colors";
-        btn.innerHTML = `<svg class="h-4 w-4" aria-hidden="true"><use href="${sprite}#trash"></use></svg>`;
-      } else {
-        const sourceContext = activeFilter === DEFAULT_SOURCE ? "todas las caletas" : `la caleta "${activeFilter}"`;
-        openConfirmDeleteModal({
-          title: `Eliminar Activo "${coinName}"`,
-          message: `¿Estás seguro de que deseas eliminar el activo ${coinName} de ${sourceContext}? Esta acción eliminará todas las transacciones asociadas a esta moneda de forma permanente y no se puede deshacer.`,
-          onConfirm: () => {
-            deleteHoldingsByCoin(coinId, activeFilter);
-            window.dispatchEvent(new CustomEvent('holdings-updated'));
-          }
+        // Show mini-menu
+        btn.dataset.state = "menu";
+        btn.className = "asset-action-btn relative rounded p-1 text-slate-400 transition-colors";
+        btn.innerHTML = `
+          <div class="absolute right-0 top-full mt-1 z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl p-1 min-w-[130px]">
+            <button data-action="view"
+                    class="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-slate-300 hover:bg-slate-700/60 hover:text-white rounded-lg transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              Ver detalle
+            </button>
+            <button data-action="delete"
+                    class="flex items-center gap-2 w-full px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 hover:text-red-300 rounded-lg transition-colors">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+              </svg>
+              Eliminar
+            </button>
+          </div>
+          <svg class="h-4 w-4 pointer-events-none" aria-hidden="true"><use href="${sprite}#dots-vertical"></use></svg>
+        `;
+
+        // Wire sub-menu buttons
+        btn.querySelector('[data-action="view"]')?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          window.location.hash = '#/coin/' + encodeURIComponent(coinId);
         });
+
+        btn.querySelector('[data-action="delete"]')?.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const sourceContext = activeFilter === DEFAULT_SOURCE ? "todas las caletas" : `la caleta "${activeFilter}"`;
+          openConfirmDeleteModal({
+            title: `Eliminar Activo "${coinName}"`,
+            message: `¿Estás seguro de que deseas eliminar el activo ${coinName} de ${sourceContext}? Esta acción eliminará todas las transacciones asociadas a esta moneda de forma permanente y no se puede deshacer.`,
+            onConfirm: () => {
+              deleteHoldingsByCoin(coinId, activeFilter);
+              window.dispatchEvent(new CustomEvent('holdings-updated'));
+            }
+          });
+          // Reset menu state
+          resetAssetActionButtons();
+        });
+      } else {
+        resetAssetActionButtons();
       }
     };
 
@@ -404,7 +457,6 @@ export const initHoldingsTable = () => {
       _globalAssetActionsCloseHandler = (e) => {
         const target = /** @type {Node} */(e.target);
         const isClickOnActionButton = target.closest(".asset-action-btn") !== null;
-
         if (!isClickOnActionButton) {
           resetAssetActionButtons();
         }
@@ -661,12 +713,15 @@ export const initHoldingsTable = () => {
         data = data.map(asset => {
           const market = markets.find(m => m.id === asset.id);
           if (market) {
+            // `price_change_percentage_24h` puede ser null en coins sin suficiente
+            // historial — usamos ?? 0 para evitar NaN en StatsGrid y AssetRow.
+            const change24h = market.price_change_percentage_24h ?? 0;
             return {
               ...asset,
-              price: market.current_price,
-              change24h: market.price_change_percentage_24h,
-              value: asset.balance * market.current_price,
-              sparkColor: market.price_change_percentage_24h >= 0 ? "#0bd570" : "#ef4444",
+              price: market.current_price ?? asset.price,
+              change24h,
+              value: asset.balance * (market.current_price ?? asset.price),
+              sparkColor: change24h >= 0 ? "#0bd570" : "#ef4444",
             };
           }
           return { ...asset, value: asset.balance * asset.price };
