@@ -56,12 +56,8 @@ export const getCoinHistory = async (coinId, days = 30, signal = null) => {
   // Períodos > 7 días: devolver YYYY-MM-DD (fecha completa, no hay granularidad intradía).
   const isIntraday = days <= 7;
 
-  return prices.map(([ts, price]) => {
-    if (isIntraday) {
-      return { time: Math.floor(ts / 1000), value: price };
-    }
-    const d = new Date(ts);
-    const localDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { time: localDateStr, value: price };
-  });
+  return prices.map(([ts, price]) => ({
+    time: isIntraday ? Math.floor(ts / 1000) : new Date(ts).toISOString().split('T')[0],
+    value: price,
+  }));
 };

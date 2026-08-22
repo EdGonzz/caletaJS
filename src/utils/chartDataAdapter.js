@@ -142,6 +142,11 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
       let accum = 0;
       for (const tx of sortedTx) {
         const txTime = tx.date || tx.createdAt || '';
+        // Sin fecha: la transacción cuenta desde el inicio (backward compat)
+        if (!txTime) {
+          accum += getBalanceDelta(tx);
+          continue;
+        }
         if (isIntraday) {
           const txTs = Math.floor(new Date(txTime).getTime() / 1000);
           if (txTs <= timeKey) accum += getBalanceDelta(tx);
@@ -194,7 +199,8 @@ export const buildPortfolioHistorySeries = async (days = 30, signal = null, filt
       if (dayBuyTxs.length > 0) {
         const totalInvested = dayBuyTxs.reduce((sum, tx) => sum + (tx.balance ?? 0) * (tx.price ?? 0), 0);
         const totalQty = dayBuyTxs.reduce((sum, tx) => sum + (tx.balance ?? 0), 0);
-        if (totalQty > 0) {
+        // Solo aplicar override si hay precio real de compra (evita anular con 0)
+        if (totalQty > 0 && totalInvested > 0) {
           firstDayOverridePrice = totalInvested / totalQty;
         }
       }
