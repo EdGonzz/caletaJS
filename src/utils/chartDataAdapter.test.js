@@ -16,7 +16,7 @@ describe('chartDataAdapter', () => {
     };
 
     // Configurar API variables de entorno mock
-    process.env.API_KEY = 'mock-key';
+    // // process.env.API_KEY = 'mock-key'; // removed // removed
     process.env.API_URL = 'https://api.coingecko.com/api/v3';
   });
 
