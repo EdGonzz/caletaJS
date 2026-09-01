@@ -450,7 +450,7 @@ const closeAddExchangeModal = () => {
   modal?.classList.add('opacity-0', 'pointer-events-none');
   // Explicitly disable pointer events on content — children with pointer-events-auto
   // still capture clicks even when the parent has pointer-events-none (CSS spec).
-  // This prevents the invisible content at z-[111] from blocking clicks on layers below.
+  // This prevents the invisible content at z-[161] from blocking clicks on layers below.
   content?.classList.add('pointer-events-none');
   content?.classList.remove('scale-100');
   content?.classList.add('scale-95');
@@ -550,14 +550,14 @@ const AddExchangeModal = () => `
   <!-- Backdrop -->
   <div
     id="add-exchange-backdrop"
-    class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-110 transition-opacity opacity-0 pointer-events-none"
+    class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-160 transition-opacity opacity-0 pointer-events-none"
     aria-hidden="true"
   ></div>
 
   <!-- Modal -->
   <div
     id="add-exchange-modal"
-    class="fixed inset-0 z-111 flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-300"
+    class="fixed inset-0 z-161 flex items-center justify-center p-4 pointer-events-none opacity-0 transition-all duration-300"
     role="dialog"
     aria-modal="true"
     aria-label="Agregar nueva caleta"

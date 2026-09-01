@@ -1,6 +1,13 @@
 # Created by https://www.toptal.com/developers/gitignore/api/node
 # Edit at https://www.toptal.com/developers/gitignore?templates=node
 
+### AI Tooling ###
+# KiloCode local tooling
+.kilo/
+
+# CommandCode local tooling
+.commandcode/
+
 ### Node ###
 # Logs
 logs

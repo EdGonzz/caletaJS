@@ -6,7 +6,7 @@ import { getSource, DEFAULT_SOURCE } from "../utils/sources";
 import { now, formatPreciseUsd } from "../utils/formatters";
 import AddExchangeModal, { openAddExchangeModal, initAddExchangeModal, cleanupAddExchangeModal } from "./AddExchangeModal";
 import { addHolding, addHoldingsBatch, getHoldings } from "../utils/holdingsStorage";
-import { escapeHTML } from "../utils/helpers.js";
+import { escapeHTML, sanitizeNumericInput } from "../utils/helpers.js";
 import sprite from "../assets/sprite.svg";
 import { showWarning, showError } from "./ErrorToast.js";
 import { PortfolioPicker, initPortfolioPicker } from './PortfolioPicker.js';
@@ -647,68 +647,27 @@ const wireFormView = () => {
   const feesInput = document.getElementById("fees-input");
   const notesTextarea = document.getElementById("notes-textarea");
 
-  const sanitizeInput = (inputEl) => {
-    let val = inputEl.value;
-    const start = inputEl.selectionStart;
-    const end = inputEl.selectionEnd;
-
-    // Permitir solo números y separadores decimales/miles
-    val = val.replace(/[^0-9.,]/g, "");
-
-    // Resolver ambigüedad si se usan tanto comas como puntos (miles vs decimal)
-    if (val.includes(",") && val.includes(".")) {
-      const firstComma = val.indexOf(",");
-      const firstPoint = val.indexOf(".");
-      if (firstComma < firstPoint) {
-        // Formato americano (1,234.56): la coma es miles, la removemos
-        val = val.replace(/,/g, "");
-      } else {
-        // Formato europeo (1.234,56): el punto es miles, lo removemos
-        val = val.replace(/\./g, "");
-      }
-    }
-
-    // Normalizar comas restantes a puntos (como separador decimal)
-    val = val.replace(/,/g, ".");
-
-    // Conservar solo el primer punto decimal y remover los duplicados subsiguientes
-    const firstPointIndex = val.indexOf(".");
-    if (firstPointIndex !== -1) {
-      val = val.substring(0, firstPointIndex + 1) +
-        val.substring(firstPointIndex + 1).replace(/\./g, "");
-    }
-
-    inputEl.value = val;
-
-    // Restaurar posición del cursor para evitar que salte al final al editar
-    if (inputEl === document.activeElement && start !== null && end !== null) {
-      inputEl.setSelectionRange(start, end);
-    }
-
-    return val;
-  };
-
   qtyInput?.addEventListener("input", () => {
-    quantity = sanitizeInput(qtyInput);
+    quantity = sanitizeNumericInput(qtyInput);
     updateTotal();
     _updateDestinoRecibe();
   });
   priceInput?.addEventListener("input", () => {
-    price = sanitizeInput(priceInput);
+    price = sanitizeNumericInput(priceInput);
     updateTotal();
   });
   dateInput?.addEventListener("input", (e) => {
     date = e.target.value;
   });
   feesInput?.addEventListener("input", () => {
-    fees = sanitizeInput(feesInput);
+    fees = sanitizeNumericInput(feesInput);
     updateTotal();
   });
 
   // Network Fee input (solo Transfer)
   const networkFeeInput = document.getElementById("network-fee-input");
   networkFeeInput?.addEventListener("input", () => {
-    networkFee = sanitizeInput(networkFeeInput);
+    networkFee = sanitizeNumericInput(networkFeeInput);
     _updateDestinoRecibe();
   });
 
