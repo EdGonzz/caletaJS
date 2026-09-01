@@ -1,5 +1,5 @@
 // src/utils/transactionUtils.js
-import { getHoldings } from './holdingsStorage.js';
+import { getHoldings, updateHoldingsBatch } from './holdingsStorage.js';
 import { storage } from './storage.js';
 import { getSource } from './sources.js';
 
@@ -19,6 +19,36 @@ export const getBalanceDelta = (tx) => {
       : 0;
 
   return delta === 0 ? 0 : delta;
+};
+
+/**
+ * Calcula el balance disponible en un exchange excluyendo una transacción específica.
+ * Sirve como base para validaciones de oversell al editar transacciones.
+ * @param {Object} tx - Transacción a excluir
+ * @returns {number}
+ */
+export const getAvailableBalanceExcluding = (tx) => {
+  if (!tx || !tx.coinId || !tx.source) return 0;
+  return getNetBalance(tx.coinId, tx.source) - getBalanceDelta(tx);
+};
+
+/**
+ * Balance disponible en un source excluyendo AMBAS piernas de una transferencia.
+ * Útil para validar oversell al cambiar el source de una transferencia: la pierna
+ * (transfer_in/transfer_out) que vive en el source nuevo también se va a mover,
+ * por lo que no debe contar como balance disponible.
+ * @param {string} coinId
+ * @param {string} source
+ * @param {string} transferId
+ * @returns {number}
+ */
+export const getAvailableBalanceExcludingTransfer = (coinId, source, transferId) => {
+  const holdings = getHoldings();
+  const legsDelta = holdings.reduce((acc, tx) => {
+    if (tx.coinId !== coinId || tx.transferId !== transferId || tx.source !== source) return acc;
+    return acc + getBalanceDelta(tx);
+  }, 0);
+  return getNetBalance(coinId, source) - legsDelta;
 };
 
 /**
@@ -177,3 +207,158 @@ export const deleteTransaction = (txId) => {
   storage.set('caleta_user_holdings', updated);
   return true;
 };
+
+/**
+ * Elimina prefijos 'Recibido desde X' o '[Recibido desde X]' de una cadena de notas.
+ * @param {string} notes
+ * @returns {string}
+ */
+export const stripTransferNotesPrefix = (notes) => {
+  if (typeof notes !== 'string') return '';
+  let clean = notes.trim();
+  let prev;
+  do {
+    prev = clean;
+    // 1. Bracketed: [Recibido desde ...]
+    clean = clean.replace(/^\[Recibido desde [^\]\n]+\]\s*[-.:]?\s*/i, '');
+    // 2. Unbracketed with separator (-, :, .)
+    clean = clean.replace(/^Recibido desde\s+[^:.\-\n]+(?:\s*[:.-]\s*)/i, '');
+    // 3. Just "Recibido desde ..." with no subsequent notes
+    clean = clean.replace(/^Recibido desde(?:\s+[^\n]+)?$/i, '');
+  } while (clean !== prev && clean.length > 0);
+
+  return clean.trim();
+};
+
+/**
+ * Actualiza una transacción por ID.
+ * Si es una transferencia (tiene transferId), recalcula ambas piernas (transfer_out y transfer_in)
+ * atómicamente en un solo batch.
+ * @param {string} txId - ID de la transacción a actualizar
+ * @param {Object} updates - Campos canónicos de actualización
+ * @returns {boolean} true si se actualizó, false si no se encontró el txId
+ */
+export const updateTransaction = (txId, updates = {}) => {
+  const holdings = getHoldings();
+  const tx = holdings.find(h => h.id === txId);
+  if (!tx) return false;
+
+  // Caso 1: Transacción individual (sin transferId)
+  if (!tx.transferId) {
+    const singleUpdates = { ...updates };
+    if (singleUpdates.qty !== undefined) {
+      if (singleUpdates.balance === undefined) {
+        singleUpdates.balance = singleUpdates.qty;
+      }
+      delete singleUpdates.qty;
+    }
+
+    if (singleUpdates.balance !== undefined) {
+      const parsedBalance = Number(singleUpdates.balance);
+      if (!Number.isFinite(parsedBalance) || parsedBalance <= 0) return false;
+      singleUpdates.balance = parsedBalance;
+    }
+
+    if (singleUpdates.price !== undefined) {
+      const parsedPrice = Number(singleUpdates.price);
+      if (!Number.isFinite(parsedPrice) || parsedPrice < 0) return false;
+      singleUpdates.price = parsedPrice;
+    }
+
+    updateHoldingsBatch([{ id: txId, updates: singleUpdates }]);
+    return true;
+  }
+
+  // Caso 2: Transferencia (ambas piernas enlazadas por transferId)
+  const transferLegs = holdings.filter(h => h.transferId === tx.transferId);
+  const outTx = transferLegs.find(h => h.type === 'transfer_out') || (tx.type === 'transfer_out' ? tx : null);
+  const inTx = transferLegs.find(h => h.type === 'transfer_in') || (tx.type === 'transfer_in' ? tx : null);
+
+  const rawQty = updates.qty !== undefined
+    ? updates.qty
+    : (updates.balance !== undefined ? updates.balance : (outTx?.balance ?? tx.balance ?? 0));
+  const qty = Number(rawQty);
+
+  const rawFee = updates.networkFee !== undefined
+    ? updates.networkFee
+    : (outTx?.networkFee ?? inTx?.networkFee ?? 0);
+  const networkFee = Number(rawFee);
+
+  // Validación defensiva de rangos (ADR-029)
+  if (!Number.isFinite(qty) || qty <= 0) return false;
+  if (!Number.isFinite(networkFee) || networkFee < 0 || networkFee >= qty) return false;
+
+  const date = updates.date !== undefined ? updates.date : (outTx?.date ?? inTx?.date ?? tx.date);
+
+  const rawPrice = updates.price !== undefined
+    ? updates.price
+    : (outTx?.price ?? inTx?.price ?? tx.price ?? 0);
+  const price = Number(rawPrice);
+  if (!Number.isFinite(price) || price < 0) return false;
+
+  const source = updates.source !== undefined
+    ? updates.source
+    : (outTx?.source ?? (tx.type === 'transfer_out' ? tx.source : ''));
+
+  const destSource = updates.destSource !== undefined
+    ? updates.destSource
+    : (inTx?.source ?? (tx.type === 'transfer_in' ? tx.source : ''));
+
+  // Determinar notas del usuario haciendo strip del prefijo existente
+  const rawNotesInput = updates.notes !== undefined
+    ? updates.notes
+    : (outTx?.notes || inTx?.notes || tx.notes || '');
+  const cleanNotes = stripTransferNotesPrefix(rawNotesInput);
+
+  const outNotes = cleanNotes;
+  const inNotes = cleanNotes
+    ? `[Recibido desde ${source}] ${cleanNotes}`
+    : `Recibido desde ${source}`;
+
+  const commonUpdates = {};
+  if (updates.coinId !== undefined) commonUpdates.coinId = updates.coinId;
+  if (updates.name !== undefined) commonUpdates.name = updates.name;
+  if (updates.symbol !== undefined) commonUpdates.symbol = updates.symbol;
+  if (updates.logoUrl !== undefined) commonUpdates.logoUrl = updates.logoUrl;
+
+  const batch = [];
+  if (outTx) {
+    batch.push({
+      id: outTx.id,
+      updates: {
+        ...commonUpdates,
+        balance: qty,
+        source,
+        date,
+        price,
+        networkFee,
+        notes: outNotes,
+        ...(updates.sourceImage !== undefined && { sourceImage: updates.sourceImage }),
+        ...(updates.sourceIcon !== undefined && { sourceIcon: updates.sourceIcon }),
+        ...(updates.fees !== undefined && { fees: updates.fees }),
+      },
+    });
+  }
+
+  if (inTx) {
+    batch.push({
+      id: inTx.id,
+      updates: {
+        ...commonUpdates,
+        balance: qty - networkFee,
+        source: destSource,
+        date,
+        price,
+        networkFee,
+        notes: inNotes,
+        ...(updates.destSourceImage !== undefined && { sourceImage: updates.destSourceImage }),
+        ...(updates.destSourceIcon !== undefined && { sourceIcon: updates.destSourceIcon }),
+        ...(updates.fees !== undefined && { fees: updates.fees }),
+      },
+    });
+  }
+
+  updateHoldingsBatch(batch);
+  return true;
+};
+

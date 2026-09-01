@@ -11,6 +11,7 @@ import { initActionToolbar, cleanupActionToolbar } from "../components/ActionToo
 import { initHistoryChart, cleanupHistoryChart } from "../components/HistoryChart";
 import { initAllocationDonut, cleanupAllocationDonut } from "../components/AllocationDonut";
 import { initConfirmDeleteModal, cleanupConfirmDeleteModal } from "../components/ConfirmDeleteModal";
+import { cleanupEditTransactionModal } from "../components/EditTransactionModal";
 
 import getHash from "../utils/getHash";
 import resolveRoutes from "../utils/resolveRoutes";
@@ -31,6 +32,7 @@ const router = async () => {
   cleanupAddAssetModal();
   cleanupActionToolbar();
   cleanupConfirmDeleteModal();
+  cleanupEditTransactionModal();
 
   const header = document.getElementById("header");
   const root = document.getElementById("app");

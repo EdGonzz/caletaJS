@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
-import { addHolding, getHoldings, updateHolding, removeHolding, deleteHoldingsBySource, deleteHoldingsByCoin } from './holdingsStorage.js';
+import { addHolding, getHoldings, updateHolding, updateHoldingsBatch, removeHolding, deleteHoldingsBySource, deleteHoldingsByCoin } from './holdingsStorage.js';
 
 
 describe('holdingsStorage', () => {
@@ -103,6 +103,64 @@ describe('holdingsStorage', () => {
 
       const result = updateHolding('non-existent', { amount: 2 });
       assert.deepStrictEqual(result, initial);
+    });
+  });
+
+  describe('updateHoldingsBatch()', () => {
+    test('should update multiple holdings in a single operation', () => {
+      const initial = [
+        { id: '1', symbol: 'BTC', amount: 1 },
+        { id: '2', symbol: 'ETH', amount: 10 },
+        { id: '3', symbol: 'SOL', amount: 50 }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      const result = updateHoldingsBatch([
+        { id: '1', updates: { amount: 2 } },
+        { id: '2', updates: { amount: 15 } }
+      ]);
+
+      assert.strictEqual(result.length, 3);
+      assert.strictEqual(result[0].amount, 2);
+      assert.strictEqual(result[1].amount, 15);
+      assert.strictEqual(result[2].amount, 50);
+      assert.ok(result[0].updatedAt);
+      assert.ok(result[1].updatedAt);
+      assert.strictEqual(result[2].updatedAt, undefined);
+
+      const stored = JSON.parse(mockStorage.get('caleta_user_holdings'));
+      assert.deepStrictEqual(stored, result);
+    });
+
+    test('should perform a single storage write', () => {
+      const initial = [
+        { id: '1', symbol: 'BTC', amount: 1 },
+        { id: '2', symbol: 'ETH', amount: 10 }
+      ];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      let writeCount = 0;
+      const originalSetItem = globalThis.localStorage.setItem;
+      globalThis.localStorage.setItem = (...args) => {
+        writeCount++;
+        originalSetItem(...args);
+      };
+
+      updateHoldingsBatch([
+        { id: '1', updates: { amount: 2 } },
+        { id: '2', updates: { amount: 20 } }
+      ]);
+
+      assert.strictEqual(writeCount, 1);
+      globalThis.localStorage.setItem = originalSetItem;
+    });
+
+    test('should return current holdings if entries is empty or invalid', () => {
+      const initial = [{ id: '1', symbol: 'BTC', amount: 1 }];
+      mockStorage.set('caleta_user_holdings', JSON.stringify(initial));
+
+      assert.deepStrictEqual(updateHoldingsBatch([]), initial);
+      assert.deepStrictEqual(updateHoldingsBatch(null), initial);
     });
   });
 

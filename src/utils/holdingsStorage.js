@@ -44,6 +44,32 @@ export const updateHolding = (id, updates) => {
 };
 
 /**
+ * Updates multiple holding records atomically in a single localStorage write.
+ * @param {Array<{ id: string, updates: Object }>} entries - Array of objects containing id and updates.
+ * @returns {Array} The updated holdings list.
+ */
+export const updateHoldingsBatch = (entries) => {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return getHoldings();
+  }
+
+  const holdings = getHoldings();
+  const updatesMap = new Map(entries.map(e => [e.id, e.updates]));
+  const now = new Date().toISOString();
+
+  const updated = holdings.map(h => {
+    if (updatesMap.has(h.id)) {
+      const updates = updatesMap.get(h.id);
+      return { ...h, ...updates, updatedAt: now };
+    }
+    return h;
+  });
+
+  storage.set(HOLDINGS_KEY, updated);
+  return updated;
+};
+
+/**
  * Removes a holding record by ID.
  * @param {string} id - The unique ID of the record.
  * @returns {Array} The updated holdings list.

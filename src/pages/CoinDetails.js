@@ -1,14 +1,19 @@
 // src/pages/CoinDetails.js
 import { escapeHTML } from '../utils/helpers.js';
 import { formatUsd, formatNumber, formatCryptoPrice } from '../utils/formatters.js';
-import { getTransactionsByCoin, getNetBalance, getBalanceDelta, deleteTransaction, getCoinDistribution } from '../utils/transactionUtils.js';
+import { getTransactionsByCoin, getNetBalance, getBalanceDelta, deleteTransaction, getCoinDistribution, updateTransaction } from '../utils/transactionUtils.js';
 import { getHoldings } from '../utils/holdingsStorage.js';
 import ConfirmDeleteModal, { openConfirmDeleteModal, initConfirmDeleteModal, cleanupConfirmDeleteModal } from '../components/ConfirmDeleteModal.js';
+import EditTransactionModal, { openEditTransactionModal, initEditTransactionModal, cleanupEditTransactionModal } from '../components/EditTransactionModal.js';
 import sprite from '../assets/sprite.svg';
 import { apiFetch, ApiError, ErrorType } from '../utils/errors.js';
+import { showError } from '../components/ErrorToast.js';
 
 const API_KEY = process.env.API_KEY;
 const API_URL = process.env.API_URL;
+
+/** Último current_price conocido (cache module-scope) para re-render de stats sin refetch (M5). */
+let _lastKnownPrice = null;
 
 /**
  * @param {{ id?: string }} params
@@ -147,6 +152,7 @@ const CoinDetails = (params = {}) => {
       </div>
 
       ${ConfirmDeleteModal()}
+      ${EditTransactionModal()}
       <span id="coin-id-data" data-coin-id="${coinId}" hidden></span>
     </main>
   `;
@@ -172,11 +178,15 @@ export default CoinDetails;
 export const initCoinDetails = async () => {
   cleanupConfirmDeleteModal();
   initConfirmDeleteModal();
+  cleanupEditTransactionModal();
+  initEditTransactionModal();
 
   const coinIdEl = document.getElementById('coin-id-data');
   const coinId = coinIdEl?.dataset?.coinId;
   if (!coinId) return;
 
+  // Reset del cache de precio por sesión de moneda (M5)
+  _lastKnownPrice = null;
   _renderStats(coinId, null);
   _renderDistribution(coinId);
   _renderTransactions(coinId);
@@ -267,6 +277,9 @@ const _renderHeader = (data) => {
 
 /** @param {string} coinId @param {number|null} currentPrice */
 const _renderStats = (coinId, currentPrice) => {
+  // Cache del último precio conocido para reutilizarlo en re-renders posteriores (M5)
+  if (currentPrice != null) _lastKnownPrice = currentPrice;
+
   const txs = getTransactionsByCoin(coinId);
   const balance = getNetBalance(coinId);
   const symbol = txs[0]?.symbol?.toUpperCase() ?? '';
@@ -394,6 +407,10 @@ const _renderTransactions = (coinId) => {
   txList.querySelectorAll('[data-delete-tx]').forEach((btn) => {
     btn.addEventListener('click', () => _handleDeleteTx(btn.dataset.deleteTx, coinId));
   });
+
+  txList.querySelectorAll('[data-edit-tx]').forEach((btn) => {
+    btn.addEventListener('click', () => _handleEditTx(btn.dataset.editTx, coinId));
+  });
 };
 
 /** @param {Object} tx @param {number} index @param {number} [runningBalance] @param {string} [coinSymbol] @returns {string} */
@@ -514,6 +531,15 @@ const _txRow = (tx, index, runningBalance, coinSymbol) => {
       </div>
       ` : ''}
 
+      <!-- Edit button -->
+      <button data-edit-tx="${escapeHTML(tx.id)}"
+              aria-label="Editar transacción del ${escapeHTML(date)}"
+              class="tx-delete-btn focus:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+          <use href="${sprite}#pencil"></use>
+        </svg>
+      </button>
+
       <!-- Delete button -->
       <button data-delete-tx="${escapeHTML(tx.id)}"
               aria-label="Eliminar transacción del ${escapeHTML(date)}"
@@ -543,7 +569,34 @@ const _handleDeleteTx = (txId, coinId) => {
     onConfirm: () => {
       deleteTransaction(txId);
       _renderTransactions(coinId);
-      _renderStats(coinId, null);
+      _renderStats(coinId, _lastKnownPrice);
+      window.dispatchEvent(new CustomEvent('holdings-updated'));
+    }
+  });
+};
+
+/** @param {string} txId @param {string} coinId */
+const _handleEditTx = (txId, coinId) => {
+  const tx = getHoldings().find(h => h.id === txId);
+  if (!tx) return;
+
+  // Resolver la pareja de la transferencia (si aplica) por transferId
+  let pairedTx = null;
+  if (tx.transferId) {
+    pairedTx = getHoldings().find(h => h.transferId === tx.transferId && h.id !== txId) ?? null;
+  }
+
+  openEditTransactionModal({
+    tx,
+    pairedTx,
+    onSave: (updates) => {
+      const ok = updateTransaction(txId, updates);
+      if (!ok) {
+        showError('No se pudo guardar la transacción.');
+        return;
+      }
+      _renderTransactions(coinId);
+      _renderStats(coinId, _lastKnownPrice);
       window.dispatchEvent(new CustomEvent('holdings-updated'));
     }
   });
