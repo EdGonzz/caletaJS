@@ -4,14 +4,13 @@
 
 import { apiFetch, ApiError, ErrorType } from './errors.js';
 
-const API_KEY = process.env.API_KEY;
-const API_URL = process.env.API_URL;
+// Backend Proxy URL
+const PROXY_URL = '/api/proxy';
 
 /** @type {RequestInit} */
 const baseOptions = {
   method: 'GET',
   headers: {
-    'x-cg-demo-api-key': API_KEY,
     'Content-Type': 'application/json',
   },
 };
@@ -24,8 +23,8 @@ const baseOptions = {
  */
 const getExchange = async (id) => {
   const url = id
-    ? `${API_URL}/exchanges/${id}`
-    : `${API_URL}/exchanges?per_page=15&page=1`;
+    ? `${PROXY_URL}?endpoint=/exchanges/${id}`
+    : `${PROXY_URL}?endpoint=/exchanges&per_page=15&page=1`;
 
   return apiFetch(url, baseOptions);
 };

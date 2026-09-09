@@ -698,12 +698,12 @@ export const initHoldingsTable = () => {
     let fetchFailed = false;
 
     try {
-      const url = `${process.env.API_URL}/coins/markets?vs_currency=usd&ids=${coinIds}&sparkline=true`;
+      const url = `/api/proxy?endpoint=/coins/markets&vs_currency=usd&ids=${coinIds}&sparkline=true`;
       const fetchOptions = {
         signal,
         headers: {
           'Content-Type': 'application/json',
-          'x-cg-demo-api-key': process.env.API_KEY || ''
+          /* removed x-cg-demo-api-key */
         }
       };
 

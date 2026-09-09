@@ -4,8 +4,8 @@
 
 import { apiFetch, ApiError, ErrorType } from './errors.js';
 
-const API_KEY = process.env.API_KEY;
-const API_URL = process.env.API_URL;
+// Backend Proxy URL
+const PROXY_URL = '/api/proxy';
 
 /**
  * @typedef {Object} Coin
@@ -41,7 +41,6 @@ const API_URL = process.env.API_URL;
 const baseOptions = {
   method: 'GET',
   headers: {
-    'x-cg-demo-api-key': API_KEY,
     'Content-Type': 'application/json',
   },
 };
@@ -54,7 +53,7 @@ const baseOptions = {
  */
 export const searchCoins = async (query) => {
   const data = await apiFetch(
-    `${API_URL}/search?query=${encodeURIComponent(query)}`,
+    `${PROXY_URL}?endpoint=/search&query=${encodeURIComponent(query)}`,
     baseOptions,
   );
 
@@ -73,7 +72,7 @@ export const searchCoins = async (query) => {
 export const getTopCoins = async (limit = 10) => {
   try {
     const data = await apiFetch(
-      `${API_URL}/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1`,
+      `${PROXY_URL}?endpoint=/coins/markets&vs_currency=usd&order=market_cap_desc&per_page=${limit}&page=1`,
       baseOptions,
     );
 
@@ -96,7 +95,7 @@ const getCoin = async (id) => {
 
   try {
     const data = await apiFetch(
-      `${API_URL}/coins/markets?vs_currency=usd&ids=${encodeURIComponent(id)}`,
+      `${PROXY_URL}?endpoint=/coins/markets&vs_currency=usd&ids=${encodeURIComponent(id)}`,
       baseOptions,
     );
 
