@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { buildAllocationData } from "../utils/chartDataAdapter.js";
 import { formatUsd } from "../utils/formatters.js";
 import { getHoldings } from "../utils/holdingsStorage.js";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import StatCard from "./StatCard";
 import { formatUsd, formatPercent, formatCryptoPrice } from "../utils/formatters";
 

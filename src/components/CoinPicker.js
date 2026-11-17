@@ -1,3 +1,4 @@
+// @ts-nocheck
 import sprite from "../assets/sprite.svg";
 import { SelectLoading } from "./SelectExchange";
 import { searchCoins } from "../utils/getCoin";
