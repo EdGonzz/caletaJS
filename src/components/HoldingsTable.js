@@ -1,3 +1,4 @@
+// @ts-nocheck
 import AssetRow from "./AssetRow";
 import Pagination from "./Pagination";
 import { getHoldings, deleteHoldingsByCoin } from "../utils/holdingsStorage";

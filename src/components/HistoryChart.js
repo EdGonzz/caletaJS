@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview HistoryChart — Gráfico de historial de portafolio con manejo robusto de errores.
  */

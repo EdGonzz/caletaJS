@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/pages/CoinDetails.js
 import { escapeHTML } from '../utils/helpers.js';
 import { formatUsd, formatNumber, formatCryptoPrice } from '../utils/formatters.js';

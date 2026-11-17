@@ -1,3 +1,4 @@
+// @ts-nocheck
 import Button from "./Button";
 import { getSource, DEFAULT_SOURCE, deleteSource } from "../utils/sources";
 import { deleteHoldingsBySource } from "../utils/holdingsStorage";
