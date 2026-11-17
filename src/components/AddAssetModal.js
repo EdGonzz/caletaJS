@@ -1,3 +1,4 @@
+// @ts-nocheck
 import getCoin, { getTopCoins } from "../utils/getCoin";
 import { storage } from "../utils/storage";
 import { SelectExchange } from "./SelectExchange";

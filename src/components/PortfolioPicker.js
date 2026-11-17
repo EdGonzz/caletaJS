@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/PortfolioPicker.js
 import sprite from '../assets/sprite.svg';
 import { getPortfolioCoins } from '../utils/transactionUtils.js';

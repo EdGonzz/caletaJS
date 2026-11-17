@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "skipLibCheck": true,
+    "strict": false,
+    "alwaysStrict": true,
+    "noImplicitThis": true,
+    "useUnknownInCatchVariables": false,
+    "resolveJsonModule": true,
+    "types": []
+  },
+  "include": [
+    "src/**/*",
+    "src/types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.js"
+  ]
+}

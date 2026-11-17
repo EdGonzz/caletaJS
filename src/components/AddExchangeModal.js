@@ -1,3 +1,4 @@
+// @ts-nocheck
 import getExchange from '../utils/getExchange';
 import { addSource, getSource } from '../utils/sources';
 import sprite from '../assets/sprite.svg';

@@ -38,8 +38,8 @@ Se eligió **Webpack 5** como bundler principal, configurado con:
 ## Alternativas Consideradas
 
 | Alternativa | Razón de descarte                                                      |
-|-------------|------------------------------------------------------------------------|
-| Vite        | Requeriría migración completa; Webpack era conocido por el equipo     |
-| Parcel      | Menos control sobre configuración; menos maduro en ecosistema         |
-| esbuild     | Sin plugin ecosystem maduro para PostCSS/Tailwind en ese momento      |
-| Sin bundler | No permite HMR, optimización ni procesamiento de CSS avanzado         |
+|-------------|----------------------------------------------------------------------------|
+| Vite        | Requeriría migración completa; Webpack fue lo implementado en el curso     |
+| Parcel      | Menos control sobre configuración; menos maduro en ecosistema              |
+| esbuild     | Sin plugin ecosystem maduro para PostCSS/Tailwind en ese momento           |
+| Sin bundler | No permite HMR, optimización ni procesamiento de CSS avanzado              |

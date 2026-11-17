@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @typedef {Object} Asset
  * @property {string}   id          - Unique identifier (e.g. "btc")

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/components/EditTransactionModal.js
 import sprite from '../assets/sprite.svg';
 import { SelectExchange } from './SelectExchange.js';

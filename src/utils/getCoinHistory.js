@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Obtiene el historial de precios de una moneda desde CoinGecko.
  */

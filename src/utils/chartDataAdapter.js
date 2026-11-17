@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Adapta datos de la API a los formatos requeridos por los gráficos.
  */

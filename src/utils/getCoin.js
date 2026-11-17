@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @fileoverview Utilidades para obtener datos de monedas desde la API de CoinGecko.
  */
