@@ -19,10 +19,10 @@ S7. Fases 5, 7 y 9 del plan: configurar `API_KEY` en Vercel Dashboard, `vercel l
 
 ## Tasks
 
-T1 — S2,S3 — delegated (Antigravity en `caleta / Workers` vía hc) — crear `api/*.js`, tests y `vercel.json`.
-T2 — S4,S5 — inline — rewiring del frontend + limpieza de `dotenv-webpack`.
-T3 — S6 — inline — `pnpm test`, `pnpm build`, grep de secretos, validación `vercel dev`.
-T4 — S7 — humano — login/link/env vars/preview/prod.
+T1 — S2,S3 — delegated (Antigravity en `caleta / Workers` vía hc) — crear `api/*.js`, tests y `vercel.json` — commit `0718a28`.
+T2 — S4,S5 — inline — rewiring del frontend + limpieza de `dotenv-webpack` — commit `7bbec8c`.
+T3 — S6 — inline — `pnpm test` (124/124), `pnpm build`, grep de secretos (sin coincidencias); `vercel dev` bloqueado por auth → ver T4 — commit `7bbec8c`.
+T4 — S7 — humano — login/link/env vars/preview/prod (PENDIENTE: requiere credenciales y autorización explícita).
 
 ## Log
 
