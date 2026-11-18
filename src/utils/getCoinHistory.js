@@ -5,14 +5,10 @@
 
 import { apiFetch, ApiError, ErrorType } from './errors.js';
 
-const API_KEY = process.env.API_KEY;
-const API_URL = process.env.API_URL;
-
 /** @type {RequestInit} */
 const baseOptions = {
   method: 'GET',
   headers: {
-    'x-cg-demo-api-key': API_KEY,
     'Content-Type': 'application/json',
   },
 };
@@ -42,7 +38,7 @@ export const getCoinHistory = async (coinId, days = 30, signal = null) => {
 
   // Para períodos <= 7 días omitimos interval=daily para obtener granularidad intradía
   const intervalParam = days <= 7 ? '' : '&interval=daily';
-  const url = `${API_URL}/coins/${coinId}/market_chart?vs_currency=usd&days=${days}${intervalParam}`;
+  const url = `/api/coin-history?id=${encodeURIComponent(coinId)}&days=${days}${intervalParam}`;
 
   const fetchOptions = signal ? { ...baseOptions, signal } : baseOptions;
 
