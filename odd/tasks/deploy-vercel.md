@@ -22,7 +22,7 @@ S7. Fases 5, 7 y 9 del plan: configurar `API_KEY` en Vercel Dashboard, `vercel l
 T1 — S2,S3 — delegated (Antigravity en `caleta / Workers` vía hc) — crear `api/*.js`, tests y `vercel.json` — commit `0718a28`.
 T2 — S4,S5 — inline — rewiring del frontend + limpieza de `dotenv-webpack` — commit `7bbec8c`.
 T3 — S6 — inline — `pnpm test` (124/124), `pnpm build`, grep de secretos (sin coincidencias); `vercel dev` bloqueado por auth → ver T4 — commit `7bbec8c`.
-T4 — S7 — humano — login/link/env vars/preview/prod (PENDIENTE: requiere credenciales y autorización explícita).
+T4 — S7 — humano — login/link/env vars/preview/prod — COMPLETADO: deploy en production (URL caleta-kappa.vercel.app).
 
 ## Log
 
@@ -45,3 +45,5 @@ L8: `vercel dev` para validación local con curl queda en la frontera humana T4:
 L9: Cierre local inicial: 3 commits — 0718a28 (feat deploy), 7bbec8c (refactor api), 35cdb45 (docs deploy). Nada pusheado, sin PR, sin deploy.
 
 L10: Coordinación de deploy T4 iniciada 2026-11-21: login Vercel (`edgonz`), link del proyecto `caleta` en team `edgonzzs-projects` (projectId `prj_Glpa7Cwg37LUcI6KBAfWhdhxxlB0`), `.vercel/project.json` generado, `.env.local` creado por el CLI e ignorado. Commit `98346d3` (chore: ignore .vercel y env files). Slice: 1305 authored lines en 4 commits desde origin/main (lock excluido) → delivery `single-pr`, toda la rama es un solo PR, sin chaining.
+
+L11: Deploy completado 2026-11-21: por ser el primer deployment, Vercel lo asignó a production (no preview). URLs: `https://caleta-kappa.vercel.app` (alias) y `https://caleta-itapat7kb-edgonzzs-projects.vercel.app` (production). Validación post-deploy: `/api/coins?ids=bitcoin` 200 con datos reales (API_KEY en runtime serverless), `/api/coin?query=solana` 200, anti-SSRF `ids=../../etc/passwd` 400, POST `/api/coins` 405, SPA root 200. Edge cache activo (`x-vercel-cache: HIT`, `age`) — Vercel normaliza el header `cache-control` a `public` para el cliente pero honra `s-maxage` internamente en su CDN (mitigación ADR-018 operativa).
