@@ -41,3 +41,7 @@ L6: Verificación independiente (Antigravity fresco en pane t2d, solo lectura): 
 L7: Revisión nativa RDD (RDD activo, assess `high_risk` con escalate item 2, consent `granted` por el usuario): lineage `review-71951f3ef1d8c190`, lenses review-risk/resilience/reliability, resultado APPROVED con 8 hallazgos informational non-blocking (sin corrección abierta). Acknowledgement ejecutado: `review-acknowledged/v1` / `authority: burned`. Follow-ups informational para trabajo posterior: cachear respuestas de error en CDN (R3-001/R4-01), cubrir URLs de los 2 componentes con test (R3-002), y test del patrón de rewrite (R3-003/R4-04).
 
 L8: `vercel dev` para validación local con curl queda en la frontera humana T4: el CLI pidió device auth de Vercel ("No existing credentials found") y no se autenticó. Sin login de Vercel, link, env vars, preview ni prod deploy sin autorización explícita del usuario.
+
+L9: Cierre local inicial: 3 commits — 0718a28 (feat deploy), 7bbec8c (refactor api), 35cdb45 (docs deploy). Nada pusheado, sin PR, sin deploy.
+
+L10: Coordinación de deploy T4 iniciada 2026-11-21: login Vercel (`edgonz`), link del proyecto `caleta` en team `edgonzzs-projects` (projectId `prj_Glpa7Cwg37LUcI6KBAfWhdhxxlB0`), `.vercel/project.json` generado, `.env.local` creado por el CLI e ignorado. Commit `98346d3` (chore: ignore .vercel y env files). Slice: 1305 authored lines en 4 commits desde origin/main (lock excluido) → delivery `single-pr`, toda la rama es un solo PR, sin chaining.
