@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import handler from './coins.js';
+import handler from '../api/coins.js';
 
 function createMockRes() {
   return {
@@ -94,6 +94,27 @@ describe('api/coins handler', () => {
       assert.equal(res.statusCode, 400, `Expected 400 for query: ${JSON.stringify(query)}`);
       assert.ok(res.body?.error, 'Should return error property in body');
     }
+  });
+
+  test('accepts full 25-character price_change_percentage period set and returns 200', async () => {
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: async () => [{ id: 'bitcoin', current_price: 50000 }],
+    });
+
+    const fullPeriods = '1h,24h,7d,14d,30d,200d,1y';
+    assert.equal(fullPeriods.length, 25);
+
+    const req = createMockReq({
+      method: 'GET',
+      query: { price_change_percentage: fullPeriods },
+    });
+    const res = createMockRes();
+    await handler(req, res);
+
+    assert.equal(res.statusCode, 200);
   });
 
   test('proxies request with defaults, sets x-cg-demo-api-key, and sets cache header', async () => {
@@ -190,6 +211,40 @@ describe('api/coins handler', () => {
 
     assert.equal(res.statusCode, 504);
     assert.match(res.body.error, /timeout/i);
+  });
+
+  test('returns 504 when response body stream aborts (AbortError in json)', async () => {
+    let clearedBeforeJson = false;
+    const origClearTimeout = globalThis.clearTimeout;
+    globalThis.clearTimeout = (id) => {
+      clearedBeforeJson = true;
+      origClearTimeout(id);
+    };
+
+    try {
+      globalThis.fetch = async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => {
+          if (clearedBeforeJson) {
+            throw new Error('clearTimeout was called before upstreamRes.json() completed');
+          }
+          const error = new Error('The operation was aborted');
+          error.name = 'AbortError';
+          throw error;
+        },
+      });
+
+      const req = createMockReq({ method: 'GET' });
+      const res = createMockRes();
+      await handler(req, res);
+
+      assert.equal(res.statusCode, 504);
+      assert.match(res.body.error, /timeout/i);
+    } finally {
+      globalThis.clearTimeout = origClearTimeout;
+    }
   });
 
   test('returns 502 on generic network failure', async () => {

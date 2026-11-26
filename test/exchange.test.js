@@ -1,6 +1,6 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import handler from './exchange.js';
+import handler from '../api/exchange.js';
 
 function createMockRes() {
   return {
@@ -175,5 +175,39 @@ describe('api/exchange handler', () => {
     res = createMockRes();
     await handler(req, res);
     assert.equal(res.statusCode, 502);
+  });
+
+  test('returns 504 when response body stream aborts (AbortError in json)', async () => {
+    let clearedBeforeJson = false;
+    const origClearTimeout = globalThis.clearTimeout;
+    globalThis.clearTimeout = (id) => {
+      clearedBeforeJson = true;
+      origClearTimeout(id);
+    };
+
+    try {
+      globalThis.fetch = async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: async () => {
+          if (clearedBeforeJson) {
+            throw new Error('clearTimeout was called before upstreamRes.json() completed');
+          }
+          const error = new Error('The operation was aborted');
+          error.name = 'AbortError';
+          throw error;
+        },
+      });
+
+      const req = createMockReq({ method: 'GET' });
+      const res = createMockRes();
+      await handler(req, res);
+
+      assert.equal(res.statusCode, 504);
+      assert.match(res.body.error, /timeout/i);
+    } finally {
+      globalThis.clearTimeout = origClearTimeout;
+    }
   });
 });

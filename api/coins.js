@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Parámetro 'sparkline' debe ser 'true' o 'false'." });
   }
 
-  if (price_change_percentage && !/^[a-z0-9,]{1,20}$/.test(price_change_percentage)) {
+  if (price_change_percentage && !/^[a-z0-9,]{1,25}$/.test(price_change_percentage)) {
     return res.status(400).json({ error: "Parámetro 'price_change_percentage' inválido." });
   }
 
@@ -81,12 +81,8 @@ export default async function handler(req, res) {
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
-    // Mitigación ADR-018: Cache Edge de 60s, stale-while-revalidate de 120s
-    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
-
     if (!upstreamRes.ok) {
+      clearTimeout(timeoutId);
       if (upstreamRes.status === 429) {
         res.setHeader('Retry-After', upstreamRes.headers.get('retry-after') || '60');
         return res.status(429).json({ error: 'Límite de tasa de CoinGecko alcanzado.' });
@@ -97,6 +93,10 @@ export default async function handler(req, res) {
     }
 
     const data = await upstreamRes.json();
+    clearTimeout(timeoutId);
+
+    // Mitigación ADR-018: Cache Edge de 60s, stale-while-revalidate de 120s
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
     return res.status(200).json(data);
   } catch (error) {
     clearTimeout(timeoutId);

@@ -53,10 +53,8 @@ export default async function handler(req, res) {
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-    res.setHeader('Cache-Control', cacheHeader);
-
     if (!upstreamRes.ok) {
+      clearTimeout(timeoutId);
       if (upstreamRes.status === 429) {
         res.setHeader('Retry-After', upstreamRes.headers.get('retry-after') || '60');
         return res.status(429).json({ error: 'Límite de tasa de CoinGecko alcanzado.' });
@@ -67,6 +65,8 @@ export default async function handler(req, res) {
     }
 
     const data = await upstreamRes.json();
+    clearTimeout(timeoutId);
+    res.setHeader('Cache-Control', cacheHeader);
     return res.status(200).json(data);
   } catch (error) {
     clearTimeout(timeoutId);

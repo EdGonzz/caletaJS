@@ -57,6 +57,18 @@ export default async function handler(req, res) {
       signal: controller.signal,
     });
 
+    if (!upstreamRes.ok) {
+      clearTimeout(timeoutId);
+      if (upstreamRes.status === 429) {
+        res.setHeader('Retry-After', upstreamRes.headers.get('retry-after') || '60');
+        return res.status(429).json({ error: 'Límite de tasa de CoinGecko alcanzado.' });
+      }
+      return res.status(upstreamRes.status).json({
+        error: `Error upstream CoinGecko: HTTP ${upstreamRes.status}`,
+      });
+    }
+
+    const data = await upstreamRes.json();
     clearTimeout(timeoutId);
 
     // Caché según granularidad (ADR-018):
@@ -69,18 +81,6 @@ export default async function handler(req, res) {
       : 'public, s-maxage=3600, stale-while-revalidate=7200';
 
     res.setHeader('Cache-Control', cacheHeader);
-
-    if (!upstreamRes.ok) {
-      if (upstreamRes.status === 429) {
-        res.setHeader('Retry-After', upstreamRes.headers.get('retry-after') || '60');
-        return res.status(429).json({ error: 'Límite de tasa de CoinGecko alcanzado.' });
-      }
-      return res.status(upstreamRes.status).json({
-        error: `Error upstream CoinGecko: HTTP ${upstreamRes.status}`,
-      });
-    }
-
-    const data = await upstreamRes.json();
     return res.status(200).json(data);
   } catch (error) {
     clearTimeout(timeoutId);
