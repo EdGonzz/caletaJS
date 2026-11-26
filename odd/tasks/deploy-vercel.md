@@ -53,3 +53,5 @@ L12: Revisión nativa RDD del rango commiteado (`review-7c3aed805a9cfbbe`, tier 
 L13: Fixes post-review (R3-002/003/004) delegados a agy en `t7` (Workers, visible): R3-002 `clearTimeout` movido después de `await json()` en los 4 handlers (el timeout ahora cubre el parseo del body), R3-003 `price_change_percentage` cap 20→25 chars, R3-004 tests movidos de `api/` a `test/` (renames). RED 5 fallos (4× 502!==504 + 1× 400!==200) → GREEN 129/129, `pnpm build` OK, grep de secretos sin coincidencias. Commit `b829f36`. `git connect` completado: `caleta` ↔ `EdGonzz/caletaJS` (auto-deploy en push).
 
 L14: Revisión nativa RDD de los fixes (`review-9d61ad4856aefa99`, tier medium, lenses resilience/reliability, base `6401eff..HEAD`): APPROVED sin hallazgos ni refuter; autoridad quemada (`review-acknowledged/v1`).
+
+L15: Push a `origin/feat/deploy-vercel` y PR abierto: https://github.com/EdGonzz/caletaJS/pull/15 (base `main`, estrategia `single-pr`).
