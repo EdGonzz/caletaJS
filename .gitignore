@@ -159,3 +159,5 @@ todo.md
 *.swp
 *.swo
 *~
+.vercel
+.env*

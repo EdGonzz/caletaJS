@@ -10,9 +10,6 @@ import sprite from '../assets/sprite.svg';
 import { apiFetch, ApiError, ErrorType } from '../utils/errors.js';
 import { showError } from '../components/ErrorToast.js';
 
-const API_KEY = process.env.API_KEY;
-const API_URL = process.env.API_URL;
-
 /** Último current_price conocido (cache module-scope) para re-render de stats sin refetch (M5). */
 let _lastKnownPrice = null;
 
@@ -194,12 +191,11 @@ export const initCoinDetails = async () => {
 
   try {
     const data = await apiFetch(
-      `${API_URL}/coins/markets?vs_currency=usd&ids=${encodeURIComponent(coinId)}` +
+      `/api/coins?ids=${encodeURIComponent(coinId)}` +
       `&sparkline=false&price_change_percentage=24h`,
       {
         headers: {
           'Content-Type': 'application/json',
-          'x-cg-demo-api-key': API_KEY || '',
         },
       }
     );

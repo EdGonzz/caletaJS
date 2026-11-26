@@ -1,7 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import HtmlWebpackPlugin from "html-webpack-plugin";
-import Dotenv from "dotenv-webpack";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import CopyWebpackPlugin from "copy-webpack-plugin";
 
@@ -69,7 +68,6 @@ export default {
         { from: "public/favicon.svg", to: "favicon.svg" },
       ],
     }),
-    new Dotenv(),
     ...(isProduction ? [new MiniCssExtractPlugin({
       filename: "styles.[contenthash].css",
     })] : [])
